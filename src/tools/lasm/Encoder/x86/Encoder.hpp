@@ -4,6 +4,8 @@
 #include <x86/Instructions.hpp>
 #include <tuple>
 
+#include "control.hpp"
+
 namespace x86
 {
     class Encoder : public ::Encoder::Encoder
@@ -13,6 +15,8 @@ namespace x86
         ~Encoder() = default;
 
     protected:
+        ::Encoder::Instruction* GetInstruction(const Parser::Instruction::Instruction& instruction) override;
+
         bool OptimizeOffsets(std::vector<Parser::Section>& parsedSections) override;
 
         std::vector<uint8_t> EncodeInstruction(Parser::Instruction::Instruction& instruction, bool ignoreUnresolved = false, bool optimize = false) override;

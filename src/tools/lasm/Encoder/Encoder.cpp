@@ -15,7 +15,8 @@ Encoder::Encoder::Encoder(const Context& _context, Architecture _arch, BitMode _
 
 void Encoder::Encoder::Encode()
 {
-    std::vector<Parser::Section> parsedSections = parser->getSections();
+    const std::vector<Parser::Section>& parsedSections = parser->getSections();
+    sections.clear();
 
     /* TODO:
     
@@ -26,14 +27,50 @@ void Encoder::Encoder::Encode()
     4. Repeat until nothing changes anymore
 
     */
+
     for (const auto& section : parsedSections)
     {
+        Section sec;
+        sec.name = section.name;
+        sec.isInitialized = !(section.name.compare(".bss") == 0);
+        sec.align = section.align;
+
         for (size_t i = 0; i < section.entries.size(); i++)
         {
             const Parser::SectionEntry& entry = section.entries[i];
+
+            if (std::holds_alternative<Parser::Instruction::Instruction>(entry))
+            {
+                const Parser::Instruction::Instruction& instruction = std::get<Parser::Instruction::Instruction>(entry);
+                
+                Instruction* instr = GetInstruction(instruction);
+                if (instr) {
+                    sec.instructions.push_back(instr);
+                } else
+                    throw Exception::InternalError(std::string("No instruction found for ") + std::to_string(instruction.mnemonic), -1, -1, nullptr);
+            }
+        }
+
+        sections.push_back(sec);
+    }
+
+    for (auto& section : sections)
+    {
+        for (auto& instruction : section.instructions)
+        {
+            std::vector<uint8_t> encoded = instruction->encode();
+            uint64_t size = instruction->size();
+
+            if (section.isInitialized)
+                section.buffer.insert(section.buffer.end(), encoded.begin(), encoded.end());
+            else
+                section.reservedSize += size;
+
+            delete instruction;
         }
     }
 
+    /*
     ResolveConstantsPrePass(parsedSections);
 
     if (OptimizeOffsets(parsedSections))
@@ -44,6 +81,7 @@ void Encoder::Encoder::Encode()
 
     relocations.clear();
     EncodeFinal(parsedSections);
+    */
 }
 
 void Encoder::Encoder::ResolveConstantsPrePass(const std::vector<Parser::Section>& parsedSections)

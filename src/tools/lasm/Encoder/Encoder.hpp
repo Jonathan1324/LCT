@@ -9,6 +9,15 @@
 
 namespace Encoder
 {
+    class Instruction
+    {
+    public:
+        virtual ~Instruction() {};
+
+        virtual std::vector<uint8_t> encode() = 0;
+        virtual uint64_t size() = 0;
+    };
+
     using SectionBuffer = std::vector<uint8_t>;
 
     struct Section
@@ -19,6 +28,8 @@ namespace Encoder
         size_t reservedSize = 0;
 
         uint64_t align;
+
+        std::vector<Instruction*> instructions;
 
         size_t size() const;
     };
@@ -103,8 +114,6 @@ namespace Encoder
 
         std::string usedSection;
     };
-    
-    
 
     class Encoder
     {
@@ -122,6 +131,8 @@ namespace Encoder
         const std::vector<Relocation>& getRelocations() const { return relocations; }
         
     protected:
+        virtual Instruction* GetInstruction(const Parser::Instruction::Instruction& instruction) = 0;
+
         void EncodeFinal(std::vector<Parser::Section>& parsedSections);
         void GetOffsets(std::vector<Parser::Section>& parsedSections);
         void ResolveConstantsPrePass(const std::vector<Parser::Section>& parsedSections);

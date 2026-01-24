@@ -78,3 +78,16 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
     std::vector<uint8_t> buffer(length, 0x90);  // TODO: not cool
     return buffer;
 }
+
+::Encoder::Instruction* x86::Encoder::GetInstruction(const Parser::Instruction::Instruction& instruction)
+{
+    switch (instruction.mnemonic)
+    {
+        case Instructions::NOP:
+        case Instructions::HLT:
+            return new x86::Simple_Control_Instruction(instruction.mnemonic);
+            break;
+    }
+
+    return nullptr;
+}
