@@ -5,6 +5,7 @@
 #include <tuple>
 
 #include "control.hpp"
+#include "interrupt.hpp"
 
 namespace x86
 {
@@ -15,7 +16,7 @@ namespace x86
         ~Encoder() = default;
 
     protected:
-        ::Encoder::Instruction* GetInstruction(const Parser::Instruction::Instruction& instruction) override;
+        ::Encoder::Encoder::Instruction* GetInstruction(const Parser::Instruction::Instruction& instruction) override;
 
         bool OptimizeOffsets(std::vector<Parser::Section>& parsedSections) override;
 

@@ -79,13 +79,24 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
     return buffer;
 }
 
-::Encoder::Instruction* x86::Encoder::GetInstruction(const Parser::Instruction::Instruction& instruction)
+::Encoder::Encoder::Instruction* x86::Encoder::GetInstruction(const Parser::Instruction::Instruction& instruction)
 {
     switch (instruction.mnemonic)
     {
         case Instructions::NOP:
         case Instructions::HLT:
-            return new x86::Simple_Control_Instruction(instruction.mnemonic);
+            return new x86::Simple_Control_Instruction(*this, instruction.bits, instruction.mnemonic);
+            break;
+
+        case Instructions::INT:
+            return new x86::Argument_Interrupt_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            break;
+
+        case Instructions::IRET: case Instructions::IRETQ:
+        case Instructions::IRETD: case Instructions::SYSCALL:
+        case Instructions::SYSRET: case Instructions::SYSENTER:
+        case Instructions::SYSEXIT:
+            return new x86::Simple_Interrupt_Instruction(*this, instruction.bits, instruction.mnemonic);
             break;
     }
 

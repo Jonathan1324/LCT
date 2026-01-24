@@ -4,10 +4,10 @@
 #include <x86/Instructions.hpp>
 
 namespace x86 {
-    class Simple_Control_Instruction : public ::Encoder::Instruction
+    class Simple_Control_Instruction : public ::Encoder::Encoder::Instruction
     {
     public:
-        Simple_Control_Instruction(uint64_t mnemonic) {
+        Simple_Control_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic) : ::Encoder::Encoder::Instruction(e) {
             switch (mnemonic)
             {
                 case Instructions::NOP:

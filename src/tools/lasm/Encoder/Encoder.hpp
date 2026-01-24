@@ -9,30 +9,7 @@
 
 namespace Encoder
 {
-    class Instruction
-    {
-    public:
-        virtual ~Instruction() {};
-
-        virtual std::vector<uint8_t> encode() = 0;
-        virtual uint64_t size() = 0;
-    };
-
     using SectionBuffer = std::vector<uint8_t>;
-
-    struct Section
-    {
-        std::string name;
-        bool isInitialized = true;
-        SectionBuffer buffer;
-        size_t reservedSize = 0;
-
-        uint64_t align;
-
-        std::vector<Instruction*> instructions;
-
-        size_t size() const;
-    };
 
     struct Label
     {
@@ -103,7 +80,6 @@ namespace Encoder
         bool isExtern = false;
     };
 
-
     struct Evaluation
     {
         Int128 result;
@@ -118,6 +94,24 @@ namespace Encoder
     class Encoder
     {
     public:
+        class Instruction
+        {
+            friend class Encoder;
+
+        protected:
+            Encoder& enc;
+
+            Instruction(Encoder& e) : enc(e) {}
+
+            BitMode getBitMode() { return enc.bits; }
+
+        public:
+            virtual ~Instruction() {};
+
+            virtual std::vector<uint8_t> encode() = 0;
+            virtual uint64_t size() = 0;
+        };
+
         Encoder(const Context& _context, Architecture _arch, BitMode _bits, const Parser::Parser* _parser);
         virtual ~Encoder() = default;
 
@@ -126,7 +120,7 @@ namespace Encoder
         void Print() const;
 
         using Symbol = std::variant<Label*, Constant*>;
-        const std::vector<Section>& getSections() const { return sections; };
+        const std::vector<struct Section>& getSections() const { return sections; };
         const std::vector<Symbol>& getSymbols() const { return symbols; };
         const std::vector<Relocation>& getRelocations() const { return relocations; }
         
@@ -159,7 +153,7 @@ namespace Encoder
 
         const Parser::Parser* parser = nullptr;
 
-        std::vector<Section> sections;
+        std::vector<struct Section> sections;
         std::vector<Relocation> relocations;
 
         std::unordered_map<std::string, uint64_t> sectionStarts;
@@ -171,6 +165,20 @@ namespace Encoder
         size_t bytesWritten = 0;
         size_t sectionOffset = 0;
         const std::string* currentSection;
+    };
+
+    struct Section
+    {
+        std::string name;
+        bool isInitialized = true;
+        SectionBuffer buffer;
+        size_t reservedSize = 0;
+
+        uint64_t align;
+
+        std::vector<Encoder::Instruction*> instructions;
+
+        size_t size() const;
     };
 
     Encoder* getEncoder(const Context& context, Architecture arch, BitMode bits, const Parser::Parser* parser);
