@@ -27,6 +27,8 @@ namespace x86 {
 
         }
 
+        void evaluate() override {}
+
         std::vector<uint8_t> encode() override {
             return {opcode};
         }

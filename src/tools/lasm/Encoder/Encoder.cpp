@@ -72,6 +72,9 @@ void Encoder::Encoder::Encode()
             else
                 section.reservedSize += size;
 
+            sectionOffset += size;
+            bytesWritten += size;
+
             delete instruction;
         }
     }

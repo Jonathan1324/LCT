@@ -107,7 +107,7 @@ namespace Encoder
 
             ::Encoder::Evaluation Evaluate(
                 const Parser::Immediate& immediate
-            )
+            ) // FIXME: Not working
             { return enc.Evaluate(immediate, enc.bytesWritten, enc.sectionOffset, enc.currentSection); }
 
             void AddRelocation(

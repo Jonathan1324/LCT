@@ -35,8 +35,35 @@ namespace x86 {
 
         }
 
+        void evaluate() override {
+            ::Encoder::Evaluation evalutation = Evaluate(argument);
+
+            if (evalutation.useOffset)
+            {
+                argument_value = evalutation.offset;
+
+                AddRelocation(
+                    1, // opcode
+                    evalutation.offset, true,
+                    evalutation.usedSection,
+                    ::Encoder::RelocationType::Absolute,
+                    ::Encoder::RelocationSize::Bit8,
+                    evalutation.isExtern
+                );
+            }
+            else
+            {
+                Int128 result = evalutation.result;
+
+                if (result < 0)   throw Exception::SemanticError("'int' can't have a negative operand", -1, -1);
+                if (result > 255) throw Exception::SemanticError("Operand too large for 'int'", -1, -1);
+
+                argument_value = static_cast<uint8_t>(result);
+            }
+        }
+
         std::vector<uint8_t> encode() override {
-            return {opcode, argument};
+            return {opcode, argument_value};
         }
 
         uint64_t size() override {
@@ -45,7 +72,10 @@ namespace x86 {
 
     private:
         uint8_t opcode;
-        uint8_t argument;
+
+        Parser::Immediate argument;
+
+        uint8_t argument_value;
     };
 
     class Simple_Interrupt_Instruction : public ::Encoder::Encoder::Instruction
@@ -113,6 +143,8 @@ namespace x86 {
         ~Simple_Interrupt_Instruction() override {
 
         }
+
+        void evaluate() override {}
 
         std::vector<uint8_t> encode() override {
             std::vector<uint8_t> instr;
