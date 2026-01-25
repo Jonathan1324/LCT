@@ -54,10 +54,16 @@ void Encoder::Encoder::Encode()
         sections.push_back(sec);
     }
 
+    bytesWritten = 0;
     for (auto& section : sections)
     {
+        sectionStarts[section.name] = bytesWritten;
+        currentSection = &section.name;
+        sectionOffset = 0;
+
         for (auto& instruction : section.instructions)
         {
+            instruction->evaluate();
             std::vector<uint8_t> encoded = instruction->encode();
             uint64_t size = instruction->size();
 

@@ -83,21 +83,39 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
 {
     switch (instruction.mnemonic)
     {
+        // CONTROL
         case Instructions::NOP:
         case Instructions::HLT:
             return new x86::Simple_Control_Instruction(*this, instruction.bits, instruction.mnemonic);
-            break;
 
+        // INTERRUPT
         case Instructions::INT:
             return new x86::Argument_Interrupt_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
-            break;
 
         case Instructions::IRET: case Instructions::IRETQ:
         case Instructions::IRETD: case Instructions::SYSCALL:
         case Instructions::SYSRET: case Instructions::SYSENTER:
         case Instructions::SYSEXIT:
             return new x86::Simple_Interrupt_Instruction(*this, instruction.bits, instruction.mnemonic);
-            break;
+
+        // FLAGS
+        case Instructions::CLC: case Instructions::STC: case Instructions::CMC:
+        case Instructions::CLD: case Instructions::STD:
+        case Instructions::CLI: case Instructions::STI:
+        case Instructions::LAHF: case Instructions::SAHF:
+            return new x86::Simple_Flag_Instruction(*this, instruction.bits, instruction.mnemonic);
+    
+        // STACK
+        case Instructions::PUSHA: case Instructions::POPA:
+        case Instructions::PUSHAD: case Instructions::POPAD:
+        case Instructions::PUSHF: case Instructions::POPF:
+        case Instructions::PUSHFD: case Instructions::POPFD:
+        case Instructions::PUSHFQ: case Instructions::POPFQ:
+            return new x86::Simple_Stack_Instruction(*this, instruction.bits, instruction.mnemonic);
+
+        // DATA
+        case Instructions::MOV:
+            return new x86::Mov_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
     }
 
     return nullptr;

@@ -6,6 +6,9 @@
 
 #include "control.hpp"
 #include "interrupt.hpp"
+#include "flag.hpp"
+#include "stack.hpp"
+#include "data.hpp"
 
 namespace x86
 {

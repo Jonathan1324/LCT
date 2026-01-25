@@ -105,11 +105,37 @@ namespace Encoder
 
             BitMode getBitMode() { return enc.bits; }
 
+            ::Encoder::Evaluation Evaluate(
+                const Parser::Immediate& immediate
+            )
+            { return enc.Evaluate(immediate, enc.bytesWritten, enc.sectionOffset, enc.currentSection); }
+
+            void AddRelocation(
+                uint64_t extra_offset, uint64_t addend,
+                bool addendInCode, const std::string& usedSection,
+                ::Encoder::RelocationType type,
+                ::Encoder::RelocationSize size,
+                bool isExtern
+            )
+            {
+                ::Encoder::Relocation relocation;
+                relocation.offsetInSection = enc.sectionOffset + extra_offset;
+                relocation.addend = addend;
+                relocation.addendInCode = addendInCode;
+                relocation.section = *enc.currentSection;
+                relocation.usedSection = usedSection;
+                relocation.type = type;
+                relocation.size = size;
+                relocation.isExtern = isExtern;
+                enc.relocations.push_back(std::move(relocation));
+            }
+
         public:
             virtual ~Instruction() {};
 
             virtual std::vector<uint8_t> encode() = 0;
             virtual uint64_t size() = 0;
+            virtual void evaluate() = 0;
         };
 
         Encoder(const Context& _context, Architecture _arch, BitMode _bits, const Parser::Parser* _parser);
