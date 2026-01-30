@@ -18,6 +18,18 @@ namespace x86
         Encoder(const Context& _context, Architecture _arch, BitMode _bits, const Parser::Parser* _parser);
         ~Encoder() = default;
 
+        enum class Mod : uint8_t {
+            INDIRECT        = 0b00,
+            INDIRECT_DISP8  = 0b01,
+            INDIRECT_DISP32 = 0b10,
+            REGISTER        = 0b11
+        };
+        inline uint8_t getModRM(Mod mod, uint8_t reg, uint8_t rm)
+        {
+            uint8_t modrm = ((uint8_t(mod)) << 6) | (reg << 3) | rm;
+            return modrm;
+        }
+
     protected:
         ::Encoder::Encoder::Instruction* GetInstruction(const Parser::Instruction::Instruction& instruction) override;
 
@@ -40,18 +52,6 @@ namespace x86
             if (X) rex |= 0b00000010;
             if (B) rex |= 0b00000001;
             return rex;
-        }
-
-        enum class Mod : uint8_t {
-            INDIRECT        = 0b00,
-            INDIRECT_DISP8  = 0b01,
-            INDIRECT_DISP32 = 0b10,
-            REGISTER        = 0b11
-        };
-        inline uint8_t getModRM(Mod mod, uint8_t reg, uint8_t rm)
-        {
-            uint8_t modrm = ((uint8_t(mod)) << 6) | (reg << 3) | rm;
-            return modrm;
         }
 
         // first bool = use rex

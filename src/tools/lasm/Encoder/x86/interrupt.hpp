@@ -9,6 +9,7 @@ namespace x86 {
     {
     public:
         Argument_Interrupt_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands) : ::Encoder::Encoder::Instruction(e) {
+            
             switch (mnemonic)
             {
                 case Instructions::INT: {
@@ -19,9 +20,9 @@ namespace x86 {
                     if (!std::holds_alternative<Parser::Immediate>(operands[0]))
                         throw Exception::InternalError("'int': wrong operand type", -1, -1, nullptr);
 
-                    const Parser::Immediate& immediate = std::get<Parser::Immediate>(operands[0]);
+                    // TODO: Check
 
-                    // TODO
+                    argument = std::get<Parser::Immediate>(operands[0]);
 
                     break;
                 }
