@@ -2,7 +2,7 @@
 ; BITS: 16,32,64
 ; EXPECT: SUCCESS
 
-[bits 32]
+[bits 16]
 
 section .text
     global _start

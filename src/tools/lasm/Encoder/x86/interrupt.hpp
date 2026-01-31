@@ -37,24 +37,24 @@ namespace x86 {
         }
 
         void evaluate() override {
-            ::Encoder::Evaluation evalutation = Evaluate(argument);
+            ::Encoder::Evaluation evaluation = Evaluate(argument);
 
-            if (evalutation.useOffset)
+            if (evaluation.useOffset)
             {
-                argument_value = evalutation.offset;
+                argument_value = evaluation.offset;
 
                 AddRelocation(
                     1, // opcode
-                    evalutation.offset, true,
-                    evalutation.usedSection,
+                    evaluation.offset, true,
+                    evaluation.usedSection,
                     ::Encoder::RelocationType::Absolute,
                     ::Encoder::RelocationSize::Bit8,
-                    evalutation.isExtern
+                    evaluation.isExtern
                 );
             }
             else
             {
-                Int128 result = evalutation.result;
+                Int128 result = evaluation.result;
 
                 if (result < 0)   throw Exception::SemanticError("'int' can't have a negative operand", -1, -1);
                 if (result > 255) throw Exception::SemanticError("Operand too large for 'int'", -1, -1);
