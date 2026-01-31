@@ -1,6 +1,8 @@
 #include "Encoder.hpp"
 #include <limits>
 
+#include "data.hpp"
+
 size_t Encoder::Section::size() const
 {
     return isInitialized ? buffer.size() : reservedSize;
@@ -48,6 +50,29 @@ void Encoder::Encoder::Encode()
                     sec.instructions.push_back(instr);
                 } else
                     throw Exception::InternalError(std::string("No instruction found for ") + std::to_string(instruction.mnemonic), -1, -1, nullptr);
+            }
+            else if (std::holds_alternative<Parser::DataDefinition>(entry))
+            {
+                const Parser::DataDefinition& dataDefinition = std::get<Parser::DataDefinition>(entry);
+
+                Data::Data_Instruction* data_instr = new Data::Data_Instruction(*this, dataDefinition);
+                Instruction* instr = static_cast<Instruction*>(data_instr);
+                if (instr) {
+                    sec.instructions.push_back(instr);
+                } else
+                    throw Exception::InternalError("No instruction found for data", -1, -1, nullptr);
+            }
+            else if (std::holds_alternative<Parser::Label>(entry))
+            {
+                // TODO
+            }
+            else if (std::holds_alternative<Parser::Constant>(entry))
+            {
+                // TODO
+            }
+            else if (std::holds_alternative<Parser::Alignment>(entry))
+            {
+                // TODO
             }
         }
 

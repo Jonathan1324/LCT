@@ -12,4 +12,4 @@ _start:
 
 section .data
 
-testV db 0
+testV db 0, 0xff, -5
