@@ -74,6 +74,10 @@ void Encoder::Encoder::Encode()
             {
                 // TODO
             }
+            else if (std::holds_alternative<Parser::Repetition>(entry))
+            {
+                // TODO
+            }
         }
 
         sections.push_back(sec);
