@@ -64,19 +64,57 @@ void Encoder::Encoder::Encode()
             }
             else if (std::holds_alternative<Parser::Label>(entry))
             {
-                // TODO
+                const Parser::Label& label = std::get<Parser::Label>(entry);
+                Label lbl;
+                lbl.name = label.name;
+                lbl.section = section.name;
+                lbl.resolved = false;
+                lbl.isGlobal = label.isGlobal;
+                lbl.isExtern = label.isExtern;
+
+                if (labels.find(lbl.name) == labels.end())
+                {
+                    labels[lbl.name] = lbl;
+                    symbols.push_back(&labels[lbl.name]);
+                }
+                else
+                    throw Exception::SemanticError("Label '" + lbl.name + "' already defined", label.lineNumber, label.column);
+
+                SectionEntry::Label sectionEntryLabel(lbl.name);
+                sec.instructions.push_back(sectionEntryLabel);
             }
             else if (std::holds_alternative<Parser::Constant>(entry))
             {
-                // TODO
+                const Parser::Constant& constant = std::get<Parser::Constant>(entry);
+                Constant c;
+                c.name = constant.name;
+                c.section = section.name;
+                c.expression = constant.value;
+                c.resolved = false;
+
+                c.hasPos = constant.hasPos ? HasPos::TRUE : HasPos::UNKNOWN;
+                c.isGlobal = constant.isGlobal;
+
+                if (constants.find(constant.name) == constants.end())
+                {
+                    constants[constant.name] = c;
+                    symbols.push_back(&constants[constant.name]);
+                }
+                else
+                    throw Exception::SemanticError("Constant '" + constant.name + "' already defined", constant.lineNumber, constant.column);
+
+                SectionEntry::Constant sectionEntryConstant(constant.name);
+                sec.instructions.push_back(sectionEntryConstant);
             }
             else if (std::holds_alternative<Parser::Alignment>(entry))
             {
                 // TODO
+                throw Exception::InternalError("Alignments not implemented in the encoder yet", -1, -1);
             }
             else if (std::holds_alternative<Parser::Repetition>(entry))
             {
                 // TODO
+                throw Exception::InternalError("Repetitions not implemented in the encoder yet", -1, -1);
             }
         }
 
@@ -87,6 +125,63 @@ void Encoder::Encoder::Encode()
     for (auto& section : sections)
     {
         sectionStarts[section.name] = bytesWritten;
+        currentSection = &section.name;
+        sectionOffset = 0;
+
+        for (const SectionEntry& entry : section.instructions)
+        {
+            if (entry.isInstruction())
+            {
+                Instruction* instruction = entry.getInstruction();
+
+                uint64_t size = instruction->size();
+
+                sectionOffset += size;
+                bytesWritten += size;
+            }
+            else if (entry.isLabel())
+            {
+                const SectionEntry::Label& label = entry.getLabel();
+
+                auto it = labels.find(label.name);
+                if (it != labels.end())
+                {
+                    Label& lbl = it->second;
+                    lbl.offset = sectionOffset;
+                    lbl.resolved = true;
+                }
+                else
+                    throw Exception::InternalError("Label '" + label.name + "' isn't found in labels", -1, -1);
+            }
+            else if (entry.isConstant())
+            {
+                const SectionEntry::Constant& constant = entry.getConstant();
+
+                auto it = constants.find(constant.name);
+                if (it != constants.end())
+                {
+                    Constant& c = it->second;
+                    c.offset = sectionOffset;
+                    c.bytesWritten = bytesWritten;
+
+                    constants[constant.name] = c;
+                }
+                else
+                    throw Exception::InternalError("Constant '" + constant.name + "' isn't found in constants", -1, -1);
+            }
+            else
+            {
+                throw Exception::InternalError("Couldn't find logic for Encoder::SectionEntry", -1, -1);
+            }
+        }
+    }
+
+    resolveConstants(true);
+
+
+    bytesWritten = 0;
+    for (auto& section : sections)
+    {
         currentSection = &section.name;
         sectionOffset = 0;
 
@@ -110,13 +205,17 @@ void Encoder::Encoder::Encode()
 
                 delete instruction;
             }
+            else if (entry.isLabel() || entry.isConstant())
+            {
+                // Ignore
+            }
             else
             {
                 throw Exception::InternalError("Couldn't find logic for Encoder::SectionEntry", -1, -1);
             }
         }
     }
-
+    
     /*
     ResolveConstantsPrePass(parsedSections);
 

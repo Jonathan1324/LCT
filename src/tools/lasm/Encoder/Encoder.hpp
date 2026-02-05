@@ -196,6 +196,20 @@ namespace Encoder
     class SectionEntry
     {
     public:
+        struct Label
+        {
+            Label(std::string _name) : name(_name) {}
+
+            std::string name;
+        };
+
+        struct Constant
+        {
+            Constant(std::string _name) : name(_name) {}
+
+            std::string name;
+        };
+
         SectionEntry(Encoder::Instruction* instr)
         {
             entry = instr;
@@ -212,8 +226,42 @@ namespace Encoder
             return std::get<Encoder::Instruction*>(entry);
         }
 
+
+        SectionEntry(const Label& label)
+        {
+            entry = label;
+        }
+
+        bool isLabel() const
+        {
+            return std::holds_alternative<Label>(entry);
+        }
+
+        Label getLabel() const
+        {
+            if (!isLabel()) throw Exception::InternalError("Entry not a label", -1, -1);
+            return std::get<Label>(entry);
+        }
+
+
+        SectionEntry(const Constant& constant)
+        {
+            entry = constant;
+        }
+
+        bool isConstant() const
+        {
+            return std::holds_alternative<Constant>(entry);
+        }
+
+        Constant getConstant() const
+        {
+            if (!isConstant()) throw Exception::InternalError("Entry not a constant", -1, -1);
+            return std::get<Constant>(entry);
+        }
+
     private:
-        std::variant<Encoder::Instruction*> entry;
+        std::variant<Encoder::Instruction*, Label, Constant> entry;
     };
 
     struct Section

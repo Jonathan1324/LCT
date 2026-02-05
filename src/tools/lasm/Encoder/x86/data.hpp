@@ -606,6 +606,7 @@ namespace x86 {
                     if (evaluation.useOffset)
                     {
                         uint64_t currentOffset = 1; // opcode
+                        if (use16BitPrefix) currentOffset++;
                         if (useREX) currentOffset++;
                         if (useOpcodeEscape) currentOffset++;
 
