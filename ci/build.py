@@ -377,10 +377,27 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
 
     
 
-    Warning_Flags = ["-Wall", "-Wextra"]
-    Optimize_Flags = ["-O2"]
-    Debug_Flags = ["-g", "-DDEBUG_BUILD"]
-    Release_Flags = ["-DNDEBUG"]
+    Warning_Flags = [
+        "-Wall", "-Wextra", "-Wpedantic", "-Wconversion", "-Wshadow",
+        "-Wformat=2", "-Wundef", "-Wunreachable-code", "-Wduplicated-cond",
+        "-Wnull-dereference", "-Wduplicated-branches",
+        "-Wlogical-op", "-Wunused-parameter"
+    ]
+
+    Debug_Flags = [
+        "-ggdb3", "-O0", "-fno-omit-frame-pointer",
+        "-fno-inline", "-march=native", "-ftrapv",
+        "-fstack-check", "-fno-strict-aliasing"
+
+        "-DDEBUG_BUILD"
+    ]
+
+    Release_Flags = [
+        "-O3", "-DNDEBUG", "-flto", "-fmerge-constants", "-fno-ident",
+        "-funroll-loops", "-fstrict-aliasing", "-ffunction-sections",
+        "-fdata-sections", "-fpie", "-pie"
+    ]
+
     Security_Flags = ["-fstack-protector-strong", "-D_FORTIFY_SOURCE=2", "-fPIC"]
     Static_Flags = ["-static", "-static-libgcc", "-static-libstdc++"]
 
@@ -393,6 +410,14 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
     toolchain.Ar_Flags.append("rcs")
 
     toolchain.Rust_Lib_Flags.extend(["--crate-type", "staticlib"])
+
+    if not debug:
+        toolchain.Linker_Flags.extend([
+            "-Wl,-s", "-Wl,-O2",
+            "-ffunction-sections", "-fdata-sections",
+            "-Wl,--gc-sections",
+            "-fpie", "-pie"
+        ])
 
     if os == OS.Linux:
         toolchain.Linker_Flags.append("-Wl,--gc-sections")
@@ -443,10 +468,8 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
         toolchain.Rust_Flags.extend(["-C", "opt-level=0"])
 
     else:
-        toolchain.Compiler_C_Flags.extend(Optimize_Flags)
         toolchain.Compiler_C_Flags.extend(Release_Flags)
 
-        toolchain.Compiler_CPP_Flags.extend(Optimize_Flags)
         toolchain.Compiler_CPP_Flags.extend(Release_Flags)
         toolchain.Compiler_CPP_Flags.extend(Security_Flags)
 
