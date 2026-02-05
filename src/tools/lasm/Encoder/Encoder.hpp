@@ -153,17 +153,7 @@ namespace Encoder
     protected:
         virtual Instruction* GetInstruction(const Parser::Instruction::Instruction& instruction) = 0;
 
-        void EncodeFinal(std::vector<Parser::Section>& parsedSections);
-        void GetOffsets(std::vector<Parser::Section>& parsedSections);
-        void ResolveConstantsPrePass(const std::vector<Parser::Section>& parsedSections);
-
-        virtual bool OptimizeOffsets(std::vector<Parser::Section>& parsedSections) = 0;
-
-        virtual std::vector<uint8_t> EncodeInstruction(Parser::Instruction::Instruction& instruction, bool ignoreUnresolved = false, bool optimize = false) = 0;
-        virtual uint64_t GetSize(Parser::Instruction::Instruction& instruction) = 0;
         virtual std::vector<uint8_t> EncodePadding(size_t length) = 0;
-        std::vector<uint8_t> EncodeData(const Parser::DataDefinition& dataDefinition);
-        uint64_t GetSize(const Parser::DataDefinition& dataDefinition);
 
         Evaluation Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, const std::string* curSection);
 
