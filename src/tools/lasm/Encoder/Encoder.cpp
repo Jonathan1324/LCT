@@ -90,21 +90,30 @@ void Encoder::Encoder::Encode()
         currentSection = &section.name;
         sectionOffset = 0;
 
-        for (auto& instruction : section.instructions)
+        for (const SectionEntry& entry : section.instructions)
         {
-            instruction->evaluate();
-            std::vector<uint8_t> encoded = instruction->encode();
-            uint64_t size = instruction->size();
+            if (entry.isInstruction())
+            {
+                Instruction* instruction = entry.getInstruction();
 
-            if (section.isInitialized)
-                section.buffer.insert(section.buffer.end(), encoded.begin(), encoded.end());
+                instruction->evaluate();
+                std::vector<uint8_t> encoded = instruction->encode();
+                uint64_t size = instruction->size();
+
+                if (section.isInitialized)
+                    section.buffer.insert(section.buffer.end(), encoded.begin(), encoded.end());
+                else
+                    section.reservedSize += size;
+
+                sectionOffset += size;
+                bytesWritten += size;
+
+                delete instruction;
+            }
             else
-                section.reservedSize += size;
-
-            sectionOffset += size;
-            bytesWritten += size;
-
-            delete instruction;
+            {
+                throw Exception::InternalError("Couldn't find logic for Encoder::SectionEntry", -1, -1);
+            }
         }
     }
 

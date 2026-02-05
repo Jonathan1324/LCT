@@ -193,6 +193,29 @@ namespace Encoder
         const std::string* currentSection;
     };
 
+    class SectionEntry
+    {
+    public:
+        SectionEntry(Encoder::Instruction* instr)
+        {
+            entry = instr;
+        }
+
+        bool isInstruction() const
+        {
+            return std::holds_alternative<Encoder::Instruction*>(entry);
+        }
+
+        Encoder::Instruction* getInstruction() const
+        {
+            if (!isInstruction()) throw Exception::InternalError("Entry not an instruction", -1, -1);
+            return std::get<Encoder::Instruction*>(entry);
+        }
+
+    private:
+        std::variant<Encoder::Instruction*> entry;
+    };
+
     struct Section
     {
         std::string name;
@@ -202,7 +225,7 @@ namespace Encoder
 
         uint64_t align;
 
-        std::vector<Encoder::Instruction*> instructions;
+        std::vector<SectionEntry> instructions;
 
         size_t size() const;
     };
