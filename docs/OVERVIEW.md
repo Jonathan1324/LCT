@@ -2,26 +2,34 @@
 
 Docs aren't implemented yet
 
-## Assembler / Preprocessor
+## LASM
 
 Docs are planned
 
-## Linker
+## LASMP
 
 Docs are planned
 
-## Buildtool
+## LNK
 
 Docs are planned
 
-## Filesystem Tool
+## LBT
 
 Docs are planned
 
-## Joke Tool
+## LFS
 
 Docs are planned
 
-## Brainfuck Interpreter
+## LBF
+
+Docs are planned
+
+## LJOKE
+
+Docs are planned
+
+## LHOHO
 
 Docs are planned
