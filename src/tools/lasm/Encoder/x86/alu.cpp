@@ -206,6 +206,8 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                 {
                     aluType = AluType::ALU_REG_IMM;
 
+                    bool is64bit = false;
+
                     // TODO
                     switch (mainReg.reg)
                     {
@@ -295,8 +297,14 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                         case R13:
                         case R14:
                         case R15:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint64_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 64;
+                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                            specific.alu_reg_imm.sizeInBits = 32;
+
+                            is64bit = true;
+
+                            useREX = true;
+                            rexW = true;
+
                             break;
 
                         default:
@@ -325,7 +333,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
 
                         case RAX:
                             useREX = true;
-                            rexW = true;    
+                            rexW = true;
 
                             accumulatorReg = true;
                             break;
@@ -370,8 +378,6 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
 
                         if (mainUseREX) useREX = true;
                         if (mainSetREX) rexB = true;
-
-                        if (specific.alu_reg_imm.sizeInBits == 64) rexW = true;
 
                         useModRM = true;
 
