@@ -736,6 +736,137 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
             continue;
         }
 
+        // ALU
+        static const std::unordered_map<std::string_view, uint64_t> aluInstructions = {
+            {"add", ::x86::Instructions::ADD},
+            {"adc", ::x86::Instructions::ADC},
+            {"sub", ::x86::Instructions::SUB},
+            {"sbb", ::x86::Instructions::SBB},
+            {"cmp", ::x86::Instructions::CMP},
+            {"test", ::x86::Instructions::TEST},
+            {"and", ::x86::Instructions::AND},
+            {"or", ::x86::Instructions::OR},
+            {"xor", ::x86::Instructions::XOR},
+
+            {"mul", ::x86::Instructions::MUL},
+            {"imul", ::x86::Instructions::IMUL},
+            {"div", ::x86::Instructions::DIV},
+            {"idiv", ::x86::Instructions::IDIV},
+
+            {"shl", ::x86::Instructions::SHL},
+            {"shr", ::x86::Instructions::SHR},
+            {"sal", ::x86::Instructions::SAL},
+            {"sar", ::x86::Instructions::SAR},
+            {"rol", ::x86::Instructions::ROL},
+            {"ror", ::x86::Instructions::ROR},
+
+            {"not", ::x86::Instructions::NOT},
+            {"inc", ::x86::Instructions::INC},
+            {"dec", ::x86::Instructions::DEC},
+            {"neg", ::x86::Instructions::NEG}
+        };
+
+        it = aluInstructions.find(lowerVal);
+        if (it != aluInstructions.end())
+        {
+            ::Parser::Instruction::Instruction instruction(it->second, currentBitMode, token.line, token.column);
+            i++;
+            switch (instruction.mnemonic)
+            {
+                case ::x86::Instructions::ADD: case ::x86::Instructions::ADC:
+                case ::x86::Instructions::SUB: case ::x86::Instructions::SBB:
+                case ::x86::Instructions::CMP: case ::x86::Instructions::TEST:
+                case ::x86::Instructions::AND: case ::x86::Instructions::OR:
+                case ::x86::Instructions::XOR:
+                {
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value);
+                    if (regIt != ::x86::registers.end()
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
+                        || (regIt != ::x86::registers.end()
+                        && filteredTokens[i + 1].type != Token::Type::Punctuation))
+                    {
+                        // TODO: memory
+                    }
+                    else
+                    {
+                        // TODO: Error
+                    }
+
+                    if (filteredTokens[i].type != Token::Type::Comma)
+                        throw Exception::SyntaxError(std::string("Expected ',' after first argument for '") + lowerVal + "'", operand1.line, operand1.column);
+                    i++;
+
+                    const Token::Token& operand2 = filteredTokens[i];
+                    regIt = ::x86::registers.find(operand2.value);
+                    if (regIt != ::x86::registers.end()
+                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
+                        || (regIt != ::x86::registers.end()
+                        && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        // TODO: memory
+                    }
+                    else
+                    {
+                        // TODO: immediate?
+                        ::Parser::Immediate imm;
+
+                        while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                        {
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                            imm.operands.push_back(op);
+                            i++;
+                        }
+                        instruction.operands.push_back(imm);
+                    }
+                } break;
+
+                case ::x86::Instructions::MUL: case ::x86::Instructions::IMUL:
+                case ::x86::Instructions::DIV: case ::x86::Instructions::IDIV:
+                {
+                    // TODO
+                }
+
+                case ::x86::Instructions::SHL: case ::x86::Instructions::SHR:
+                case ::x86::Instructions::SAL: case ::x86::Instructions::SAR:
+                case ::x86::Instructions::ROL: case ::x86::Instructions::ROR:
+                {
+                    // TODO
+                }
+
+                case ::x86::Instructions::NOT: case ::x86::Instructions::INC:
+                case ::x86::Instructions::DEC: case ::x86::Instructions::NEG:
+                {
+                    // TODO
+                }
+
+                default:
+                    throw Exception::InternalError("Unknown data instruction", token.line, token.column);
+            }
+            if (i >= filteredTokens.size() || filteredTokens[i].type != Token::Type::EOL)
+                throw Exception::SyntaxError("Expected end of line after second argument for '" + lowerVal + "'", token.line, token.column);
+            
+            currentSection->entries.push_back(instruction);
+            continue;
+        }
+
+
         context.warningManager->add(Warning::GeneralWarning("Unhandled token: " + token.what(&context)));
     }
 

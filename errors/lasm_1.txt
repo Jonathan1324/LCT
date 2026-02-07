@@ -1,0 +1,11 @@
+during RTL pass: expand
+src/tools/lasm/Parser/x86/Parser.cpp:747:1: internal compiler error: in purge_dead_edges, at cfgrtl.cc:3395
+  747 | }
+      | ^
+0x7fefa080d1c9 __libc_start_call_main
+        ../sysdeps/nptl/libc_start_call_main.h:58
+0x7fefa080d28a __libc_start_main_impl
+        ../csu/libc-start.c:360
+Please submit a full bug report, with preprocessed source (by using -freport-bug).
+Please include the complete backtrace with any bug report.
+See <file:///usr/share/doc/gcc-14/README.Bugs> for instructions.

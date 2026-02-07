@@ -505,9 +505,6 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                 {
                     movType = MovType::MOV_REG_IMM;
 
-                    specific.mov_reg_imm.max = std::numeric_limits<uint64_t>::max();
-                    specific.mov_reg_imm.sizeInBits = 64;
-
                     // TODO
                     switch (destReg.reg)
                     {
@@ -928,6 +925,7 @@ void x86::Mov_Instruction::evaluate()
                 if (use16BitPrefix) currentOffset++;
                 if (useREX) currentOffset++;
                 if (useOpcodeEscape) currentOffset++;
+                if (useModRM) currentOffset++;
 
                 specific.mov_reg_imm.value = evaluation.offset; // TODO: Check for overflow
 
@@ -978,6 +976,8 @@ std::vector<uint8_t> x86::Mov_Instruction::encode()
 
     instr.push_back(opcode);
 
+    if (useModRM) instr.push_back(::x86::getModRM(mod_mod, mod_reg, mod_rm));
+
     switch (movType)
     {
         case MovType::MOV_REG_REG:
@@ -1001,8 +1001,6 @@ std::vector<uint8_t> x86::Mov_Instruction::encode()
         default:
             throw Exception::InternalError("Unknown movType", -1, -1);
     }
-
-    if (useModRM) instr.push_back(::x86::getModRM(mod_mod, mod_reg, mod_rm));
 
     return instr;
 }

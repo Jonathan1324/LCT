@@ -387,15 +387,16 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
     Debug_Flags = [
         "-ggdb3", "-O0", "-fno-omit-frame-pointer",
         "-fno-inline", "-march=native", "-ftrapv",
-        "-fstack-check", "-fno-strict-aliasing"
+        "-fstack-check", "-fno-strict-aliasing",
 
         "-DDEBUG_BUILD"
     ]
 
     Release_Flags = [
-        "-O3", "-DNDEBUG", "-flto", "-fmerge-constants", "-fno-ident",
+        "-O3", "-DNDEBUG", "-fmerge-constants", "-fno-ident",
         "-funroll-loops", "-fstrict-aliasing", "-ffunction-sections",
-        "-fdata-sections", "-fpie", "-pie"
+        "-fdata-sections", "-fpie", "-pie",
+        #TODO: "-flto"
     ]
 
     Security_Flags = ["-fstack-protector-strong", "-D_FORTIFY_SOURCE=2", "-fPIC"]

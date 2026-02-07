@@ -31,5 +31,18 @@ namespace x86
         // DATA
         MOV,
 
+        // ALU
+        ADD, ADC, SUB, SBB, CMP, TEST, AND, OR, XOR,
+        MUL, IMUL, DIV, IDIV,
+
+        // TODO
+        SHL, SHR, SAL, SAR, ROL, ROR,
+
+        NOT, INC, DEC, NEG,
+
+        // CONTROL FLOW
+        JMP, JE, JNE, JG, JGE, JL, JLE,
+        JA, JAE, JB, JBE,
+        CALL, RET
     };
 }

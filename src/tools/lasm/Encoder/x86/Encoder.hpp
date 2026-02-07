@@ -9,6 +9,7 @@
 #include "flag.hpp"
 #include "stack.hpp"
 #include "data.hpp"
+#include "alu.hpp"
 
 namespace x86
 {

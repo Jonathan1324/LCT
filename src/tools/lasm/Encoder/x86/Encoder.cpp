@@ -49,6 +49,12 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
         // DATA
         case Instructions::MOV:
             return new x86::Mov_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+
+        // ALU
+        case Instructions::ADD: case Instructions::ADC: case Instructions::SUB:
+        case Instructions::SBB: case Instructions::CMP: case Instructions::TEST:
+        case Instructions::AND: case Instructions::OR: case Instructions::XOR:
+            return new x86::Two_Argument_ALU_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
     }
 
     return nullptr;
