@@ -35,3 +35,7 @@ _start:
     sbb rcx, rsi
 
     add rbx, 124134
+
+    add r8d, 222
+
+    add r8, r15
