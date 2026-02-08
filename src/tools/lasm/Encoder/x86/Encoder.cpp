@@ -59,6 +59,16 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
         case Instructions::MUL: case Instructions::IMUL:
         case Instructions::DIV: case Instructions::IDIV:
             return new x86::Mul_Div_ALU_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+
+        case Instructions::SHL: case Instructions::SHR:
+        case Instructions::SAL: case Instructions::SAR:
+        case Instructions::ROL: case Instructions::ROR:
+        case Instructions::RCL: case Instructions::RCR:
+            return new x86::Shift_Rotate_ALU_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+
+        case Instructions::NOT: case Instructions::NEG:
+        case Instructions::INC: case Instructions::DEC:
+            return new x86::Argument_ALU_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
     }
 
     return nullptr;

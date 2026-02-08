@@ -35,12 +35,13 @@ namespace x86
         ADD, ADC, SUB, SBB, CMP, TEST, AND, OR, XOR,
         MUL, IMUL, DIV, IDIV,
 
-        // TODO
-        SHL, SHR, SAL, SAR, ROL, ROR,
+        SHL, SHR, SAL, SAR,
+        ROL, ROR, RCL, RCR,
 
-        NOT, INC, DEC, NEG,
+        NOT, NEG, INC, DEC,
 
         // CONTROL FLOW
+        // TODO
         JMP, JE, JNE, JG, JGE, JL, JLE,
         JA, JAE, JB, JBE,
         CALL, RET

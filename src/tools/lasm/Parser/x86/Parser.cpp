@@ -759,6 +759,8 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
             {"sar", ::x86::Instructions::SAR},
             {"rol", ::x86::Instructions::ROL},
             {"ror", ::x86::Instructions::ROR},
+            {"rcl", ::x86::Instructions::RCL},
+            {"rcr", ::x86::Instructions::RCR},
 
             {"not", ::x86::Instructions::NOT},
             {"inc", ::x86::Instructions::INC},
@@ -929,15 +931,91 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                 case ::x86::Instructions::SHL: case ::x86::Instructions::SHR:
                 case ::x86::Instructions::SAL: case ::x86::Instructions::SAR:
                 case ::x86::Instructions::ROL: case ::x86::Instructions::ROR:
+                case ::x86::Instructions::RCL: case ::x86::Instructions::RCR:
                 {
-                    // TODO
-                }
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value);
+                    if (regIt != ::x86::registers.end()
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
+                        || (regIt != ::x86::registers.end()
+                        && filteredTokens[i + 1].type != Token::Type::Punctuation))
+                    {
+                        // TODO: memory
+                    }
+                    else
+                    {
+                        // TODO: Error
+                    }
+
+                    if (filteredTokens[i].type != Token::Type::Comma)
+                        throw Exception::SyntaxError(std::string("Expected ',' after first argument for '") + lowerVal + "'", operand1.line, operand1.column);
+                    i++;
+
+                    const Token::Token& operand2 = filteredTokens[i];
+                    regIt = ::x86::registers.find(operand2.value);
+                    if (regIt != ::x86::registers.end()
+                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+
+                        if (reg.reg != x86::Registers::CL)
+                            throw Exception::SemanticError("Only CL register is allowed as shift/rotate count", operand2.line, operand2.column);
+
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
+                        || (regIt != ::x86::registers.end()
+                        && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        throw Exception::SyntaxError("Invalid shift/rotate count operand, must be immediate or CL", operand2.line, operand2.column);
+                    }
+                    else
+                    {
+                        // TODO: immediate?
+                        ::Parser::Immediate imm;
+
+                        while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                        {
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                            imm.operands.push_back(op);
+                            i++;
+                        }
+                        instruction.operands.push_back(imm);
+                    }
+                } break;
 
                 case ::x86::Instructions::NOT: case ::x86::Instructions::INC:
                 case ::x86::Instructions::DEC: case ::x86::Instructions::NEG:
                 {
-                    // TODO
-                }
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value);
+                    if (regIt != ::x86::registers.end()
+                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
+                        || (regIt != ::x86::registers.end()
+                        && filteredTokens[i + 1].type != Token::Type::Punctuation))
+                    {
+                        // TODO: memory
+                    }
+                } break;
 
                 default:
                     throw Exception::InternalError("Unknown data instruction", token.line, token.column);

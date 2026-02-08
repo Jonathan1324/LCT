@@ -116,4 +116,74 @@ namespace x86 {
         uint8_t mod_reg;
         uint8_t mod_rm;
     };
+
+    class Shift_Rotate_ALU_Instruction : public ::Encoder::Encoder::Instruction
+    {
+    public:
+        Shift_Rotate_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
+        ~Shift_Rotate_ALU_Instruction() override {}
+
+        void evaluate() override;
+
+        std::vector<uint8_t> encode() override;
+
+        uint64_t size() override;
+
+        // TODO:
+        //   Register, Register/Memory, Immediate:
+        //     16, 32, 64 bit:
+        //       currently using 0xD2/D3 (with immediate)
+        //       should use shift by 1 opcode when count = 1
+
+    private:
+        uint8_t opcode;
+
+        bool usesImmediate = false;
+        uint8_t count;
+
+        Parser::Instruction::Operand mainOperand;
+        Parser::Instruction::Operand countOperand;
+
+        bool use16BitPrefix = false;
+        
+        bool useREX = false;
+        bool rexW = false;
+        bool rexR = false;
+        bool rexX = false;
+        bool rexB = false;
+
+        bool useModRM = false;
+        ::x86::Mod mod_mod;
+        uint8_t mod_reg;
+        uint8_t mod_rm;
+    };
+
+    class Argument_ALU_Instruction : public ::Encoder::Encoder::Instruction
+    {
+    public:
+        Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
+        ~Argument_ALU_Instruction() override {}
+
+        void evaluate() override {}
+
+        std::vector<uint8_t> encode() override;
+
+        uint64_t size() override;
+
+    private:
+        uint8_t opcode;
+
+        bool use16BitPrefix = false;
+        
+        bool useREX = false;
+        bool rexW = false;
+        bool rexR = false;
+        bool rexX = false;
+        bool rexB = false;
+
+        bool useModRM = false;
+        ::x86::Mod mod_mod;
+        uint8_t mod_reg;
+        uint8_t mod_rm;
+    };
 }

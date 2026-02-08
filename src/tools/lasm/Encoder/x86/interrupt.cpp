@@ -35,11 +35,12 @@ void x86::Argument_Interrupt_Instruction::evaluate()
 
     if (evaluation.useOffset)
     {
-        argument_value = evaluation.offset;
+        argument_value = static_cast<uint8_t>(evaluation.offset); // TODO: Check for overflow
 
         AddRelocation(
             1, // opcode
-            evaluation.offset, true,
+            evaluation.offset,
+            true,
             evaluation.usedSection,
             ::Encoder::RelocationType::Absolute,
             ::Encoder::RelocationSize::Bit8,

@@ -1150,3 +1150,468 @@ uint64_t x86::Mul_Div_ALU_Instruction::size()
 
     return s;
 }
+
+x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
+    : ::Encoder::Encoder::Instruction(e)
+{
+    switch (mnemonic)
+    {
+        case Instructions::SHL: case Instructions::SHR:
+        case Instructions::SAL: case Instructions::SAR:
+        case Instructions::ROL: case Instructions::ROR:
+        case Instructions::RCL: case Instructions::RCR:
+        {
+            if (operands.size() != 2)
+                throw Exception::InternalError("Wrong argument count for shift/rotate alu instruction", -1, -1);
+
+            mainOperand = operands[0];
+            countOperand = operands[1];
+
+            if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
+            {
+                Parser::Instruction::Register mainReg = std::get<Parser::Instruction::Register>(mainOperand);
+
+                switch (mainReg.reg)
+                {
+                    case SPL:
+                    case BPL:
+                    case SIL:
+                    case DIL:
+                    case R8B:
+                    case R9B:
+                    case R10B:
+                    case R11B:
+                    case R12B:
+                    case R13B:
+                    case R14B:
+                    case R15B:
+                    case R8W:
+                    case R9W:
+                    case R10W:
+                    case R11W:
+                    case R12W:
+                    case R13W:
+                    case R14W:
+                    case R15W:
+                    case R8D:
+                    case R9D:
+                    case R10D:
+                    case R11D:
+                    case R12D:
+                    case R13D:
+                    case R14D:
+                    case R15D:
+                    case RAX:
+                    case RCX:
+                    case RDX:
+                    case RBX:
+                    case RSP:
+                    case RBP:
+                    case RSI:
+                    case RDI:
+                    case R8:
+                    case R9:
+                    case R10:
+                    case R11:
+                    case R12:
+                    case R13:
+                    case R14:
+                    case R15:
+                        if (bits != BitMode::Bits64)
+                            throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
+                }
+
+                if (std::holds_alternative<Parser::Instruction::Register>(countOperand))
+                {
+                    Parser::Instruction::Register countReg = std::get<Parser::Instruction::Register>(countOperand);
+                    
+                    if (countReg.reg != Registers::CL)
+                        throw Exception::InternalError("2 operand of shift/rotate instruction needs to be CL", -1, -1);
+
+                    mod_mod = Mod::REGISTER;
+
+                    useModRM = true;
+
+                    auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
+                    uint8_t mainRegSize = getRegSize(mainReg.reg, bits);
+
+                    if (mainUseREX) useREX = true;
+                    if (mainSetREX) rexB = true;
+
+                    mod_rm = mainI;
+
+                    if (mainRegSize == 8) opcode = 0xD2;
+                    else                  opcode = 0xD3;
+
+                    switch (mnemonic)
+                    {
+                        case Instructions::ROL: mod_reg = 0; break;
+                        case Instructions::ROR: mod_reg = 1; break;
+                        case Instructions::RCL: mod_reg = 2; break;
+                        case Instructions::RCR: mod_reg = 3; break;
+                        case Instructions::SHL: case Instructions::SAL:
+                            mod_reg = 4; break;
+                        case Instructions::SHR: mod_reg = 5; break;
+                        case Instructions::SAR: mod_reg = 7; break;
+                    }
+
+                    switch (mainRegSize)
+                    {
+                        case 16:
+                            if (bits != BitMode::Bits16) use16BitPrefix = true;
+                            break;
+                        
+                        case 32:
+                            if (bits == BitMode::Bits16) use16BitPrefix = true;
+                            break;
+
+                        case 64:
+                            useREX = true;
+                            rexW = true;
+                            break;
+
+                        case 8:
+                            break;
+
+                        default:
+                            throw Exception::InternalError("Unknown mainRegSize", -1, -1);
+                    }
+                }
+                else if (std::holds_alternative<Parser::Instruction::Memory>(countOperand))
+                {
+                    throw Exception::InternalError("Memory not supported yet'", -1, -1);
+                    // TODO
+                }
+                else if (std::holds_alternative<Parser::Immediate>(countOperand))
+                {
+                    usesImmediate = true;
+
+                    mod_mod = Mod::REGISTER;
+
+                    useModRM = true;
+
+                    auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
+                    uint8_t mainRegSize = getRegSize(mainReg.reg, bits);
+
+                    if (mainUseREX) useREX = true;
+                    if (mainSetREX) rexB = true;
+
+                    mod_rm = mainI;
+
+                    if (mainRegSize == 8) opcode = 0xC0;
+                    else                  opcode = 0xC1;
+
+                    switch (mnemonic)
+                    {
+                        case Instructions::ROL: mod_reg = 0; break;
+                        case Instructions::ROR: mod_reg = 1; break;
+                        case Instructions::RCL: mod_reg = 2; break;
+                        case Instructions::RCR: mod_reg = 3; break;
+                        case Instructions::SHL: case Instructions::SAL:
+                            mod_reg = 4; break;
+                        case Instructions::SHR: mod_reg = 5; break;
+                        case Instructions::SAR: mod_reg = 7; break;
+                    }
+
+                    switch (mainRegSize)
+                    {
+                        case 16:
+                            if (bits != BitMode::Bits16) use16BitPrefix = true;
+                            break;
+                        
+                        case 32:
+                            if (bits == BitMode::Bits16) use16BitPrefix = true;
+                            break;
+
+                        case 64:
+                            useREX = true;
+                            rexW = true;
+                            break;
+
+                        case 8:
+                            break;
+
+                        default:
+                            throw Exception::InternalError("Unknown mainRegSize", -1, -1);
+                    }
+                }
+            }
+
+            else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
+            {
+                // TODO
+                throw Exception::InternalError("Memory not supported yet", -1, -1);
+
+                if (std::holds_alternative<Parser::Instruction::Register>(countOperand))
+                {
+                    // TODO
+                }
+                else if (std::holds_alternative<Parser::Instruction::Memory>(countOperand))
+                {
+                    // TODO
+                }
+                else if (std::holds_alternative<Parser::Immediate>(countOperand))
+                {
+                    // TODO
+                }
+            }
+
+            break;
+        }
+
+        default:
+            throw Exception::InternalError("Unknown shift/rotate alu instruction", -1, -1, nullptr);
+    }
+}
+
+void x86::Shift_Rotate_ALU_Instruction::evaluate()
+{
+    if (usesImmediate)
+    {
+        Parser::Immediate imm = std::get<Parser::Immediate>(countOperand);
+
+        ::Encoder::Evaluation evaluation = Evaluate(imm);
+
+        if (evaluation.useOffset)
+        {
+            uint64_t currentOffset = 1; // opcode
+            if (use16BitPrefix) currentOffset++;
+            if (useREX) currentOffset++;
+            if (useModRM) currentOffset++;
+
+            count = static_cast<uint8_t>(evaluation.offset); // TODO: Check for overflow
+
+            AddRelocation(
+                currentOffset,
+                evaluation.offset,
+                true,
+                evaluation.usedSection,
+                ::Encoder::RelocationType::Absolute,
+                ::Encoder::RelocationSize::Bit8,
+                evaluation.isExtern
+            );
+        }
+        else
+        {
+            Int128 result = evaluation.result;
+
+            if (result < 0)   throw Exception::SemanticError("shift/rotate instruction can't have a negative operand", -1, -1);
+            if (result > 255) throw Exception::SemanticError("Operand too large for shift/rotate instruction", -1, -1);
+
+            count = static_cast<uint8_t>(result);
+        }
+    }
+}
+
+std::vector<uint8_t> x86::Shift_Rotate_ALU_Instruction::encode()
+{
+    std::vector<uint8_t> instr;
+
+    if (use16BitPrefix) instr.push_back(prefix16Bit);
+
+    if (useREX) instr.push_back(::x86::getRex(rexW, rexR, rexX, rexB));
+
+    instr.push_back(opcode);
+
+    if (useModRM) instr.push_back(getModRM(mod_mod, mod_reg, mod_rm));
+
+    if (usesImmediate)
+    {
+        instr.push_back(count);
+    }
+
+    return instr;
+}
+
+uint64_t x86::Shift_Rotate_ALU_Instruction::size()
+{
+    uint64_t s = 1;
+
+    if (use16BitPrefix) s++;
+
+    if (useREX) s++;
+
+    if (useModRM) s++;
+
+    if (usesImmediate) s++;
+
+    return s;
+}
+
+x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
+    : ::Encoder::Encoder::Instruction(e)
+{
+    switch (mnemonic)
+    {
+        case Instructions::NOT: case Instructions::NEG:
+        case Instructions::INC: case Instructions::DEC:
+        {
+            if (operands.size() != 1)
+                throw Exception::InternalError("Wrong argument count for argument ALU instruction", -1, -1);
+
+            Parser::Instruction::Operand operand = operands[0];
+
+            if (std::holds_alternative<Parser::Instruction::Register>(operand))
+            {
+                Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(operand);
+
+                switch (reg.reg)
+                {
+                    case SPL:
+                    case BPL:
+                    case SIL:
+                    case DIL:
+                    case R8B:
+                    case R9B:
+                    case R10B:
+                    case R11B:
+                    case R12B:
+                    case R13B:
+                    case R14B:
+                    case R15B:
+                    case R8W:
+                    case R9W:
+                    case R10W:
+                    case R11W:
+                    case R12W:
+                    case R13W:
+                    case R14W:
+                    case R15W:
+                    case R8D:
+                    case R9D:
+                    case R10D:
+                    case R11D:
+                    case R12D:
+                    case R13D:
+                    case R14D:
+                    case R15D:
+                    case RAX:
+                    case RCX:
+                    case RDX:
+                    case RBX:
+                    case RSP:
+                    case RBP:
+                    case RSI:
+                    case RDI:
+                    case R8:
+                    case R9:
+                    case R10:
+                    case R11:
+                    case R12:
+                    case R13:
+                    case R14:
+                    case R15:
+                        if (bits != BitMode::Bits64)
+                            throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
+                }
+
+                useModRM = true;
+
+                mod_mod = Mod::REGISTER;
+
+                auto [idx, regUseREX, regSetREX] = getReg(reg.reg);
+                uint8_t regSize = getRegSize(reg.reg, bits);
+
+                if (regUseREX) useREX = true;
+                if (regSetREX) rexB = true;
+
+                mod_rm = idx;
+
+                if (regSize == 8)
+                {
+                    if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
+                        opcode = 0xF6;
+                    else // INC, DEC
+                        opcode = 0xFE;
+                }
+                else
+                {
+                    if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
+                        opcode = 0xF7;
+                    else // INC, DEC
+                        opcode = 0xFF;
+                }
+
+                switch (mnemonic)
+                {
+                    case Instructions::NOT: mod_reg = 2; break;
+                    case Instructions::NEG: mod_reg = 3; break;
+
+                    case Instructions::INC: mod_reg = 0; break;
+                    case Instructions::DEC: mod_reg = 1; break;
+                }
+
+                switch (regSize)
+                {
+                    case 16:
+                        if (bits != BitMode::Bits16) use16BitPrefix = true;
+                        break;
+                    
+                    case 32:
+                        if (bits == BitMode::Bits16) use16BitPrefix = true;
+                        break;
+
+                    case 64:
+                        useREX = true;
+                        rexW = true;
+                        break;
+
+                    case 8:
+                        break;
+
+                    default:
+                        throw Exception::InternalError("Unknown mainRegSize", -1, -1);
+                }
+
+                if (bits != BitMode::Bits64 && regSize != 8 &&
+                    (mnemonic == Instructions::INC || mnemonic == Instructions::DEC))
+                {
+                    useModRM = false;
+
+                    if (mnemonic == Instructions::INC)
+                        opcode = 0x40 + idx;
+                    else // DEC
+                        opcode = 0x48 + idx;
+                }
+            }
+            else if (std::holds_alternative<Parser::Instruction::Memory>(operand))
+            {
+                // TODO
+                throw Exception::InternalError("Memory not supported yet", -1, -1);
+            }
+
+            break;
+        }
+
+        default:
+            throw Exception::InternalError("Unknown argument ALU instruction", -1, -1, nullptr);
+    }
+}
+
+std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
+{
+    std::vector<uint8_t> instr;
+
+    if (use16BitPrefix) instr.push_back(prefix16Bit);
+
+    if (useREX) instr.push_back(::x86::getRex(rexW, rexR, rexX, rexB));
+
+    instr.push_back(opcode);
+
+    if (useModRM) instr.push_back(getModRM(mod_mod, mod_reg, mod_rm));
+
+    return instr;
+}
+
+uint64_t x86::Argument_ALU_Instruction::size()
+{
+    uint64_t s = 1;
+
+    if (use16BitPrefix) s++;
+
+    if (useREX) s++;
+
+    if (useModRM) s++;
+
+    return s;
+}
