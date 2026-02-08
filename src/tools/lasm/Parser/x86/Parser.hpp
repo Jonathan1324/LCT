@@ -15,6 +15,8 @@ namespace x86
     
     protected:
         ::Parser::Instruction::Register getReg(const Token::Token& token);
+
+        ::Parser::Instruction::Memory parseMemoryOperand(const std::vector<const Token::Token*> tokens);
     };
 
     inline ::Parser::Instruction::Register Parser::getReg(const Token::Token& token)

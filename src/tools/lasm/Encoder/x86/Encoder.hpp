@@ -4,13 +4,6 @@
 #include <x86/Instructions.hpp>
 #include <tuple>
 
-#include "control.hpp"
-#include "interrupt.hpp"
-#include "flag.hpp"
-#include "stack.hpp"
-#include "data.hpp"
-#include "alu.hpp"
-
 namespace x86
 {
     class Encoder : public ::Encoder::Encoder

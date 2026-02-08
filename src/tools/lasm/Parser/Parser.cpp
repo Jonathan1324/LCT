@@ -41,6 +41,12 @@ void Parser::Parser::Print() const
                         std::cout << "    "; // 2x '  '
                         std::cout << "Register: " << reg.reg << std::endl;
                     }
+                    else if (std::holds_alternative<Instruction::Memory>(operand))
+                    {
+                        const Instruction::Memory& mem = std::get<Instruction::Memory>(operand);
+                        std::cout << "    "; // 2x '  '
+                        std::cout << "Memory:" << std::endl; // TODO
+                    }
                     else if (std::holds_alternative<Immediate>(operand))
                     {
                         const Immediate& imm = std::get<Immediate>(operand);

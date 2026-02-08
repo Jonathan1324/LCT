@@ -1011,9 +1011,22 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     }
                     else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
                         || (regIt != ::x86::registers.end()
-                        && filteredTokens[i + 1].type != Token::Type::Punctuation))
+                        && filteredTokens[i + 1].type == Token::Type::Punctuation))
                     {
-                        // TODO: memory
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        // TODO: segment registers
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens);
+                        instruction.operands.push_back(mem);
+
+                        i++;
                     }
                 } break;
 
