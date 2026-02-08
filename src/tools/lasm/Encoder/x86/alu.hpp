@@ -59,4 +59,61 @@ namespace x86 {
         uint8_t mod_reg;
         uint8_t mod_rm;
     };
+
+    class Mul_Div_ALU_Instruction : public ::Encoder::Encoder::Instruction
+    {
+    public:
+        Mul_Div_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
+        ~Mul_Div_ALU_Instruction() override {}
+
+        void evaluate() override;
+
+        std::vector<uint8_t> encode() override;
+
+        uint64_t size() override;
+
+        // TODO:
+        //   Register, Register/Memory, Immediate:
+        //     16, 32, 64 bit:
+        //       currently using 0x69 (full immediate)
+        //       optimizable to 0x68 (8-bit immediate, sign-extended)
+        //       implement
+
+    private:
+        uint8_t opcode;
+
+        Parser::Instruction::Operand mainOperand;
+        
+        // Only when Two/ThreeOperands
+        Parser::Instruction::Operand secondOperand;
+        Parser::Immediate thirdOperand;
+
+        struct {
+            uint64_t max;
+            uint16_t sizeInBits;
+
+            uint64_t value;
+        } threeOperandsSpecific;
+
+        enum class MulDivType {
+            Simple,
+            TwoOperands,
+            ThreeOperands
+        } mulDivType;
+
+        bool use16BitPrefix = false;
+        
+        bool useREX = false;
+        bool rexW = false;
+        bool rexR = false;
+        bool rexX = false;
+        bool rexB = false;
+
+        bool useOpcodeEscape = false;
+
+        bool useModRM = false;
+        ::x86::Mod mod_mod;
+        uint8_t mod_reg;
+        uint8_t mod_rm;
+    };
 }

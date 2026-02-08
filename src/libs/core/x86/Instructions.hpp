@@ -33,10 +33,9 @@ namespace x86
 
         // ALU
         ADD, ADC, SUB, SBB, CMP, TEST, AND, OR, XOR,
-
-        // TODO
         MUL, IMUL, DIV, IDIV,
 
+        // TODO
         SHL, SHR, SAL, SAR, ROL, ROR,
 
         NOT, INC, DEC, NEG,

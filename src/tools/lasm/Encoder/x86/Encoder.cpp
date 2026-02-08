@@ -55,6 +55,10 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
         case Instructions::SBB: case Instructions::CMP: case Instructions::TEST:
         case Instructions::AND: case Instructions::OR: case Instructions::XOR:
             return new x86::Two_Argument_ALU_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+
+        case Instructions::MUL: case Instructions::IMUL:
+        case Instructions::DIV: case Instructions::IDIV:
+            return new x86::Mul_Div_ALU_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
     }
 
     return nullptr;

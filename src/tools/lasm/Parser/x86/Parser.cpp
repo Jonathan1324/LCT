@@ -837,11 +837,94 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     }
                 } break;
 
-                case ::x86::Instructions::MUL: case ::x86::Instructions::IMUL:
+                case ::x86::Instructions::MUL:
                 case ::x86::Instructions::DIV: case ::x86::Instructions::IDIV:
                 {
-                    // TODO
-                }
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value);
+                    if (regIt != ::x86::registers.end()
+                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
+                        || (regIt != ::x86::registers.end()
+                        && filteredTokens[i + 1].type != Token::Type::Punctuation))
+                    {
+                        // TODO: memory
+                    }
+                } break;
+
+                case ::x86::Instructions::IMUL:
+                {
+                    bool firstReg = false;
+
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value);
+                    if (regIt != ::x86::registers.end()
+                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+
+                        firstReg = true;
+                    }
+                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
+                        || (regIt != ::x86::registers.end()
+                        && filteredTokens[i + 1].type != Token::Type::Punctuation))
+                    {
+                        // TODO: memory
+                    }
+
+                    if (firstReg && filteredTokens[i].type == Token::Type::Comma)
+                    {
+                        i++;
+
+                        const Token::Token& operand2 = filteredTokens[i];
+                        regIt = ::x86::registers.find(operand2.value);
+                        if (regIt != ::x86::registers.end()
+                        && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                        {
+                            // reg
+                            ::Parser::Instruction::Register reg;
+                            reg.reg = regIt->second;
+                            instruction.operands.push_back(reg);
+                            i++;
+                        }
+                        else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
+                            || (regIt != ::x86::registers.end()
+                            && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                        {
+                            // TODO: memory
+                        }
+                        else
+                        {
+                            throw Exception::SyntaxError("Expected register or memory operand after ','", operand1.line, operand1.column);
+                        }
+
+                        if (filteredTokens[i].type == Token::Type::Comma)
+                        {
+                            i++;
+
+                            // TODO: immediate?
+                            ::Parser::Immediate imm;
+                            while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                            {
+                                ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                                imm.operands.push_back(op);
+                                i++;
+                            }
+                            instruction.operands.push_back(imm);
+                        }
+                    }
+                } break;
 
                 case ::x86::Instructions::SHL: case ::x86::Instructions::SHR:
                 case ::x86::Instructions::SAL: case ::x86::Instructions::SAR:

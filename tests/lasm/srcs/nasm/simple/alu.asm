@@ -2,7 +2,7 @@
 ; BITS: 16,32,64
 ; EXPECT: SUCCESS
 
-[bits 32]
+[bits 64]
 
 section .text
     global _start
@@ -33,3 +33,31 @@ _start:
     or eax, 0xffff
 
     xor edi, esi
+
+    mul ebx
+
+    mul eax
+
+    div al
+
+    idiv cx
+
+    mul rax
+
+    imul eax
+
+    imul r15
+
+    imul ax
+
+    imul eax, ebx
+
+    imul rax, r15
+
+    imul r15w, si
+
+    imul eax, ebx, _start
+
+    imul ax, bx
+
+    imul si, dx, 512
