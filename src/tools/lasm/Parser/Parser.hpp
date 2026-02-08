@@ -48,6 +48,20 @@ namespace Parser
         struct Memory
         {
             // TODO
+            bool use_base_reg = false;
+            uint64_t base_reg;
+
+            bool use_index_reg = false;
+            uint64_t index_reg;
+            Immediate scale;
+
+            bool use_offset = false;
+            Immediate offset;
+
+            bool use_segment_reg = false;
+            uint64_t segment_reg;
+
+            uint64_t pointer_size;
         };
 
         using Operand = std::variant<Register, Immediate, Memory>;
