@@ -53,6 +53,7 @@ namespace Parser
 
             bool use_index_reg = false;
             uint64_t index_reg;
+            bool use_scale = false;
             Immediate scale;
 
             bool use_offset = false;
