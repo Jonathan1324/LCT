@@ -1,6 +1,6 @@
 ; FORMATS: BIN,ELF
 ; BITS: 16,32,64
-; EXPECT: SUCCESS
+; EXPECT: ERROR
 
 [bits 32]
 
@@ -8,7 +8,4 @@ section .text
     global _start
 
 _start:
-    shl eax, 1
-    shl eax, 2
-    shl eax, 3
-    shl eax, 8
+    add eax, bx

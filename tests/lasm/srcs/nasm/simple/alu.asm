@@ -2,40 +2,34 @@
 ; BITS: 16,32,64
 ; EXPECT: SUCCESS
 
-[bits 64]
+[bits 32]
 
 section .text
     global _start
 
 _start:
-    add bx, 200
+    add eax, 500
+    add eax, ebx
+    add ebx, esi
+    add edi, ebp
+    add di, si
+    add sp, 900
+    add al, ah
 
-    add ah, 250
+    sub ah, 5
+    sub bh, ch
 
-    add al, 1
+    adc edx, ecx
 
-    dd 0
-    dw 0
+    sbb eax, eax
 
-    add ax, 600
-    
-    dw 0
+    cmp ebx, ebx
 
-    test eax, ebx
-    test ax, 200
+    test eax, 200
+    test ebx, edx
 
-    dd 0
+    and eax, ecx
 
-    add eax, _start
+    or eax, 0xffff
 
-    add ebx, _start
-
-    add rax, rbx
-
-    sbb rcx, rsi
-
-    add rbx, 124134
-
-    add r8d, 222
-
-    add r8, r15
+    xor edi, esi
