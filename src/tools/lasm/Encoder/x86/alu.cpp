@@ -1576,8 +1576,141 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
             }
             else if (std::holds_alternative<Parser::Instruction::Memory>(operand))
             {
-                // TODO
-                throw Exception::InternalError("Memory not supported yet", -1, -1);
+                Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(operand);
+                
+                useModRM = true;
+
+                mod_mod = Mod::INDIRECT;
+
+                mem.use_base_reg = true;
+                mem.base_reg = Registers::EBP;
+
+                mem.pointer_size = 32;
+
+                if (mem.use_base_reg || mem.use_index_reg)
+                {
+                    uint8_t mem_reg_size;
+
+                    if (mem.use_base_reg && mem.use_index_reg)
+                    {
+                        uint8_t base_reg_size = getRegSize(mem.base_reg, bits);
+                        uint8_t index_reg_size = getRegSize(mem.index_reg, bits);
+                        if (base_reg_size != index_reg_size)
+                            throw Exception::SyntaxError("Base register and index registers have different sizes", -1, -1);
+                        mem_reg_size = base_reg_size;
+                    }
+                    else if (mem.use_base_reg && !mem.use_index_reg)
+                    {
+                        mem_reg_size = getRegSize(mem.base_reg, bits);
+                    }
+                    else // if (!mem.use_base_reg && mem.use_index_reg)
+                    {
+                        // TODO
+                        throw Exception::InternalError("Index reg without base reg?", -1, -1);
+                        mem_reg_size = getRegSize(mem.index_reg, bits);
+                    }
+
+                    switch (mem_reg_size)
+                    {
+                        case 16:
+                            if (bits == BitMode::Bits64)
+                                throw Exception::SemanticError("Can't use 16 bit registers for memory in 64 bit", -1, -1);
+                            else if (bits == BitMode::Bits32)
+                                use16BitAddressPrefix = true;
+                            
+                            break;
+                        
+                        case 32:
+                            if (bits != BitMode::Bits32)
+                                use16BitAddressPrefix = true;
+
+                            break;
+
+                        case 64:
+                            if (bits != BitMode::Bits64)
+                                throw Exception::SemanticError("Can't use 64 bit registers for memory in 16/32 bit", -1, -1);
+                            
+                            break;
+
+                        case 8:
+                            throw Exception::SemanticError("Can't use 8 bit registers for memory", -1, -1);
+
+                        default:
+                            throw Exception::InternalError("Unknown mainRegSize", -1, -1);
+                    }
+                }
+
+                if (mem.use_base_reg)
+                {
+                    if (
+                        mem.base_reg == Registers::AX || mem.base_reg == Registers::CX
+                     || mem.base_reg == Registers::DX || mem.base_reg == Registers::SP)
+                        throw Exception::SemanticError("Can't use ax/cx/dx/sp for memory", -1, -1);
+
+                    auto [baseI, baseUseREX, baseSetREX] = getReg(mem.base_reg);
+
+                    mod_rm = baseI;
+
+                    sib_index = SIB_NoIndex;
+                    if (baseI == modRMSIB) useSIB = true;
+
+                    if (baseI == modRMDisp)
+                    {
+                        mod_mod = Mod::INDIRECT_DISP8;
+                    }
+                }
+                else
+                {
+                    // TODO
+                }
+
+                if (mem.pointer_size == 8)
+                {
+                    if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
+                        opcode = 0xF6;
+                    else // INC, DEC
+                        opcode = 0xFE;
+                }
+                else
+                {
+                    if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
+                        opcode = 0xF7;
+                    else // INC, DEC
+                        opcode = 0xFF;
+                }
+
+                switch (mnemonic)
+                {
+                    case Instructions::NOT: mod_reg = 2; break;
+                    case Instructions::NEG: mod_reg = 3; break;
+
+                    case Instructions::INC: mod_reg = 0; break;
+                    case Instructions::DEC: mod_reg = 1; break;
+                }
+
+                switch (mem.pointer_size)
+                {
+                    case 16:
+                        if (bits != BitMode::Bits16) use16BitPrefix = true;
+                        break;
+                    
+                    case 32:
+                        if (bits == BitMode::Bits16) use16BitPrefix = true;
+                        break;
+
+                    case 64:
+                        useREX = true;
+                        rexW = true;
+                        break;
+
+                    case 8:
+                        break;
+
+                    default:
+                        throw Exception::InternalError("Unknown mainRegSize", -1, -1);
+                }
+
+                //throw Exception::InternalError("Memory not supported yet", -1, -1);
             }
 
             break;
@@ -1593,12 +1726,22 @@ std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
     std::vector<uint8_t> instr;
 
     if (use16BitPrefix) instr.push_back(prefix16Bit);
+    if (use16BitAddressPrefix) instr.push_back(addressPrefix16Bit);
 
     if (useREX) instr.push_back(::x86::getRex(rexW, rexR, rexX, rexB));
 
     instr.push_back(opcode);
 
-    if (useModRM) instr.push_back(getModRM(mod_mod, mod_reg, mod_rm));
+    if (useModRM)
+    {
+        if (useSIB) instr.push_back(getModRM(mod_mod, mod_reg, modRMSIB));
+        else        instr.push_back(getModRM(mod_mod, mod_reg, mod_rm));
+    }
+
+    // TODO: FIXME: EVERYTHING
+    if (mod_mod == Mod::INDIRECT_DISP8) instr.push_back(static_cast<uint8_t>(0x00));
+
+    if (useSIB) instr.push_back(getSIB(sib_scale, sib_index, mod_rm));
 
     return instr;
 }
@@ -1608,10 +1751,16 @@ uint64_t x86::Argument_ALU_Instruction::size()
     uint64_t s = 1;
 
     if (use16BitPrefix) s++;
+    if (use16BitAddressPrefix) s++;
 
     if (useREX) s++;
 
     if (useModRM) s++;
+
+    // TODO: FIXME: EVERYTHING
+    if (mod_mod == Mod::INDIRECT_DISP8) s++;
+
+    if (useSIB) s++;
 
     return s;
 }

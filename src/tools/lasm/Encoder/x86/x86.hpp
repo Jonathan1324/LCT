@@ -8,6 +8,8 @@
 
 namespace x86 {
     constexpr uint8_t prefix16Bit = 0x66;
+    constexpr uint8_t addressPrefix16Bit = 0x67;
+
     constexpr uint8_t opcodeEscape = 0x0F;
 
     inline uint8_t getRex(bool W, bool R, bool X, bool B)
@@ -26,10 +28,25 @@ namespace x86 {
         INDIRECT_DISP32 = 0b10,
         REGISTER        = 0b11
     };
+    constexpr uint8_t modRMSIB = 0b100;
+    constexpr uint8_t modRMDisp = 0b101;
     inline uint8_t getModRM(Mod mod, uint8_t reg, uint8_t rm)
     {
         uint8_t modrm = ((uint8_t(mod)) << 6) | (reg << 3) | rm;
         return modrm;
+    }
+
+    enum class Scale : uint8_t {
+        x1 = 0,
+        x2 = 1,
+        x4 = 2,
+        x8 = 3
+    };
+    constexpr uint8_t SIB_NoIndex = 4;
+    inline uint8_t getSIB(Scale scale, uint8_t index, uint8_t base)
+    {
+        uint8_t sib = ((uint8_t(scale)) << 6) | (index << 3) | base;
+        return sib;
     }
 
     /*

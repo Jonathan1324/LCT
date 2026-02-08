@@ -174,6 +174,7 @@ namespace x86 {
         uint8_t opcode;
 
         bool use16BitPrefix = false;
+        bool use16BitAddressPrefix = false;
         
         bool useREX = false;
         bool rexW = false;
@@ -185,5 +186,9 @@ namespace x86 {
         ::x86::Mod mod_mod;
         uint8_t mod_reg;
         uint8_t mod_rm;
+
+        bool useSIB = false;
+        Scale sib_scale;
+        uint8_t sib_index;
     };
 }
