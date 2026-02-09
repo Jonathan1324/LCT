@@ -1622,7 +1622,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                 uint64_t scale;
 
-                // TODO: Check
+                // FIXME: Fix
                 if (mem.use_reg1 && mem.use_reg2)
                 {
                     ::Encoder::Evaluation reg1_evaluation = Evaluate(mem.scale1);
