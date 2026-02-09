@@ -20,8 +20,13 @@ void Encoder::Encoder::Encode()
     const std::vector<Parser::Section>& parsedSections = parser->getSections();
     sections.clear();
 
+    bytesWritten = 0;
     for (const auto& section : parsedSections)
     {
+        sectionStarts[section.name] = bytesWritten;
+        currentSection = &section.name;
+        sectionOffset = 0;
+
         Section sec;
         sec.name = section.name;
         sec.isInitialized = !(section.name.compare(".bss") == 0);
@@ -40,6 +45,11 @@ void Encoder::Encoder::Encode()
                     sec.instructions.push_back(instr);
                 } else
                     throw Exception::InternalError(std::string("No instruction found for ") + std::to_string(instruction.mnemonic), -1, -1, nullptr);
+
+                uint64_t size = instr->size();
+
+                sectionOffset += size;
+                bytesWritten += size;
             }
             else if (std::holds_alternative<Parser::DataDefinition>(entry))
             {
@@ -51,6 +61,11 @@ void Encoder::Encoder::Encode()
                     sec.instructions.push_back(instr);
                 } else
                     throw Exception::InternalError("No instruction found for data", -1, -1, nullptr);
+
+                uint64_t size = instr->size();
+
+                sectionOffset += size;
+                bytesWritten += size;
             }
             else if (std::holds_alternative<Parser::Label>(entry))
             {

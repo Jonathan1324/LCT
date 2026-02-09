@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <IntTypesC.h>
-#include "../Tokenizer.hpp"
+#include "../Parser.hpp"
 #include <x86/Registers.hpp>
 
 #include <memory>
@@ -55,6 +55,8 @@ public:
     std::shared_ptr<ExprNode> simplify(std::shared_ptr<ExprNode> e);
 
     AddressingMode extractAddressingMode(std::shared_ptr<ExprNode> e);
+
+    Parser::Immediate convertToImmediate(std::shared_ptr<ExprNode> e);
 
 private:
     std::vector<const Token::Token*> tokens;

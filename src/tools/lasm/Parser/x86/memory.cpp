@@ -71,20 +71,20 @@
     {
         mem.use_reg1 = true;
         mem.reg1 = mode.reg1;
-        mem.scale1; // TODO
+        mem.scale1 = exprParser.convertToImmediate(mode.scale1);
     }
 
     if (mode.has_reg2)
     {
         mem.use_reg2 = true;
         mem.reg2 = mode.reg2;
-        mem.scale2; // TODO
+        mem.scale2 = exprParser.convertToImmediate(mode.scale2);
     }
 
     if (mode.has_displacement)
     {
         mem.use_displacement = true;
-        mem.displacement; // TODO
+        mem.displacement = exprParser.convertToImmediate(mode.displacement);
     }
 
     return mem;

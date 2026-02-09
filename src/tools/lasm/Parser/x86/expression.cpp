@@ -314,6 +314,87 @@ bool ExpressionParser::hasRegister(const std::shared_ptr<ExprNode>& e)
     return hasRegister(e->left) || hasRegister(e->right) || hasRegister(e->operand);
 }
 
+Parser::Immediate ExpressionParser::convertToImmediate(std::shared_ptr<ExprNode> e)
+{
+    Parser::Immediate imm;
+
+    if (!e)
+        return imm;
+
+    if (e->type == ExprNode::Type::REGISTER)
+        throw Exception::InternalError("Can't convert register to immediate", -1, -1);
+
+    if (e->type == ExprNode::Type::NUMBER)
+    {
+        Parser::Integer integer;
+        integer.value = e->value;
+        imm.operands.push_back(integer);
+        return imm;
+    }
+
+    if (e->type == ExprNode::Type::LABEL)
+    {
+        if (e->name == "$" || e->name == "$$")
+        {
+            Parser::CurrentPosition curPos;
+            curPos.sectionPos = (e->name == "$") ? false : true;
+            imm.operands.push_back(curPos);
+        }
+        else
+        {
+            Parser::String str;
+            str.value = e->name;
+            imm.operands.push_back(str);
+        }
+        
+        return imm;
+    }
+
+    if (e->type == ExprNode::Type::UNARY_OP)
+    {
+        Parser::Immediate operand = convertToImmediate(e->operand);
+
+        Parser::Operator op;
+        op.op = e->unary_op;
+        
+        Parser::Operator bOpen;
+        bOpen.op = "(";
+        Parser::Operator bClose;
+        bClose.op = ")";
+
+        imm.operands.push_back(bOpen);
+        imm.operands.push_back(op);
+        imm.operands.insert(imm.operands.end(), operand.operands.begin(), operand.operands.end());
+        imm.operands.push_back(bClose);
+
+        return imm;
+    }
+
+    if (e->type == ExprNode::Type::BINARY_OP)
+    {
+        Parser::Immediate left = convertToImmediate(e->left);
+        Parser::Immediate right = convertToImmediate(e->right);
+
+        Parser::Operator bOpen;
+        bOpen.op = "(";
+        Parser::Operator bClose;
+        bClose.op = ")";
+
+        Parser::Operator op;
+        op.op = e->op;
+
+        imm.operands.push_back(bOpen);
+        imm.operands.insert(imm.operands.end(), left.operands.begin(), left.operands.end());
+        imm.operands.push_back(op);
+        imm.operands.insert(imm.operands.end(), right.operands.begin(), right.operands.end());
+        imm.operands.push_back(bClose);
+
+        return imm;
+    }
+
+    throw std::runtime_error("Unsupported node type in addressing mode");
+}
+
 // FIXME
 ExpressionParser::AddressingMode ExpressionParser::extractAddressingMode(std::shared_ptr<ExprNode> e)
 {
