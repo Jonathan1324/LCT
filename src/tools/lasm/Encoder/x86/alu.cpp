@@ -488,6 +488,7 @@ void x86::Two_Argument_ALU_Instruction::evaluate()
                     evaluation.usedSection,
                     ::Encoder::RelocationType::Absolute,
                     relocSize,
+                    false, // TODO: Check if signed
                     evaluation.isExtern
                 );
             }
@@ -1064,6 +1065,7 @@ void x86::Mul_Div_ALU_Instruction::evaluate()
                     evaluation.usedSection,
                     ::Encoder::RelocationType::Absolute,
                     relocSize,
+                    false, // TODO: Check if signed
                     evaluation.isExtern
                 );
             }
@@ -1388,6 +1390,7 @@ void x86::Shift_Rotate_ALU_Instruction::evaluate()
                 evaluation.usedSection,
                 ::Encoder::RelocationType::Absolute,
                 ::Encoder::RelocationSize::Bit8,
+                false, // TODO: Check if signed
                 evaluation.isExtern
             );
         }
@@ -1441,6 +1444,7 @@ uint64_t x86::Shift_Rotate_ALU_Instruction::size()
 x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
     : ::Encoder::Encoder::Instruction(e)
 {
+    bitmode = bits;
     switch (mnemonic)
     {
         case Instructions::NOT: case Instructions::NEG:
@@ -1582,10 +1586,6 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                 mod_mod = Mod::INDIRECT;
 
-                // For testing
-                mem.use_base_reg = true;
-                mem.base_reg = Registers::R13;
-
                 if (mem.pointer_size == Parser::Instruction::Memory::NO_POINTER_SIZE)
                     throw Exception::SyntaxError("Pointer size not specified for memory operand", -1, -1);
 
@@ -1632,6 +1632,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                             if (bits != BitMode::Bits64)
                                 throw Exception::SemanticError("Can't use 64 bit registers for memory in 16/32 bit", -1, -1);
                             
+                            is_displacement_signed = true;
                             break;
 
                         case 8:
@@ -1669,6 +1670,24 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     // TODO
                 }
 
+                if (mem.use_index_reg)
+                {
+                    auto [indexI, indexUseREX, indexSetREX] = getReg(mem.index_reg);
+
+                    if (indexI == SIB_NoIndex && !indexSetREX)
+                        throw Exception::SemanticError("Can't use SP/ESP/RSP as index register", -1, -1);
+
+                    if (indexUseREX) useREX = true;
+                    if (indexSetREX) rexX = true;
+
+                    useSIB = true;
+                    sib_index = indexI;
+
+                    scale_immediate = mem.scale;
+
+                    use_sib_scale = true;
+                }
+
                 if (mem.pointer_size == 8)
                 {
                     if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
@@ -1682,6 +1701,32 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         opcode = 0xF7;
                     else // INC, DEC
                         opcode = 0xFF;
+                }
+
+                if (mem.use_displacement)
+                {
+                    mod_mod = Mod::INDIRECT_DISP32;
+
+                    use_displacement = true;
+                    displacement_immediate = mem.displacement;
+
+                    if (!mem.use_base_reg)
+                    {
+                        if (bits == BitMode::Bits64)
+                        {
+                            mod_mod = Mod::INDIRECT;
+                            mod_rm = modRMDisp;
+                        
+                            useSIB = true;
+                            sib_scale = Scale::x1;
+                            sib_index = SIB_NoIndex;
+                        }
+                        else
+                        {
+                            mod_mod = Mod::INDIRECT;
+                            mod_rm = modRMDisp;
+                        }
+                    }
                 }
 
                 switch (mnemonic)
@@ -1726,6 +1771,57 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
     }
 }
 
+void x86::Argument_ALU_Instruction::evaluate()
+{
+    if (use_displacement)
+    {
+        ::Encoder::Evaluation evaluation = Evaluate(displacement_immediate);
+
+        if (evaluation.useOffset)
+        {
+            // TODO
+            uint64_t currentOffset = 1; // opcode
+            if (use16BitPrefix) currentOffset++;
+            if (use16BitAddressPrefix) currentOffset++;
+            if (useREX) currentOffset++;
+            if (useModRM) currentOffset++;
+            if (useSIB) currentOffset++;
+
+            displacement_value = evaluation.offset; // TODO: Check for overflow
+
+            ::Encoder::RelocationSize relocSize;
+            if (mod_mod == Mod::INDIRECT_DISP8)
+            {
+                relocSize = ::Encoder::RelocationSize::Bit8;
+            }
+            else // DISP32 or mod_rm = modRMDisp
+            {
+                if (bitmode == BitMode::Bits16) relocSize = ::Encoder::RelocationSize::Bit16;
+                else                            relocSize = ::Encoder::RelocationSize::Bit32;
+            }
+
+            AddRelocation(
+                currentOffset,
+                evaluation.offset,
+                true,
+                evaluation.usedSection,
+                ::Encoder::RelocationType::Absolute,
+                relocSize,
+                is_displacement_signed,
+                evaluation.isExtern
+            );
+        }
+        else
+        {
+            Int128 result = evaluation.result;
+
+            // TODO: Check for overflow
+
+            displacement_value = static_cast<uint64_t>(result);
+        }
+    }
+}
+
 std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
 {
     std::vector<uint8_t> instr;
@@ -1743,10 +1839,45 @@ std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
         else        instr.push_back(getModRM(mod_mod, mod_reg, mod_rm));
     }
 
-    // TODO: FIXME: EVERYTHING
-    if (mod_mod == Mod::INDIRECT_DISP8) instr.push_back(static_cast<uint8_t>(0x00));
+    // Calculate Scale when SIB
+    if (use_sib_scale)
+    {
+        ::Encoder::Evaluation scale_evaluation = Evaluate(scale_immediate);
+
+        if (scale_evaluation.useOffset)
+            throw Exception::SemanticError("Scale must be a constant", -1, -1); // TODO
+
+        Int128 scale_result = scale_evaluation.result;
+
+        switch (scale_result)
+        {
+            case 1: sib_scale = Scale::x1; break;
+            case 2: sib_scale = Scale::x2; break;
+            case 4: sib_scale = Scale::x4; break;
+            case 8: sib_scale = Scale::x8; break;
+            default:
+                throw Exception::SemanticError("Scale must be 1, 2, 4, or 8", -1, -1); // TODO
+        }
+    }
 
     if (useSIB) instr.push_back(getSIB(sib_scale, sib_index, mod_rm));
+
+    // TODO: FIXME: EVERYTHING
+    if (mod_mod == Mod::INDIRECT_DISP8)
+    {
+        instr.push_back(static_cast<uint8_t>(displacement_value));
+    }
+    else if (mod_mod == Mod::INDIRECT_DISP32 || (mod_mod == Mod::INDIRECT && mod_rm == modRMDisp) )
+    {
+        uint32_t sizeInBytes;
+        if (bitmode == BitMode::Bits16) sizeInBytes = 2;
+        else                            sizeInBytes = 4;
+
+        uint64_t oldSize = instr.size();
+        instr.resize(oldSize + sizeInBytes);
+
+        std::memcpy(instr.data() + oldSize, &displacement_value, sizeInBytes);
+    }
 
     return instr;
 }
@@ -1762,10 +1893,14 @@ uint64_t x86::Argument_ALU_Instruction::size()
 
     if (useModRM) s++;
 
-    // TODO: FIXME: EVERYTHING
-    if (mod_mod == Mod::INDIRECT_DISP8) s++;
-
     if (useSIB) s++;
+
+    // TODO: FIXME: EVERYTHING
+    if      (mod_mod == Mod::INDIRECT_DISP8)  s++;
+    else if (mod_mod == Mod::INDIRECT_DISP32) {
+        if (bitmode == BitMode::Bits16) s += 2;
+        else                            s += 4;
+    }
 
     return s;
 }

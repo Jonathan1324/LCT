@@ -44,6 +44,7 @@ void x86::Argument_Interrupt_Instruction::evaluate()
             evaluation.usedSection,
             ::Encoder::RelocationType::Absolute,
             ::Encoder::RelocationSize::Bit8,
+            false, // Not signed
             evaluation.isExtern
         );
     }

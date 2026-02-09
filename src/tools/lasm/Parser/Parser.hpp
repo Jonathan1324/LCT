@@ -63,7 +63,6 @@ namespace Parser
             bool use_displacement = false;
 
             bool use_index_reg = false;
-            bool use_scale = false;
 
             bool use_segment_reg = false;
         };

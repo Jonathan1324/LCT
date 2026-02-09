@@ -164,7 +164,7 @@ namespace x86 {
         Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
         ~Argument_ALU_Instruction() override {}
 
-        void evaluate() override {}
+        void evaluate() override;
 
         std::vector<uint8_t> encode() override;
 
@@ -187,8 +187,18 @@ namespace x86 {
         uint8_t mod_reg;
         uint8_t mod_rm;
 
+        BitMode bitmode;
+
         bool useSIB = false;
         Scale sib_scale;
         uint8_t sib_index;
+
+        bool use_sib_scale = false;
+        Parser::Immediate scale_immediate;
+
+        bool use_displacement = false;
+        bool is_displacement_signed = false;
+        Parser::Immediate displacement_immediate;
+        uint64_t displacement_value = 0;
     };
 }

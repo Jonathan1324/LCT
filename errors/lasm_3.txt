@@ -1,0 +1,17 @@
+during RTL pass: combine
+In file included from /usr/include/c++/14/bits/unordered_set.h:33,
+                 from /usr/include/c++/14/unordered_set:41,
+                 from src/tools/lasm/Encoder/Encoder.hpp:6:
+/usr/include/c++/14/bits/hashtable.h: In member function ‘std::_Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal, _Hash, _RangeHash, _Unused, _RehashPolicy, _Traits>::const_iterator std::_Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal, _Hash, _RangeHash, _Unused, _RehashPolicy, _Traits>::find(const key_type&) const [with _Key = std::__cxx11::basic_string<char>; _Value = std::__cxx11::basic_string<char>; _Alloc = std::allocator<std::__cxx11::basic_string<char> >; _ExtractKey = std::__detail::_Identity; _Equal = std::equal_to<std::__cxx11::basic_string<char> >; _Hash = std::hash<std::__cxx11::basic_string<char> >; _RangeHash = std::__detail::_Mod_range_hashing; _Unused = std::__detail::_Default_ranged_hash; _RehashPolicy = std::__detail::_Prime_rehash_policy; _Traits = std::__detail::_Hashtable_traits<true, true, true>]’:
+/usr/include/c++/14/bits/hashtable.h:1762:5: internal compiler error: Floating point exception
+ 1762 |     }
+      |     ^
+0x7fe8ca37732f ???
+        ./signal/../sysdeps/unix/sysv/linux/x86_64/libc_sigaction.c:0
+0x7fe8ca35c1c9 __libc_start_call_main
+        ../sysdeps/nptl/libc_start_call_main.h:58
+0x7fe8ca35c28a __libc_start_main_impl
+        ../csu/libc-start.c:360
+Please submit a full bug report, with preprocessed source (by using -freport-bug).
+Please include the complete backtrace with any bug report.
+See <file:///usr/share/doc/gcc-14/README.Bugs> for instructions.

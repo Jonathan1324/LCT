@@ -78,6 +78,8 @@ namespace Encoder
 
         bool addendInCode = false;
         bool isExtern = false;
+
+        bool isSigned = false;
     };
 
     struct Evaluation
@@ -115,6 +117,7 @@ namespace Encoder
                 bool addendInCode, const std::string& usedSection,
                 ::Encoder::RelocationType type,
                 ::Encoder::RelocationSize size,
+                bool isSigned,
                 bool isExtern
             )
             {
@@ -126,6 +129,7 @@ namespace Encoder
                 relocation.usedSection = usedSection;
                 relocation.type = type;
                 relocation.size = size;
+                relocation.isSigned = isSigned;
                 relocation.isExtern = isExtern;
                 enc.relocations.push_back(std::move(relocation));
             }

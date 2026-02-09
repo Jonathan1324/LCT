@@ -946,6 +946,7 @@ void x86::Mov_Instruction::evaluate()
                     evaluation.usedSection,
                     ::Encoder::RelocationType::Absolute,
                     relocSize,
+                    false, // TODO: Check if signed
                     evaluation.isExtern
                 );
             }

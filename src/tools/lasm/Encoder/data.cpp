@@ -57,6 +57,7 @@ void Encoder::Data::Data_Instruction::evaluate()
                 evaluation.usedSection,
                 RelocationType::Absolute,
                 relocSize,
+                false, // TODO: Check if signed
                 evaluation.isExtern
             );
         }

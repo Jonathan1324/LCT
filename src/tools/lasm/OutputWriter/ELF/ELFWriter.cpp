@@ -435,35 +435,52 @@ void ELF::Writer::Write()
         if (!section.hasRelocations || section.nullSection) continue;
         RelocationSection relocSection;
 
-        auto getType32 = [](Encoder::RelocationType type, Encoder::RelocationSize size) -> uint8_t
+        auto getType32 = [](Encoder::RelocationType type, Encoder::RelocationSize size, bool isSigned) -> uint8_t
         {
             switch (type)
             {
                 case Encoder::RelocationType::Absolute:
                     switch (size)
                     {
-                        case Encoder::RelocationSize::Bit8: return RelocationType32::R386_ABS8;
-                        case Encoder::RelocationSize::Bit16: return RelocationType32::R386_ABS16;
-                        case Encoder::RelocationSize::Bit32: return RelocationType32::R386_ABS32;
-                        case Encoder::RelocationSize::Bit64: return RelocationType32::R386_ABS32; // FIXME: not very nice way of doing it
-                        default: throw Exception::InternalError("Unknown relocation size", -1, -1);
+                        case Encoder::RelocationSize::Bit8:
+                            return RelocationType32::R386_ABS8;
+
+                        case Encoder::RelocationSize::Bit16:
+                            return RelocationType32::R386_ABS16;
+
+                        case Encoder::RelocationSize::Bit32:
+                            return RelocationType32::R386_ABS32;
+
+                        case Encoder::RelocationSize::Bit64: // TODO
+                            return RelocationType32::R386_ABS32;
+
+                        default:
+                            throw Exception::InternalError("Unknown relocation size", -1, -1);
                     }
                 default: throw Exception::InternalError("Unknown relocation type", -1, -1);
             }
             return RelocationType32::R386_None;
         };
 
-        auto getType64 = [](Encoder::RelocationType type, Encoder::RelocationSize size) -> uint32_t
+        auto getType64 = [](Encoder::RelocationType type, Encoder::RelocationSize size, bool isSigned) -> uint32_t
         {
             switch (type)
             {
                 case Encoder::RelocationType::Absolute:
                     switch (size)
                     {
-                        case Encoder::RelocationSize::Bit8: return RelocationType64::RX64_ABS8;
-                        case Encoder::RelocationSize::Bit16: return RelocationType64::RX64_ABS16;
-                        case Encoder::RelocationSize::Bit32: return RelocationType64::RX64_ABS32;
-                        case Encoder::RelocationSize::Bit64: return RelocationType64::RX64_ABS64;
+                        case Encoder::RelocationSize::Bit8:
+                            return isSigned ? RelocationType64::RX64_8S  : RelocationType64::RX64_ABS8;
+
+                        case Encoder::RelocationSize::Bit16:
+                            return isSigned ? RelocationType64::RX64_16S : RelocationType64::RX64_ABS16;
+
+                        case Encoder::RelocationSize::Bit32:
+                            return isSigned ? RelocationType64::RX64_32S : RelocationType64::RX64_ABS32;
+
+                        case Encoder::RelocationSize::Bit64: // TODO
+                            return RelocationType64::RX64_ABS64;
+                        
                         default: throw Exception::InternalError("Unknown relocation size", -1, -1);
                     }
                 default: throw Exception::InternalError("Unknown relocation type", -1, -1);
@@ -528,7 +545,7 @@ void ELF::Writer::Write()
                     entry.offset = static_cast<uint32_t>(relocation.offsetInSection); //TODO: handle overflow
                     entry.addend = static_cast<int32_t>(relocation.addend); //TODO: handle overflow
 
-                    uint8_t type = getType32(relocation.type, relocation.size);
+                    uint8_t type = getType32(relocation.type, relocation.size, relocation.isSigned);
                     // TODO: handle overflows with symbol
                     entry.info = SetRelocationInfo32(static_cast<uint32_t>(symbolIndex), type);
 
@@ -542,7 +559,7 @@ void ELF::Writer::Write()
                     entry.offset = relocation.offsetInSection;
                     entry.addend = relocation.addend;
 
-                    uint32_t type = getType64(relocation.type, relocation.size);
+                    uint32_t type = getType64(relocation.type, relocation.size, relocation.isSigned);
                     // TODO: handle overflows with symbol
                     entry.info = SetRelocationInfo64(static_cast<uint32_t>(symbolIndex), type);
 
@@ -576,7 +593,7 @@ void ELF::Writer::Write()
                     RelEntry32 entry;
                     entry.offset = static_cast<uint32_t>(relocation.offsetInSection); //TODO: handle overflow
 
-                    uint8_t type = getType32(relocation.type, relocation.size);
+                    uint8_t type = getType32(relocation.type, relocation.size, relocation.isSigned);
                     // TODO: handle overflows with symbol
                     entry.info = SetRelocationInfo32(static_cast<uint32_t>(symbolIndex), type);
 
@@ -588,7 +605,7 @@ void ELF::Writer::Write()
                     RelEntry64 entry;
                     entry.offset = relocation.offsetInSection;
 
-                    uint32_t type = getType64(relocation.type, relocation.size);
+                    uint32_t type = getType64(relocation.type, relocation.size, relocation.isSigned);
                     // TODO: handle overflows with symbol
                     entry.info = SetRelocationInfo64(static_cast<uint32_t>(symbolIndex), type);
 

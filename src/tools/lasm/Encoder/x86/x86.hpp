@@ -42,7 +42,7 @@ namespace x86 {
         x4 = 2,
         x8 = 3
     };
-    constexpr uint8_t SIB_NoIndex = 4;
+    constexpr uint8_t SIB_NoIndex = 0b100;
     inline uint8_t getSIB(Scale scale, uint8_t index, uint8_t base)
     {
         uint8_t sib = ((uint8_t(scale)) << 6) | (index << 3) | base;

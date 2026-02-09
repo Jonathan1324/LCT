@@ -235,6 +235,7 @@ namespace ELF
     enum RelocationType32 : uint8_t
     {
         R386_None   = 0,
+
         R386_ABS32  = 1,
         R386_ABS16  = 20,
         R386_ABS8   = 22,
@@ -243,10 +244,15 @@ namespace ELF
     enum RelocationType64 : uint32_t
     {
         RX64_None   = 0,
+
         RX64_ABS64  = 1,
         RX64_ABS32  = 10,
         RX64_ABS16  = 12,
         RX64_ABS8   = 14,
+
+        RX64_32S    = 11,
+        RX64_16S    = 13,
+        RX64_8S     = 15,
     };
 
     struct RelEntry32
