@@ -196,6 +196,8 @@ namespace x86 {
         bool use_sib_scale = false;
         Parser::Immediate scale_immediate;
 
+        bool use16BitAddressing = false;
+
         bool use_displacement = false;
         bool is_displacement_signed = false;
         Parser::Immediate displacement_immediate;

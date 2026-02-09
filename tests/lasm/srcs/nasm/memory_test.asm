@@ -8,4 +8,4 @@ section .text
     global _start
 
 _start:
-    inc dword [r15d]
+    not word [rbx]

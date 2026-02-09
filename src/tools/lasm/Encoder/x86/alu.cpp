@@ -1589,103 +1589,176 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                 if (mem.pointer_size == Parser::Instruction::Memory::NO_POINTER_SIZE)
                     throw Exception::SyntaxError("Pointer size not specified for memory operand", -1, -1);
 
-                if (mem.use_base_reg || mem.use_index_reg)
+                uint8_t mem_reg_size;
+
+                if (mem.use_base_reg && mem.use_index_reg)
                 {
-                    uint8_t mem_reg_size;
-
-                    if (mem.use_base_reg && mem.use_index_reg)
-                    {
-                        uint8_t base_reg_size = getRegSize(mem.base_reg, bits);
-                        uint8_t index_reg_size = getRegSize(mem.index_reg, bits);
-                        if (base_reg_size != index_reg_size)
-                            throw Exception::SyntaxError("Base register and index registers have different sizes", -1, -1);
-                        mem_reg_size = base_reg_size;
-                    }
-                    else if (mem.use_base_reg && !mem.use_index_reg)
-                    {
-                        mem_reg_size = getRegSize(mem.base_reg, bits);
-                    }
-                    else // if (!mem.use_base_reg && mem.use_index_reg)
-                    {
-                        // TODO
-                        throw Exception::InternalError("Index reg without base reg?", -1, -1);
-                        mem_reg_size = getRegSize(mem.index_reg, bits);
-                    }
-
-                    switch (mem_reg_size)
-                    {
-                        case 16:
-                            if (bits == BitMode::Bits64)
-                                throw Exception::SemanticError("Can't use 16 bit registers for memory in 64 bit", -1, -1);
-                            else if (bits == BitMode::Bits32)
-                                use16BitAddressPrefix = true;
-                            
-                            break;
-                        
-                        case 32:
-                            if (bits != BitMode::Bits32)
-                                use16BitAddressPrefix = true;
-
-                            break;
-
-                        case 64:
-                            if (bits != BitMode::Bits64)
-                                throw Exception::SemanticError("Can't use 64 bit registers for memory in 16/32 bit", -1, -1);
-                            
-                            is_displacement_signed = true;
-                            break;
-
-                        case 8:
-                            throw Exception::SemanticError("Can't use 8 bit registers for memory", -1, -1);
-
-                        default:
-                            throw Exception::InternalError("Unknown mainRegSize", -1, -1);
-                    }
+                    uint8_t base_reg_size = getRegSize(mem.base_reg, bits);
+                    uint8_t index_reg_size = getRegSize(mem.index_reg, bits);
+                    if (base_reg_size != index_reg_size)
+                        throw Exception::SyntaxError("Base register and index registers have different sizes", -1, -1);
+                    mem_reg_size = base_reg_size;
                 }
-
-                if (mem.use_base_reg)
+                else if (mem.use_base_reg && !mem.use_index_reg)
                 {
-                    if (
-                        mem.base_reg == Registers::AX || mem.base_reg == Registers::CX
-                     || mem.base_reg == Registers::DX || mem.base_reg == Registers::SP)
-                        throw Exception::SemanticError("Can't use ax/cx/dx/sp for memory", -1, -1);
-
-                    auto [baseI, baseUseREX, baseSetREX] = getReg(mem.base_reg);
-
-                    if (baseUseREX) useREX = true;
-                    if (baseSetREX) rexB = true;
-
-                    mod_rm = baseI;
-
-                    sib_index = SIB_NoIndex;
-                    if (baseI == modRMSIB) useSIB = true;
-
-                    if (baseI == modRMDisp)
-                    {
-                        mod_mod = Mod::INDIRECT_DISP8;
-                    }
+                    mem_reg_size = getRegSize(mem.base_reg, bits);
+                }
+                else if (!mem.use_base_reg && mem.use_index_reg)
+                {
+                    mem_reg_size = getRegSize(mem.index_reg, bits);
                 }
                 else
                 {
-                    // TODO
+                    if (bits == BitMode::Bits16)      mem_reg_size = 16;
+                    else if (bits == BitMode::Bits32) mem_reg_size = 32;
+                    else                              mem_reg_size = 64;
                 }
 
-                if (mem.use_index_reg)
+                if (mem_reg_size == 16)
                 {
-                    auto [indexI, indexUseREX, indexSetREX] = getReg(mem.index_reg);
+                    use16BitAddressing = true;
 
-                    if (indexI == SIB_NoIndex && !indexSetREX)
-                        throw Exception::SemanticError("Can't use SP/ESP/RSP as index register", -1, -1);
+                    if (bits == BitMode::Bits64)
+                        throw Exception::SemanticError("Can't use 16 bit registers in 64 bit mode", -1, -1);
+                    else if (bits == BitMode::Bits32)
+                        use16BitAddressPrefix = true;
 
-                    if (indexUseREX) useREX = true;
-                    if (indexSetREX) rexX = true;
+                    if (mem.use_base_reg && (mem.base_reg != Registers::BX && mem.base_reg != Registers::BP))
+                        throw Exception::SemanticError("Only bx/bp allowed as 16-bit base", -1, -1);
+                    
+                    if (mem.use_index_reg && (mem.index_reg != Registers::SI && mem.index_reg != Registers::DI))
+                        throw Exception::SemanticError("Only si/di allowed as 16-bit index", -1, -1);
 
-                    useSIB = true;
-                    sib_index = indexI;
+                    uint8_t addressing_mode;
+                    if (mem.use_base_reg && mem.use_index_reg)
+                    {
+                        // [bx+si], [bx+di], [bp+si], [bp+di]
+                        if (mem.base_reg == Registers::BX && mem.index_reg == Registers::SI) addressing_mode = 0;  // 000b
+                        else if (mem.base_reg == Registers::BX && mem.index_reg == Registers::DI) addressing_mode = 1;  // 001b
+                        else if (mem.base_reg == Registers::BP && mem.index_reg == Registers::SI) addressing_mode = 2;  // 010b
+                        else if (mem.base_reg == Registers::BP && mem.index_reg == Registers::DI) addressing_mode = 3;  // 011b
+                        else
+                            throw Exception::SemanticError("Invalid 16-bit addressing combination", -1, -1);
+                    }
+                    else if (mem.use_base_reg && !mem.use_index_reg)
+                    {
+                        // [bx], [bp]
+                        if (mem.base_reg == Registers::BX) addressing_mode = 7;  // 111b
+                        else if (mem.base_reg == Registers::BP) addressing_mode = 6;  // 110b
+                        else
+                            throw Exception::SemanticError("Invalid 16-bit base register", -1, -1);
+                    }
+                    else if (!mem.use_base_reg && mem.use_index_reg)
+                    {
+                        // [si], [di]
+                        if (mem.index_reg == Registers::SI) addressing_mode = 4;  // 100b
+                        else if (mem.index_reg == Registers::DI) addressing_mode = 5;  // 101b
+                        else
+                            throw Exception::SemanticError("Invalid 16-bit index register", -1, -1);
+                    }
+                    else
+                    {
+                        addressing_mode = 6;  // Direct address
+                    }
 
-                    scale_immediate = mem.scale;
+                    mod_rm = addressing_mode;
 
-                    use_sib_scale = true;
+                    if (mem.use_displacement)
+                    {
+                        use_displacement = true;
+                        displacement_immediate = mem.displacement;
+
+                        if (addressing_mode == 6)  // Direct address
+                            mod_mod = Mod::INDIRECT;
+                        else
+                            mod_mod = Mod::INDIRECT_DISP32;
+                    }
+                    else
+                    {
+                        mod_mod = Mod::INDIRECT;
+                    }
+                }
+                else // 32,64
+                {
+                    if (mem_reg_size == 32 && bits != BitMode::Bits32)
+                        use16BitAddressPrefix = true;
+
+                    if (mem_reg_size == 64)
+                    {
+                        if (bits != BitMode::Bits64)
+                            throw Exception::SemanticError("64-bit registers only in 64-bit mode", -1, -1);
+                        is_displacement_signed = true;
+                    }
+
+                    if (mem.use_base_reg)
+                    {
+                        auto [baseI, baseUseREX, baseSetREX] = getReg(mem.base_reg);
+
+                        if (baseUseREX) useREX = true;
+                        if (baseSetREX) rexB = true;
+
+                        mod_rm = baseI;
+
+                        sib_index = SIB_NoIndex;
+                        if (baseI == modRMSIB) useSIB = true;
+
+                        if (baseI == modRMDisp)
+                        {
+                            mod_mod = Mod::INDIRECT_DISP8;
+                        }
+                    }
+                    else if (mem.use_index_reg)
+                    {
+                        mod_mod = Mod::INDIRECT;
+                        mod_rm = modRMDisp;
+                        
+                        useSIB = true;
+                        sib_index = SIB_NoIndex;
+                    }
+
+                    if (mem.use_index_reg)
+                    {
+                        auto [indexI, indexUseREX, indexSetREX] = getReg(mem.index_reg);
+
+                        if (indexI == SIB_NoIndex && !indexSetREX)
+                            throw Exception::SemanticError("Can't use ESP/RSP as index register", -1, -1);
+
+                        if (indexUseREX) useREX = true;
+                        if (indexSetREX) rexX = true;
+
+                        useSIB = true;
+                        sib_index = indexI;
+
+                        scale_immediate = mem.scale;
+
+                        use_sib_scale = true;
+                    }
+
+                    if (mem.use_displacement)
+                    {
+                        if (mem.use_base_reg) mod_mod = Mod::INDIRECT_DISP32;
+
+                        use_displacement = true;
+                        displacement_immediate = mem.displacement;
+
+                        if (!mem.use_base_reg && !mem.use_index_reg)
+                        {
+                            if (bits == BitMode::Bits64)
+                            {
+                                mod_mod = Mod::INDIRECT;
+                                mod_rm = modRMDisp;
+                            
+                                useSIB = true;
+                                sib_scale = Scale::x1;
+                                sib_index = SIB_NoIndex;
+                            }
+                            else
+                            {
+                                mod_mod = Mod::INDIRECT;
+                                mod_rm = modRMDisp;
+                            }
+                        }
+                    }
                 }
 
                 if (mem.pointer_size == 8)
@@ -1701,32 +1774,6 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         opcode = 0xF7;
                     else // INC, DEC
                         opcode = 0xFF;
-                }
-
-                if (mem.use_displacement)
-                {
-                    mod_mod = Mod::INDIRECT_DISP32;
-
-                    use_displacement = true;
-                    displacement_immediate = mem.displacement;
-
-                    if (!mem.use_base_reg)
-                    {
-                        if (bits == BitMode::Bits64)
-                        {
-                            mod_mod = Mod::INDIRECT;
-                            mod_rm = modRMDisp;
-                        
-                            useSIB = true;
-                            sib_scale = Scale::x1;
-                            sib_index = SIB_NoIndex;
-                        }
-                        else
-                        {
-                            mod_mod = Mod::INDIRECT;
-                            mod_rm = modRMDisp;
-                        }
-                    }
                 }
 
                 switch (mnemonic)
@@ -1862,16 +1909,20 @@ std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
 
     if (useSIB) instr.push_back(getSIB(sib_scale, sib_index, mod_rm));
 
+    bool directAddressing = false;
+    if (use16BitAddressing) directAddressing = (mod_mod == Mod::INDIRECT && mod_rm == 6);
+    else                    directAddressing = (mod_mod == Mod::INDIRECT && mod_rm == modRMDisp);
+
     // TODO: FIXME: EVERYTHING
     if (mod_mod == Mod::INDIRECT_DISP8)
     {
         instr.push_back(static_cast<uint8_t>(displacement_value));
     }
-    else if (mod_mod == Mod::INDIRECT_DISP32 || (mod_mod == Mod::INDIRECT && mod_rm == modRMDisp) )
+    else if (mod_mod == Mod::INDIRECT_DISP32 || directAddressing)
     {
         uint32_t sizeInBytes;
-        if (bitmode == BitMode::Bits16) sizeInBytes = 2;
-        else                            sizeInBytes = 4;
+        if (use16BitAddressing) sizeInBytes = 2;
+        else                    sizeInBytes = 4;
 
         uint64_t oldSize = instr.size();
         instr.resize(oldSize + sizeInBytes);
@@ -1895,11 +1946,16 @@ uint64_t x86::Argument_ALU_Instruction::size()
 
     if (useSIB) s++;
 
+    bool directAddressing = false;
+    if (use16BitAddressing) directAddressing = (mod_mod == Mod::INDIRECT && mod_rm == 6);
+    else                    directAddressing = (mod_mod == Mod::INDIRECT && mod_rm == modRMDisp);
+
     // TODO: FIXME: EVERYTHING
     if      (mod_mod == Mod::INDIRECT_DISP8)  s++;
-    else if (mod_mod == Mod::INDIRECT_DISP32) {
-        if (bitmode == BitMode::Bits16) s += 2;
-        else                            s += 4;
+    else if (mod_mod == Mod::INDIRECT_DISP32 || directAddressing)
+    {
+        if (use16BitAddressing) s += 2;
+        else                    s += 4;
     }
 
     return s;

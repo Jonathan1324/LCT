@@ -6,14 +6,16 @@
     std::unordered_map<std::string_view, uint64_t>::const_iterator ptrsizeEnd
 )
 {
-    // TODO
-    
     ::Parser::Instruction::Memory mem;
 
     if (ptrsizeIt != ptrsizeEnd)
         mem.pointer_size = ptrsizeIt->second;
     else
         mem.pointer_size = ::Parser::Instruction::Memory::NO_POINTER_SIZE;
+
+    
+
+    // TODO
 
     return mem;
 }
