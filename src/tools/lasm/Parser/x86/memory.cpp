@@ -46,13 +46,19 @@
 
     ExpressionParser::AddressingMode mode = exprParser.extractAddressingMode(ast);
 
-    if (mode.has_base) std::cout << "Base: " << mode.base << std::endl;
-
-    if (mode.has_index)
+    if (mode.has_reg1)
     {
-        std::cout << "Index: " << mode.index << std::endl;
-        std::cout << "Scale:" << std::endl;
-        exprParser.printTree(mode.scale, 2);
+        std::cout << "Reg1:" << std::endl;
+        std::cout << "  Reg: " << mode.reg1 << std::endl;
+        std::cout << "  Scale:" << std::endl;
+        exprParser.printTree(mode.scale1, 4);
+    }
+    if (mode.has_reg2)
+    {
+        std::cout << "Reg2:" << std::endl;
+        std::cout << "  Reg: " << mode.reg2 << std::endl;
+        std::cout << "  Scale:" << std::endl;
+        exprParser.printTree(mode.scale2, 4);
     }
 
     if (mode.has_displacement)
@@ -61,7 +67,25 @@
         exprParser.printTree(mode.displacement, 2);
     }
 
-    // TODO
+    if (mode.has_reg1)
+    {
+        mem.use_reg1 = true;
+        mem.reg1 = mode.reg1;
+        mem.scale1; // TODO
+    }
+
+    if (mode.has_reg2)
+    {
+        mem.use_reg2 = true;
+        mem.reg2 = mode.reg2;
+        mem.scale2; // TODO
+    }
+
+    if (mode.has_displacement)
+    {
+        mem.use_displacement = true;
+        mem.displacement; // TODO
+    }
 
     return mem;
 }

@@ -47,22 +47,23 @@ namespace Parser
 
         struct Memory
         {
-            // TODO
-            uint64_t base_reg;
             Immediate displacement;
 
-            uint64_t index_reg;
-            Immediate scale;
+            uint64_t reg1;
+            Immediate scale1;
+
+            uint64_t reg2;
+            Immediate scale2;
             
             uint64_t segment_reg;
 
             static constexpr uint64_t NO_POINTER_SIZE = 0;
             uint64_t pointer_size;
 
-            bool use_base_reg = false;
             bool use_displacement = false;
 
-            bool use_index_reg = false;
+            bool use_reg1 = false;
+            bool use_reg2 = false;
 
             bool use_segment_reg = false;
         };

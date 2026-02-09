@@ -193,9 +193,6 @@ namespace x86 {
         Scale sib_scale;
         uint8_t sib_index;
 
-        bool use_sib_scale = false;
-        Parser::Immediate scale_immediate;
-
         bool use16BitAddressing = false;
 
         bool use_displacement = false;

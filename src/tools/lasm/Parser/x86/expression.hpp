@@ -36,14 +36,16 @@ public:
     };
 
     struct AddressingMode {
-        uint64_t base = 0;
-        uint64_t index = 0;
+        uint64_t reg1 = 0;
+        uint64_t reg2 = 0;
 
-        std::shared_ptr<ExprNode> scale; // required when has_index = true
+        std::shared_ptr<ExprNode> scale1;
+        std::shared_ptr<ExprNode> scale2;
+
         std::shared_ptr<ExprNode> displacement;
 
-        bool has_index = false;
-        bool has_base = false;
+        bool has_reg1 = false;
+        bool has_reg2 = false;
         bool has_displacement = false;
     };
 

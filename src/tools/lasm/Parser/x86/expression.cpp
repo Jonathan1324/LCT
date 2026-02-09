@@ -376,97 +376,85 @@ ExpressionParser::AddressingMode ExpressionParser::extractAddressingMode(std::sh
     if (regs.size() > 2)
         throw std::runtime_error("Too many different registers in addressing mode");
 
+    // Register 1
     if (regs.size() >= 1)
     {
-        mode.base = regs[0];
-        mode.has_base = true;
+        mode.reg1 = regs[0];
+        mode.has_reg1 = true;
         
-        std::vector<std::shared_ptr<ExprNode>>& baseTerms = regTerms[regs[0]];
+        std::vector<std::shared_ptr<ExprNode>>& reg1Terms = regTerms[regs[0]];
         
-        if (baseTerms[0] == nullptr)
+        if (reg1Terms[0] == nullptr)
         {
             auto one = std::make_shared<ExprNode>();
             one->type = ExprNode::Type::NUMBER;
             one->value = 1;
-            mode.scale = one;
+            mode.scale1 = one;
         }
         else
         {
-            mode.scale = baseTerms[0];
+            mode.scale1 = reg1Terms[0];
         }
         
-        for (size_t i = 1; i < baseTerms.size(); ++i)
+        for (size_t i = 1; i < reg1Terms.size(); ++i)
         {
             auto sum = std::make_shared<ExprNode>();
             sum->type = ExprNode::Type::BINARY_OP;
             sum->op = '+';
-            sum->left = mode.scale;
-            sum->right = (baseTerms[i] == nullptr) ? 
-                std::make_shared<ExprNode>() : baseTerms[i];
+            sum->left = mode.scale1;
+            sum->right = (reg1Terms[i] == nullptr) ? 
+                std::make_shared<ExprNode>() : reg1Terms[i];
             
-            if (baseTerms[i] == nullptr)
+            if (reg1Terms[i] == nullptr)
             {
                 sum->right->type = ExprNode::Type::NUMBER;
                 sum->right->value = 1;
             }
             
-            mode.scale = sum;
+            mode.scale1 = sum;
         }
     }
 
+    // Register 2
     if (regs.size() == 2)
     {
-        mode.index = regs[1];
-        mode.has_index = true;
+        mode.reg2 = regs[1];
+        mode.has_reg2 = true;
         
-        std::vector<std::shared_ptr<ExprNode>>& indexTerms = regTerms[regs[1]];
+        std::vector<std::shared_ptr<ExprNode>>& reg2Terms = regTerms[regs[1]];
         
-        std::shared_ptr<ExprNode> indexScale;
-        if (indexTerms[0] == nullptr)
+        if (reg2Terms[0] == nullptr)
         {
             auto one = std::make_shared<ExprNode>();
             one->type = ExprNode::Type::NUMBER;
             one->value = 1;
-            indexScale = one;
+            mode.scale2 = one;
         }
         else
         {
-            indexScale = indexTerms[0];
+            mode.scale2 = reg2Terms[0];
         }
         
-        for (size_t i = 1; i < indexTerms.size(); ++i)
+        for (size_t i = 1; i < reg2Terms.size(); ++i)
         {
             auto sum = std::make_shared<ExprNode>();
             sum->type = ExprNode::Type::BINARY_OP;
             sum->op = '+';
-            sum->left = indexScale;
-            sum->right = (indexTerms[i] == nullptr) ? 
-                std::make_shared<ExprNode>() : indexTerms[i];
+            sum->left = mode.scale2;
+            sum->right = (reg2Terms[i] == nullptr) ? 
+                std::make_shared<ExprNode>() : reg2Terms[i];
             
-            if (indexTerms[i] == nullptr)
+            if (reg2Terms[i] == nullptr)
             {
                 sum->right->type = ExprNode::Type::NUMBER;
                 sum->right->value = 1;
             }
             
-            indexScale = sum;
-        }
-        
-        if (mode.scale)
-        {
-            auto sum = std::make_shared<ExprNode>();
-            sum->type = ExprNode::Type::BINARY_OP;
-            sum->op = '+';
-            sum->left = mode.scale;
-            sum->right = indexScale;
-            mode.scale = sum;
-        }
-        else
-        {
-            mode.scale = indexScale;
+            mode.scale2 = sum;
         }
     }
 
+    // Displacement
     if (!constTerms.empty())
     {
         mode.displacement = constTerms[0];

@@ -8,4 +8,4 @@ section .text
     global _start
 
 _start:
-    not word [rax + _start + 2 + 3]
+    not word [rax + 3]
