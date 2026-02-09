@@ -49,17 +49,18 @@ namespace Parser
         {
             // TODO
             uint64_t base_reg;
-            Immediate offset;
+            Immediate displacement;
 
             uint64_t index_reg;
             Immediate scale;
             
             uint64_t segment_reg;
 
+            static constexpr uint64_t NO_POINTER_SIZE = 0;
             uint64_t pointer_size;
 
             bool use_base_reg = false;
-            bool use_offset = false;
+            bool use_displacement = false;
 
             bool use_index_reg = false;
             bool use_scale = false;

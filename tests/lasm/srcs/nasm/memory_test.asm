@@ -2,10 +2,10 @@
 ; BITS: 16,32,64
 ; EXPECT: SUCCESS
 
-[bits 32]
+[bits 64]
 
 section .text
     global _start
 
 _start:
-    not dword [ebp]
+    not dword [r13]

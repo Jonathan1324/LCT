@@ -1000,8 +1000,10 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                 {
                     const Token::Token& operand1 = filteredTokens[i];
                     auto regIt = ::x86::registers.find(operand1.value);
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value);
+
                     if (regIt != ::x86::registers.end()
-                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
                     {
                         // reg
                         ::Parser::Instruction::Register reg;
@@ -1009,11 +1011,14 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                         instruction.operands.push_back(reg);
                         i++;
                     }
-                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
-                        || (regIt != ::x86::registers.end()
-                        && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens[i + 1].type == Token::Type::Punctuation))
                     {
                         std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
 
                         // TODO: segment registers
 
@@ -1023,7 +1028,8 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                             i++;
                         }
 
-                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens);
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
                         instruction.operands.push_back(mem);
 
                         i++;

@@ -1582,10 +1582,12 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                 mod_mod = Mod::INDIRECT;
 
+                // For testing
                 mem.use_base_reg = true;
-                mem.base_reg = Registers::EBP;
+                mem.base_reg = Registers::R13;
 
-                mem.pointer_size = 32;
+                if (mem.pointer_size == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                    throw Exception::SyntaxError("Pointer size not specified for memory operand", -1, -1);
 
                 if (mem.use_base_reg || mem.use_index_reg)
                 {
@@ -1649,6 +1651,9 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                     auto [baseI, baseUseREX, baseSetREX] = getReg(mem.base_reg);
 
+                    if (baseUseREX) useREX = true;
+                    if (baseSetREX) rexB = true;
+
                     mod_rm = baseI;
 
                     sib_index = SIB_NoIndex;
@@ -1699,6 +1704,8 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         break;
 
                     case 64:
+                        if (bits != BitMode::Bits64)
+                                throw Exception::SemanticError("Can't use 64 bit size of memory in 16/32 bit", -1, -1);
                         useREX = true;
                         rexW = true;
                         break;
@@ -1709,8 +1716,6 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     default:
                         throw Exception::InternalError("Unknown mainRegSize", -1, -1);
                 }
-
-                //throw Exception::InternalError("Memory not supported yet", -1, -1);
             }
 
             break;
