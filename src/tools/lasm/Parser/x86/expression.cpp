@@ -1,0 +1,486 @@
+#include "expression.hpp"
+
+#include "../evaluate.hpp"
+#include <unordered_map>
+
+const Token::Token* ExpressionParser::peek() const
+{
+    if (current >= tokens.size()) return nullptr;
+    return tokens[current];
+}
+
+const Token::Token* ExpressionParser::advance()
+{
+    return tokens[current++];
+}
+
+std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parse(const std::vector<const Token::Token*>& tok)
+{
+    tokens = tok;
+    current = 0;
+    return parseExpression();
+}
+
+void ExpressionParser::printTree(const std::shared_ptr<ExprNode>& e, int indent)
+{
+    if (!e) return;
+
+    std::string indentStr(indent * 2, ' ');
+
+    switch (e->type)
+    {
+        case ExprNode::Type::NUMBER:
+            std::cout << indentStr << "NUMBER: " << e->value << std::endl;
+            break;
+            
+        case ExprNode::Type::REGISTER:
+            std::cout << indentStr << "REGISTER: " << e->reg << std::endl;
+            break;
+            
+        case ExprNode::Type::LABEL:
+            std::cout << indentStr << "LABEL: " << e->name << std::endl;
+            break;
+            
+        case ExprNode::Type::BINARY_OP:
+            std::cout << indentStr << "BINARY_OP: '" << e->op << "'" << std::endl;
+            std::cout << indentStr << "  left:" << std::endl;
+            printTree(e->left, indent + 2);
+            std::cout << indentStr << "  right:" << std::endl;
+            printTree(e->right, indent + 2);
+            break;
+            
+        case ExprNode::Type::UNARY_OP:
+            std::cout << indentStr << "UNARY_OP: '" << e->unary_op << "'" << std::endl;
+            std::cout << indentStr << "  operand:" << std::endl;
+            printTree(e->operand, indent + 2);
+            break;
+    }
+}
+
+std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parseExpression()
+{
+    std::shared_ptr<ExprNode> left = parseTerm();
+
+    while (peek() && peek()->type == Token::Type::Operator &&
+           (peek()->value == "+" || peek()->value == "-"))
+    {
+        char op = advance()->value[0];
+        std::shared_ptr<ExprNode> right = parseTerm();
+
+        std::shared_ptr<ExpressionParser::ExprNode> node = std::make_shared<ExprNode>();
+        node->type = ExprNode::Type::BINARY_OP;
+        node->op = op;
+        node->left = left;
+        node->right = right;
+        left = node;
+    }
+
+    return left;
+}
+
+std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parseTerm()
+{
+    std::shared_ptr<ExprNode> left = parseUnary();
+
+    while (peek() && peek()->type == Token::Type::Operator &&
+           (peek()->value == "*" || peek()->value == "/" || peek()->value == "%"))
+    {
+        char op = advance()->value[0];
+        std::shared_ptr<ExprNode> right = parseUnary();
+
+        std::shared_ptr<ExpressionParser::ExprNode> node = std::make_shared<ExprNode>();
+        node->type = ExprNode::Type::BINARY_OP;
+        node->op = op;
+        node->left = left;
+        node->right = right;
+        left = node;
+    }
+
+    return left;
+}
+
+std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parseUnary()
+{
+    if (peek() && peek()->type == Token::Type::Operator &&
+        (peek()->value == "+" || peek()->value == "-"))
+    {
+        char op = advance()->value[0];
+        std::shared_ptr<ExprNode> operand = parseUnary();
+
+        std::shared_ptr<ExpressionParser::ExprNode> node = std::make_shared<ExprNode>();
+        node->type = ExprNode::Type::UNARY_OP;
+        node->unary_op = op;
+        node->operand = operand;
+        return node;
+    }
+
+    return parsePrimary();
+}
+
+std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parsePrimary()
+{
+    if (!peek())
+        throw Exception::SyntaxError("Unexpected end of expression", -1, -1);
+
+    if (peek()->type == Token::Type::Bracket && peek()->value == "(")
+    {
+        advance();
+        std::shared_ptr<ExprNode> expr = parseExpression();
+        if (!peek() || peek()->type != Token::Type::Bracket || peek()->value != ")")
+            throw Exception::SyntaxError("Expected ')'", peek()->line, peek()->column);
+        advance();
+        return expr;
+    }
+
+    if (peek()->type == Token::Type::Token)
+    {
+        std::string val = advance()->value;
+
+        if (isNumber(val))
+        {
+            std::shared_ptr<ExpressionParser::ExprNode> node = std::make_shared<ExprNode>();
+            node->type = ExprNode::Type::NUMBER;
+            node->value = evalInteger(val, 8, -1, -1); // TODO: line + column
+            return node;
+        }
+        else if (isRegister(val))
+        {
+            std::shared_ptr<ExpressionParser::ExprNode> node = std::make_shared<ExprNode>();
+            node->type = ExprNode::Type::REGISTER;
+            node->reg = getRegister(val);
+            return node;
+        }
+        else
+        {
+            std::shared_ptr<ExpressionParser::ExprNode> node = std::make_shared<ExprNode>();
+            node->type = ExprNode::Type::LABEL;
+            node->name = val;
+            return node;
+        }
+    }
+
+    throw Exception::SyntaxError("Expected number, register or immediate",
+                                 peek()->line, peek()->column);
+}
+
+bool ExpressionParser::isNumber(const std::string& s)
+{
+    return std::isdigit(static_cast<unsigned char>(s[0])) != 0;
+}
+
+bool ExpressionParser::isRegister(const std::string& s)
+{
+    auto regIt = ::x86::registers.find(s);
+    if (regIt != ::x86::registers.end())
+        return true;
+    else
+        return false;
+}
+
+uint64_t ExpressionParser::getRegister(const std::string& s)
+{
+    if (!isRegister(s)) throw Exception::InternalError("s is not a register", -1, -1);
+
+    auto regIt = ::x86::registers.find(s);
+    if (regIt != ::x86::registers.end())
+        return regIt->second;
+}
+
+std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::simplify(std::shared_ptr<ExprNode> e)
+{
+    if (!e) return nullptr;
+
+    if (e->left) e->left = simplify(e->left);
+    if (e->right) e->right = simplify(e->right);
+    if (e->operand) e->operand = simplify(e->operand);
+
+    bool leftHasReg = hasRegister(e->left);
+    bool rightHasReg = hasRegister(e->right);
+
+    if (e->left && e->right && 
+        e->left->type == ExprNode::Type::NUMBER && e->right->type == ExprNode::Type::NUMBER)
+    {
+        uint64_t result = 0;
+        bool valid = true;
+
+        switch (e->op)
+        {
+            case '+': result = e->left->value + e->right->value; break;
+            case '-': result = e->left->value - e->right->value; break;
+            case '*': result = e->left->value * e->right->value; break;
+            case '/':
+                if (e->right->value != 0) result = e->left->value / e->right->value;
+                else valid = false;
+                break;
+            case '%':
+                if (e->right->value != 0) result = e->left->value % e->right->value;
+                else valid = false;
+                break;
+        }
+
+        if (valid)
+        {
+            std::shared_ptr<ExpressionParser::ExprNode> newNode = std::make_shared<ExprNode>();
+            newNode->type = ExprNode::Type::NUMBER;
+            newNode->value = result;
+            return newNode;
+        }
+    }
+
+    if ((e->op == '*' || e->op == '/') && rightHasReg && e->right && e->right->type == ExprNode::Type::BINARY_OP)
+    {
+        char rightOp = e->right->op;
+        if (rightOp == '+' || rightOp == '-')
+        {
+            std::shared_ptr<ExpressionParser::ExprNode> a = e->left;
+            std::shared_ptr<ExpressionParser::ExprNode> b = e->right->left;
+            std::shared_ptr<ExpressionParser::ExprNode> reg = e->right->right;
+            char op = e->right->op;
+
+            std::shared_ptr<ExpressionParser::ExprNode> leftMult = std::make_shared<ExprNode>();
+            leftMult->type = ExprNode::Type::BINARY_OP;
+            leftMult->op = e->op;
+            leftMult->left = a;
+            leftMult->right = b;
+
+            std::shared_ptr<ExpressionParser::ExprNode> rightMult = std::make_shared<ExprNode>();
+            rightMult->type = ExprNode::Type::BINARY_OP;
+            rightMult->op = e->op;
+            rightMult->left = a;
+            rightMult->right = reg;
+
+            std::shared_ptr<ExpressionParser::ExprNode> result = std::make_shared<ExprNode>();
+            result->type = ExprNode::Type::BINARY_OP;
+            result->op = op;
+            result->left = leftMult;
+            result->right = rightMult;
+
+            return simplify(result);
+        }
+    }
+
+    if ((e->op == '+' || e->op == '-') && leftHasReg && e->left && e->left->type == ExprNode::Type::BINARY_OP)
+    {
+        char leftOp = e->left->op;
+        if (leftOp == '+' || leftOp == '-')
+        {
+            std::shared_ptr<ExpressionParser::ExprNode> reg = e->left->left;
+            std::shared_ptr<ExpressionParser::ExprNode> a = e->left->right;
+            std::shared_ptr<ExpressionParser::ExprNode> b = e->right;
+
+            std::shared_ptr<ExpressionParser::ExprNode> newRight = std::make_shared<ExprNode>();
+            newRight->type = ExprNode::Type::BINARY_OP;
+            newRight->op = e->op;
+            newRight->left = a;
+            newRight->right = b;
+
+            std::shared_ptr<ExpressionParser::ExprNode> result = std::make_shared<ExprNode>();
+            result->type = ExprNode::Type::BINARY_OP;
+            result->op = leftOp;
+            result->left = reg;
+            result->right = newRight;
+
+            return simplify(result);
+        }
+    }
+
+    if ((leftHasReg || rightHasReg) && (e->op == '/' || e->op == '%'))
+    {
+        throw std::runtime_error("Cannot simplify: register in division or modulo");
+    }
+
+    if (e->op == '*' && (leftHasReg || rightHasReg))
+    {
+        if (e->left && e->left->type == ExprNode::Type::BINARY_OP && 
+            (e->left->op == '+' || e->left->op == '-') && hasRegister(e->left))
+        {
+            throw std::runtime_error("Cannot simplify: register in addition/subtraction under multiplication");
+        }
+        if (e->right && e->right->type == ExprNode::Type::BINARY_OP && 
+            (e->right->op == '+' || e->right->op == '-') && hasRegister(e->right))
+        {
+            throw std::runtime_error("Cannot simplify: register in addition/subtraction under multiplication");
+        }
+    }
+
+    return e;
+}
+
+bool ExpressionParser::hasRegister(const std::shared_ptr<ExprNode>& e)
+{
+    if (!e) return false;
+    if (e->type == ExprNode::Type::REGISTER) return true;
+
+    return hasRegister(e->left) || hasRegister(e->right) || hasRegister(e->operand);
+}
+
+// FIXME
+ExpressionParser::AddressingMode ExpressionParser::extractAddressingMode(std::shared_ptr<ExprNode> e)
+{
+    AddressingMode mode;
+    
+    if (!e) return mode;
+
+    std::unordered_map<uint64_t, std::vector<std::shared_ptr<ExprNode>>> regTerms;
+    std::vector<std::shared_ptr<ExprNode>> constTerms;
+
+    std::vector<std::shared_ptr<ExprNode>> stack = {e};
+    
+    while (!stack.empty())
+    {
+        auto node = stack.back();
+        stack.pop_back();
+
+        if (!node) continue;
+
+        if (node->type == ExprNode::Type::BINARY_OP && node->op == '+')
+        {
+            stack.push_back(node->right);
+            stack.push_back(node->left);
+        }
+        else if (node->type == ExprNode::Type::NUMBER || node->type == ExprNode::Type::LABEL)
+        {
+            constTerms.push_back(node);
+        }
+        else if (node->type == ExprNode::Type::REGISTER)
+        {
+            regTerms[node->reg].push_back(nullptr);
+        }
+        else if (node->type == ExprNode::Type::BINARY_OP && node->op == '*')
+        {
+            if (node->left->type == ExprNode::Type::REGISTER)
+            {
+                regTerms[node->left->reg].push_back(node->right);
+            }
+            else if (node->right->type == ExprNode::Type::REGISTER)
+            {
+                regTerms[node->right->reg].push_back(node->left);
+            }
+            else
+            {
+                throw std::runtime_error("Invalid multiplication in addressing mode");
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Invalid term in addressing mode");
+        }
+    }
+
+    std::vector<uint64_t> regs;
+    for (auto& [reg, terms] : regTerms)
+    {
+        regs.push_back(reg);
+    }
+
+    if (regs.size() > 2)
+        throw std::runtime_error("Too many different registers in addressing mode");
+
+    if (regs.size() >= 1)
+    {
+        mode.base = regs[0];
+        mode.has_base = true;
+        
+        std::vector<std::shared_ptr<ExprNode>>& baseTerms = regTerms[regs[0]];
+        
+        if (baseTerms[0] == nullptr)
+        {
+            auto one = std::make_shared<ExprNode>();
+            one->type = ExprNode::Type::NUMBER;
+            one->value = 1;
+            mode.scale = one;
+        }
+        else
+        {
+            mode.scale = baseTerms[0];
+        }
+        
+        for (size_t i = 1; i < baseTerms.size(); ++i)
+        {
+            auto sum = std::make_shared<ExprNode>();
+            sum->type = ExprNode::Type::BINARY_OP;
+            sum->op = '+';
+            sum->left = mode.scale;
+            sum->right = (baseTerms[i] == nullptr) ? 
+                std::make_shared<ExprNode>() : baseTerms[i];
+            
+            if (baseTerms[i] == nullptr)
+            {
+                sum->right->type = ExprNode::Type::NUMBER;
+                sum->right->value = 1;
+            }
+            
+            mode.scale = sum;
+        }
+    }
+
+    if (regs.size() == 2)
+    {
+        mode.index = regs[1];
+        mode.has_index = true;
+        
+        std::vector<std::shared_ptr<ExprNode>>& indexTerms = regTerms[regs[1]];
+        
+        std::shared_ptr<ExprNode> indexScale;
+        if (indexTerms[0] == nullptr)
+        {
+            auto one = std::make_shared<ExprNode>();
+            one->type = ExprNode::Type::NUMBER;
+            one->value = 1;
+            indexScale = one;
+        }
+        else
+        {
+            indexScale = indexTerms[0];
+        }
+        
+        for (size_t i = 1; i < indexTerms.size(); ++i)
+        {
+            auto sum = std::make_shared<ExprNode>();
+            sum->type = ExprNode::Type::BINARY_OP;
+            sum->op = '+';
+            sum->left = indexScale;
+            sum->right = (indexTerms[i] == nullptr) ? 
+                std::make_shared<ExprNode>() : indexTerms[i];
+            
+            if (indexTerms[i] == nullptr)
+            {
+                sum->right->type = ExprNode::Type::NUMBER;
+                sum->right->value = 1;
+            }
+            
+            indexScale = sum;
+        }
+        
+        if (mode.scale)
+        {
+            auto sum = std::make_shared<ExprNode>();
+            sum->type = ExprNode::Type::BINARY_OP;
+            sum->op = '+';
+            sum->left = mode.scale;
+            sum->right = indexScale;
+            mode.scale = sum;
+        }
+        else
+        {
+            mode.scale = indexScale;
+        }
+    }
+
+    if (!constTerms.empty())
+    {
+        mode.displacement = constTerms[0];
+        for (size_t i = 1; i < constTerms.size(); ++i)
+        {
+            auto sum = std::make_shared<ExprNode>();
+            sum->type = ExprNode::Type::BINARY_OP;
+            sum->op = '+';
+            sum->left = mode.displacement;
+            sum->right = constTerms[i];
+            mode.displacement = sum;
+        }
+        mode.has_displacement = true;
+    }
+
+    return mode;
+}

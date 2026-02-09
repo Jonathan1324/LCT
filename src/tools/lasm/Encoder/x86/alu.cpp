@@ -1761,6 +1761,26 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     }
                 }
 
+                if (use_sib_scale)
+                {
+                    ::Encoder::Evaluation scale_evaluation = Evaluate(scale_immediate);
+
+                    if (scale_evaluation.useOffset)
+                        throw Exception::SemanticError("Scale must be a constant", -1, -1); // TODO
+
+                    Int128 scale_result = scale_evaluation.result;
+
+                    switch (scale_result)
+                    {
+                        case 1: sib_scale = Scale::x1; break;
+                        case 2: sib_scale = Scale::x2; break;
+                        case 4: sib_scale = Scale::x4; break;
+                        case 8: sib_scale = Scale::x8; break;
+                        default:
+                            throw Exception::SemanticError("Scale must be 1, 2, 4, or 8", -1, -1); // TODO
+                    }
+                }
+
                 if (mem.pointer_size == 8)
                 {
                     if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
@@ -1884,27 +1904,6 @@ std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
     {
         if (useSIB) instr.push_back(getModRM(mod_mod, mod_reg, modRMSIB));
         else        instr.push_back(getModRM(mod_mod, mod_reg, mod_rm));
-    }
-
-    // Calculate Scale when SIB
-    if (use_sib_scale)
-    {
-        ::Encoder::Evaluation scale_evaluation = Evaluate(scale_immediate);
-
-        if (scale_evaluation.useOffset)
-            throw Exception::SemanticError("Scale must be a constant", -1, -1); // TODO
-
-        Int128 scale_result = scale_evaluation.result;
-
-        switch (scale_result)
-        {
-            case 1: sib_scale = Scale::x1; break;
-            case 2: sib_scale = Scale::x2; break;
-            case 4: sib_scale = Scale::x4; break;
-            case 8: sib_scale = Scale::x8; break;
-            default:
-                throw Exception::SemanticError("Scale must be 1, 2, 4, or 8", -1, -1); // TODO
-        }
     }
 
     if (useSIB) instr.push_back(getSIB(sib_scale, sib_index, mod_rm));

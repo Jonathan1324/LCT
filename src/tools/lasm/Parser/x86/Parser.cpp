@@ -1022,6 +1022,8 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
                         // TODO: segment registers
 
+                        i++; // '['
+
                         while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
                         {
                             memoryTokens.push_back(&filteredTokens[i]);
@@ -1032,7 +1034,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
                         instruction.operands.push_back(mem);
 
-                        i++;
+                        i++; // ']'
                     }
                 } break;
 
