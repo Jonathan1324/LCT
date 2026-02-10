@@ -37,35 +37,9 @@
     if (!ast)
         throw Exception::SyntaxError("Empty memory operand", -1, -1);
 
-    exprParser.printTree(ast);
-
-    std::cout << "Simplifying..." << std::endl;
     ast = exprParser.simplify(ast);
 
-    exprParser.printTree(ast);
-
     ExpressionParser::AddressingMode mode = exprParser.extractAddressingMode(ast);
-
-    if (mode.has_reg1)
-    {
-        std::cout << "Reg1:" << std::endl;
-        std::cout << "  Reg: " << mode.reg1 << std::endl;
-        std::cout << "  Scale:" << std::endl;
-        exprParser.printTree(mode.scale1, 4);
-    }
-    if (mode.has_reg2)
-    {
-        std::cout << "Reg2:" << std::endl;
-        std::cout << "  Reg: " << mode.reg2 << std::endl;
-        std::cout << "  Scale:" << std::endl;
-        exprParser.printTree(mode.scale2, 4);
-    }
-
-    if (mode.has_displacement)
-    {
-        std::cout << "Displacement:" << std::endl;
-        exprParser.printTree(mode.displacement, 2);
-    }
 
     if (mode.has_reg1)
     {

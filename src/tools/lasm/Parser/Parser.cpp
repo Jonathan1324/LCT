@@ -45,7 +45,131 @@ void Parser::Parser::Print() const
                     {
                         const Instruction::Memory& mem = std::get<Instruction::Memory>(operand);
                         std::cout << "    "; // 2x '  '
-                        std::cout << "Memory:" << std::endl; // TODO
+                        std::cout << "Memory:" << std::endl;
+
+                        std::cout << "      "; // 3x '  '
+                        if (mem.pointer_size == Instruction::Memory::NO_POINTER_SIZE)
+                        {
+                            std::cout << "No pointer size" << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << "Pointer size: " << mem.pointer_size << std::endl;
+                        }
+
+                        if (mem.use_reg1)
+                        {
+                            std::cout << "      "; // 3x '  '
+                            std::cout << "Reg1:" << std::endl;
+
+                            std::cout << "        "; // 4x '  '
+                            std::cout << "Reg: " << mem.reg1 << std::endl;
+
+                            std::cout << "        "; // 4x '  '
+                            std::cout << "Scale:" << std::endl;
+
+                            for (const auto& op : mem.scale1.operands)
+                            {
+                                std::cout << "          "; // 5x '  '
+                                if (std::holds_alternative<Integer>(op))
+                                {
+                                    const Integer& integer = std::get<Integer>(op);
+                                    std::cout << integer.value << std::endl;
+                                }
+                                else if (std::holds_alternative<Operator>(op))
+                                {
+                                    const Operator& Op = std::get<Operator>(op);
+                                    std::cout << "'" << Op.op << "'" << std::endl;
+                                }
+                                else if (std::holds_alternative<String>(op))
+                                {
+                                    const String& str = std::get<String>(op);
+                                    std::cout << "'" << str.value << "'" << std::endl;
+                                }
+                                else if (std::holds_alternative<CurrentPosition>(op))
+                                {
+                                    const CurrentPosition& curPos = std::get<CurrentPosition>(op);
+                                    if (curPos.sectionPos)
+                                        std::cout << "current position in section" << std::endl;
+                                    else
+                                        std::cout << "current position" << std::endl;
+                                }
+                            }
+                        }
+
+                        if (mem.use_reg2)
+                        {
+                            std::cout << "      "; // 3x '  '
+                            std::cout << "Reg2:" << std::endl;
+
+                            std::cout << "        "; // 4x '  '
+                            std::cout << "Reg: " << mem.reg2 << std::endl;
+
+                            std::cout << "        "; // 4x '  '
+                            std::cout << "Scale:" << std::endl;
+
+                            for (const auto& op : mem.scale2.operands)
+                            {
+                                std::cout << "          "; // 5x '  '
+                                if (std::holds_alternative<Integer>(op))
+                                {
+                                    const Integer& integer = std::get<Integer>(op);
+                                    std::cout << integer.value << std::endl;
+                                }
+                                else if (std::holds_alternative<Operator>(op))
+                                {
+                                    const Operator& Op = std::get<Operator>(op);
+                                    std::cout << "'" << Op.op << "'" << std::endl;
+                                }
+                                else if (std::holds_alternative<String>(op))
+                                {
+                                    const String& str = std::get<String>(op);
+                                    std::cout << "'" << str.value << "'" << std::endl;
+                                }
+                                else if (std::holds_alternative<CurrentPosition>(op))
+                                {
+                                    const CurrentPosition& curPos = std::get<CurrentPosition>(op);
+                                    if (curPos.sectionPos)
+                                        std::cout << "current position in section" << std::endl;
+                                    else
+                                        std::cout << "current position" << std::endl;
+                                }
+                            }
+                        }
+
+                        if (mem.use_displacement)
+                        {
+                            std::cout << "      "; // 3x '  '
+                            std::cout << "Displacement:" << std::endl;
+
+                            for (const auto& op : mem.displacement.operands)
+                            {
+                                std::cout << "        "; // 4x '  '
+                                if (std::holds_alternative<Integer>(op))
+                                {
+                                    const Integer& integer = std::get<Integer>(op);
+                                    std::cout << integer.value << std::endl;
+                                }
+                                else if (std::holds_alternative<Operator>(op))
+                                {
+                                    const Operator& Op = std::get<Operator>(op);
+                                    std::cout << "'" << Op.op << "'" << std::endl;
+                                }
+                                else if (std::holds_alternative<String>(op))
+                                {
+                                    const String& str = std::get<String>(op);
+                                    std::cout << "'" << str.value << "'" << std::endl;
+                                }
+                                else if (std::holds_alternative<CurrentPosition>(op))
+                                {
+                                    const CurrentPosition& curPos = std::get<CurrentPosition>(op);
+                                    if (curPos.sectionPos)
+                                        std::cout << "current position in section" << std::endl;
+                                    else
+                                        std::cout << "current position" << std::endl;
+                                }
+                            }
+                        }
                     }
                     else if (std::holds_alternative<Immediate>(operand))
                     {

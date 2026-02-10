@@ -1591,7 +1591,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                 uint8_t mem_reg_size;
 
-                if (mem.reg1 && mem.reg2)
+                if (mem.use_reg1 && mem.use_reg2)
                 {
                     uint8_t base_reg_size = getRegSize(mem.reg1, bits);
                     uint8_t index_reg_size = getRegSize(mem.reg2, bits);
@@ -1599,11 +1599,11 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         throw Exception::SyntaxError("Base register and index registers have different sizes", -1, -1);
                     mem_reg_size = base_reg_size;
                 }
-                else if (mem.reg1 && !mem.reg2)
+                else if (mem.use_reg1 && !mem.use_reg2)
                 {
                     mem_reg_size = getRegSize(mem.reg1, bits);
                 }
-                else if (!mem.reg1 && mem.reg2)
+                else if (!mem.use_reg1 && mem.use_reg2)
                 {
                     mem_reg_size = getRegSize(mem.reg2, bits);
                 }
@@ -1622,6 +1622,8 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                 uint64_t scale;
 
+                if (mem_reg_size == 16) use16BitAddressing = true;
+
                 // FIXME: Fix
                 if (mem.use_reg1 && mem.use_reg2)
                 {
@@ -1637,22 +1639,61 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     hasBase = true;
                     hasIndex = true;
 
-                    if (reg1_result == 1)
+                    if (reg1_result != 1 && reg2_result != 1)
+                        throw Exception::SemanticError("Can't have 2 index registers", -1, -1);
+
+                    if (reg1_result == 1 && reg2_result == 1)
+                    {
+                        if (mem.reg1 == Registers::ESP || mem.reg1 == Registers::RSP)
+                        {
+                            baseReg = mem.reg1;
+
+                            indexReg = mem.reg2;
+                            scale = static_cast<uint64_t>(reg2_result);
+                        }
+                        else if (mem.reg2 == Registers::ESP || mem.reg2 == Registers::RSP)
+                        {
+                            baseReg = mem.reg2;
+
+                            indexReg = mem.reg1;
+                            scale = static_cast<uint64_t>(reg1_result);
+                        }
+                        else if (mem.reg1 == Registers::BX || mem.reg1 == Registers::BP)
+                        {
+                            baseReg = mem.reg1;
+
+                            indexReg = mem.reg2;
+                            scale = static_cast<uint64_t>(reg2_result);
+                        }
+                        else if (mem.reg2 == Registers::BX || mem.reg2 == Registers::BP)
+                        {
+                            baseReg = mem.reg2;
+
+                            indexReg = mem.reg1;
+                            scale = static_cast<uint64_t>(reg1_result);
+                        }
+                        else
+                        {
+                            baseReg = mem.reg1;
+
+                            indexReg = mem.reg2;
+                            scale = static_cast<uint64_t>(reg2_result);
+                        }
+                    }
+                    else if (reg1_result == 1 && reg2_result != 1)
                     {
                         baseReg = mem.reg1;
 
                         indexReg = mem.reg2;
                         scale = static_cast<uint64_t>(reg2_result);
                     }
-                    else if (reg2_result == 1)
+                    else // if (reg1_result != 1 && reg2_result == 1)
                     {
                         baseReg = mem.reg2;
 
                         indexReg = mem.reg1;
                         scale = static_cast<uint64_t>(reg1_result);
                     }
-                    else
-                        throw Exception::SemanticError("Can't have 2 index registers", -1, -1);
                 }
                 else if ((mem.use_reg1 && !mem.use_reg2) || (mem.use_reg2 && !mem.use_reg1))
                 {
@@ -1677,83 +1718,111 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                     Int128& result = evaluation.result;
 
-                    switch (result)
+                    if (use16BitAddressing)
                     {
-                        case 1:
-                            hasBase = true;
-                            baseReg = usedReg;
-                            break;
+                        scale = result;
                         
-                        case 2:
+                        if (usedReg == Registers::BX || usedReg == Registers::BP)
+                        {
                             hasBase = true;
                             baseReg = usedReg;
-
+                        }
+                        else
+                        {
                             hasIndex = true;
                             indexReg = usedReg;
-                            scale = 1;
-                            break;
+                        }
+                    }
+                    else
+                    {
+                        switch (result)
+                        {
+                            case 1:
+                                hasBase = true;
+                                baseReg = usedReg;
+                                break;
+                            
+                            case 2:
+                                hasBase = true;
+                                baseReg = usedReg;
 
-                        case 3:
-                            hasBase = true;
-                            baseReg = usedReg;
+                                hasIndex = true;
+                                indexReg = usedReg;
+                                scale = 1;
+                                break;
 
-                            hasIndex = true;
-                            indexReg = usedReg;
-                            scale = 2;
-                            break;
+                            case 3:
+                                hasBase = true;
+                                baseReg = usedReg;
 
-                        case 4:
-                            hasIndex = true;
-                            indexReg = usedReg;
-                            scale = 4;
-                            break;
+                                hasIndex = true;
+                                indexReg = usedReg;
+                                scale = 2;
+                                break;
 
-                        case 5:
-                            hasBase = true;
-                            baseReg = usedReg;
+                            case 4:
+                                hasIndex = true;
+                                indexReg = usedReg;
+                                scale = 4;
+                                break;
 
-                            hasIndex = true;
-                            indexReg = usedReg;
-                            scale = 4;
-                            break;
+                            case 5:
+                                hasBase = true;
+                                baseReg = usedReg;
 
-                        case 8:
-                            hasIndex = true;
-                            indexReg = usedReg;
-                            scale = 8;
-                            break;
+                                hasIndex = true;
+                                indexReg = usedReg;
+                                scale = 4;
+                                break;
 
-                        case 9:
-                            hasBase = true;
-                            baseReg = usedReg;
+                            case 8:
+                                hasIndex = true;
+                                indexReg = usedReg;
+                                scale = 8;
+                                break;
 
-                            hasIndex = true;
-                            indexReg = usedReg;
-                            scale = 8;
-                            break;
+                            case 9:
+                                hasBase = true;
+                                baseReg = usedReg;
 
-                        case 6: case 7: default:
-                            throw Exception::SemanticError("Scale needs to be 1, 2, 4 or 8", -1, -1);
+                                hasIndex = true;
+                                indexReg = usedReg;
+                                scale = 8;
+                                break;
+
+                            case 6: case 7: default:
+                                throw Exception::SemanticError("Scale needs to be 1, 2, 4 or 8", -1, -1);
+                        }
                     }
                 }
 
                 if (hasIndex)
                 {
-                    switch (scale)
+                    if (use16BitAddressing)
                     {
-                        case 1: sib_scale = Scale::x1; break;
-                        case 2: sib_scale = Scale::x2; break;
-                        case 4: sib_scale = Scale::x4; break;
-                        case 8: sib_scale = Scale::x8; break;
-                        default:
-                            throw Exception::SemanticError("Scale must be 1, 2, 4, or 8", -1, -1); // TODO
+                        if (scale != 1)
+                            throw Exception::SemanticError("Scale must be 1 when using 16 bit addressing", -1, -1);
+                    }
+                    else
+                    {
+                        switch (scale)
+                        {
+                            case 1: sib_scale = Scale::x1; break;
+                            case 2: sib_scale = Scale::x2; break;
+                            case 4: sib_scale = Scale::x4; break;
+                            case 8: sib_scale = Scale::x8; break;
+                            default:
+                                throw Exception::SemanticError("Scale must be 1, 2, 4, or 8", -1, -1); // TODO
+                        }
                     }
                 }
 
+                std::cout << "Base: " << hasBase << "," << baseReg << std::endl;
+                std::cout << "Index: " << hasIndex << "," << indexReg << std::endl;
+                std::cout << "Scale: " << hasIndex << "," << scale << std::endl;
+
                 if (mem_reg_size == 16)
                 {
-                    use16BitAddressing = true;
-
                     if (bits == BitMode::Bits64)
                         throw Exception::SemanticError("Can't use 16 bit registers in 64 bit mode", -1, -1);
                     else if (bits == BitMode::Bits32)
@@ -1975,8 +2044,8 @@ void x86::Argument_ALU_Instruction::evaluate()
             }
             else // DISP32 or mod_rm = modRMDisp
             {
-                if (bitmode == BitMode::Bits16) relocSize = ::Encoder::RelocationSize::Bit16;
-                else                            relocSize = ::Encoder::RelocationSize::Bit32;
+                if (use16BitAddressing) relocSize = ::Encoder::RelocationSize::Bit16;
+                else                    relocSize = ::Encoder::RelocationSize::Bit32;
             }
 
             AddRelocation(

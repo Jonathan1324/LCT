@@ -55,7 +55,7 @@ namespace Parser
             uint64_t reg2;
             Immediate scale2;
             
-            uint64_t segment_reg;
+            uint64_t segment_reg; // TODO
 
             static constexpr uint64_t NO_POINTER_SIZE = 0;
             uint64_t pointer_size;
