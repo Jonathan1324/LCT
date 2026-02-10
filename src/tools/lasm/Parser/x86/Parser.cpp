@@ -935,6 +935,8 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                 {
                     const Token::Token& operand1 = filteredTokens[i];
                     auto regIt = ::x86::registers.find(operand1.value);
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value);
+
                     if (regIt != ::x86::registers.end()
                      && filteredTokens[i + 1].type != Token::Type::Punctuation)
                     {
@@ -944,11 +946,30 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                         instruction.operands.push_back(reg);
                         i++;
                     }
-                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
-                        || (regIt != ::x86::registers.end()
-                        && filteredTokens[i + 1].type != Token::Type::Punctuation))
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens[i + 1].type == Token::Type::Punctuation))
                     {
-                        // TODO: memory
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
                     }
                     else
                     {
@@ -961,6 +982,8 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
                     const Token::Token& operand2 = filteredTokens[i];
                     regIt = ::x86::registers.find(operand2.value);
+                    ptrsizeIt = pointer_sizes.find(operand2.value);
+
                     if (regIt != ::x86::registers.end()
                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
                     {
@@ -974,9 +997,9 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                         instruction.operands.push_back(reg);
                         i++;
                     }
-                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
-                        || (regIt != ::x86::registers.end()
-                        && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand2.type == Token::Type::Bracket && operand2.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens[i + 1].type == Token::Type::Punctuation))
                     {
                         throw Exception::SyntaxError("Invalid shift/rotate count operand, must be immediate or CL", operand2.line, operand2.column);
                     }
