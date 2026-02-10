@@ -10,7 +10,7 @@ if [ -z "$ASM_FILE" ]; then
 fi
 
 SRC_PATH="tests/lasm/srcs/$ASM_FILE"
-OUT_DIR="build/tests"
+OUT_DIR="./build/tests"
 OUT_FILE_LASM="$OUT_DIR/speed_lasm.out"
 OUT_FILE_NASM="$OUT_DIR/speed_nasm.out"
 
@@ -23,7 +23,7 @@ if command -v hyperfine >/dev/null 2>&1; then
 else
     echo "Hyperfine not found, using 'time' as fallback:"
     echo "LASM:"
-    time dist/bin/lasm "$SRC_PATH" -o "$OUT_FILE" --format bin --arch x86
+    time dist/bin/lasm "$SRC_PATH" -o "$OUT_FILE_LASM" --format bin --arch x86
     echo "NASM:"
-    time nasm "$SRC_PATH" -o "$OUT_FILE" -fbin
+    time nasm "$SRC_PATH" -o "$OUT_FILE_NASM" -fbin
 fi
