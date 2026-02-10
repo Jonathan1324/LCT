@@ -8,10 +8,18 @@ import shutil
 import logging
 from os import environ
 
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib 
+import importlib
+
+tomllib = None
+for _name in ("tomllib", "tomli"):
+    try:
+        tomllib = importlib.import_module(_name)
+        break
+    except ModuleNotFoundError:
+        pass
+
+if tomllib is None:
+    raise RuntimeError("Missing TOML parser: install 'tomli' for Python <3.11 (pip install tomli)")
 
 from ci.os import OS, ARCH, getOS, getArch
 
@@ -52,11 +60,11 @@ class BuildCache:
 @dataclass
 class Toolchain:
     Compiler_C: Optional[str] = None
-    Compiler_C_Dependency_Args: list[str] = None
+    Compiler_C_Dependency_Args: list[str] = field(default_factory=list)
     Compiler_C_Flags: list[str] = field(default_factory=list)
 
     Compiler_CPP: Optional[str] = None
-    Compiler_CPP_Dependency_Args: list[str] = None
+    Compiler_CPP_Dependency_Args: list[str] = field(default_factory=list)
     Compiler_CPP_Flags: list[str] = field(default_factory=list)
 
     Linker: Optional[str] = None
@@ -119,11 +127,15 @@ def build_c_cpp_sources(toolchain: Toolchain, buildCache: BuildCache, build_dir:
         flags: list[str]
         dep_args: list[str]
         if file.suffix == ".c":
+            if toolchain.Compiler_C is None:
+                raise RuntimeError("C compiler not specified in toolchain")
             compiler = toolchain.Compiler_C
             flags = toolchain.Compiler_C_Flags
             dep_args = toolchain.Compiler_C_Dependency_Args
 
         elif file.suffix == ".cpp":
+            if toolchain.Compiler_CPP is None:
+                raise RuntimeError("CPP compiler not specified in toolchain")
             compiler = toolchain.Compiler_CPP
             flags = toolchain.Compiler_CPP_Flags
             dep_args = toolchain.Compiler_CPP_Dependency_Args
@@ -197,6 +209,9 @@ def build_lib(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, sou
         ar = toolchain.Ar
         flags = toolchain.Ar_Flags
 
+        if ar is None:
+            raise RuntimeError("AR not specified in toolchain")
+    
         out.parent.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -245,6 +260,9 @@ def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache
         env["RUSTFLAGS"] = " ".join(flags)
         env["CARGO_TARGET_DIR"] = str(build_dir)
 
+        if toolchain.Rust_Target is None:
+            raise RuntimeError("Rust Target not specified in toolchain")
+
         out = build_dir / toolchain.Rust_Target / ("release" if not debug else "debug") / name
         if os == OS.Windows:
             out = out.with_suffix(".exe")
@@ -275,6 +293,8 @@ def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache
             raise RuntimeError(f"Cargo build succeeded but binary not found: {out}")
         
         cargo_toml = source_dir / "Cargo.toml"
+
+        assert tomllib is not None, "Missing TOML parser"
         pkg_name = tomllib.loads(cargo_toml.read_text())["package"]["name"]
 
         license_cmd = [
@@ -307,7 +327,7 @@ def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache
             for dep in filtered:
                 f.write(f'{dep["name"]} {dep["version"]}: {dep["license"]}\n')
 
-        return out
+        return str(out)
     
     elif info_content == "c,c++":
         out = build_dir / name
@@ -319,6 +339,9 @@ def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache
         linker = toolchain.Linker
         flags = toolchain.Linker_Flags
         lib_flags = toolchain.Library_Flags
+
+        if linker is None:
+            raise RuntimeError("Linker not specified in toolchain")
 
         out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -339,13 +362,16 @@ def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache
             strip = toolchain.Strip
             flags = toolchain.Strip_Flags
 
+            if strip is None:
+                raise RuntimeError("Strip not specified in toolchain")
+
             try:
                 subprocess.run([strip, *flags, str(out)], check=True)
             except subprocess.CalledProcessError as e:
                 logger.error(f"Error: Stripping failed for {out}")
                 raise e
 
-        return out
+        return str(out)
     
     else:
         logger.warning(f"Warning: invalid build.info content in {source_dir}")
@@ -414,11 +440,16 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
 
     if not debug:
         toolchain.Linker_Flags.extend([
-            "-Wl,-s", "-Wl,-O2",
+            "-Wl,-O2",
             "-ffunction-sections", "-fdata-sections",
-            "-Wl,--gc-sections",
             "-fpie", "-pie"
         ])
+
+        if os == OS.macOS:
+            toolchain.Linker_Flags.append("-Wl,-dead_strip")
+        else:
+            toolchain.Linker_Flags.append("-Wl,-s")
+            toolchain.Linker_Flags.append("-Wl,--gc-sections")
 
     if os == OS.Linux:
         toolchain.Linker_Flags.append("-Wl,--gc-sections")
