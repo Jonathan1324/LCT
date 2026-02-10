@@ -96,13 +96,3 @@ bool x86::Simple_Stack_Instruction::optimize()
 {
     return false;
 }
-
-void x86::Simple_Stack_Instruction::encodeS(std::vector<uint8_t>& buffer)
-{
-    buffer.push_back(opcode);
-}
-
-uint64_t x86::Simple_Stack_Instruction::sizeS()
-{
-    return 1;
-}

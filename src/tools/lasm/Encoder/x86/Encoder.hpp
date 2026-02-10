@@ -28,8 +28,8 @@ namespace x86
         uint64_t size() override final;
 
     protected:
-        virtual void encodeS(std::vector<uint8_t>& buffer) = 0;
-        virtual uint64_t sizeS() = 0;
+        virtual void encodeS(std::vector<uint8_t>& buffer) {};
+        virtual uint64_t sizeS() { return 0; };
 
         Instruction(::Encoder::Encoder& e) : ::Encoder::Encoder::Instruction(e) {}
 

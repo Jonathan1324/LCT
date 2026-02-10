@@ -70,19 +70,3 @@ bool x86::Simple_Interrupt_Instruction::optimize()
 {
     return false;
 }
-
-void x86::Simple_Interrupt_Instruction::encodeS(std::vector<uint8_t>& buffer)
-{
-    if (useOpcodeEscape) buffer.push_back(opcodeEscape);
-            
-    buffer.push_back(opcode);
-}
-
-uint64_t x86::Simple_Interrupt_Instruction::sizeS()
-{
-    uint64_t s = 1;
-
-    if (useOpcodeEscape) s++;
-
-    return s;
-}

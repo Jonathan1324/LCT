@@ -90,6 +90,9 @@ std::vector<uint8_t> x86::Instruction::encode()
 
     if (rex.use) buffer.push_back(getRex(rex.w, rex.r, rex.x, rex.b));
 
+    if (useOpcodeEscape) buffer.push_back(opcodeEscape);
+    buffer.push_back(opcode);
+
     encodeS(buffer);
 
     return buffer;
@@ -103,6 +106,9 @@ uint64_t x86::Instruction::size()
     if (use16BitAddressPrefix) s++;
 
     if (rex.use) s++;
+
+    if (useOpcodeEscape) s++;
+    s++; // Opcode
 
     s += sizeS();
 

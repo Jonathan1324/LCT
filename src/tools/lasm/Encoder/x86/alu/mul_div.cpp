@@ -490,10 +490,6 @@ bool x86::Mul_Div_ALU_Instruction::optimize()
 
 void x86::Mul_Div_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    if (useOpcodeEscape) buffer.push_back(opcodeEscape);
-
-    buffer.push_back(opcode);
-
     if (modrm.use) buffer.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
 
     switch (mulDivType)
@@ -549,9 +545,7 @@ void x86::Mul_Div_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 
 uint64_t x86::Mul_Div_ALU_Instruction::sizeS()
 {
-    uint64_t s = 1;
-
-    if (useOpcodeEscape) s++;
+    uint64_t s = 0;
 
     if (modrm.use) s++;
 

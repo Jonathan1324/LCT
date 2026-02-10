@@ -947,10 +947,6 @@ bool x86::Mov_Instruction::optimize()
 
 void x86::Mov_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    if (useOpcodeEscape) buffer.push_back(opcodeEscape);
-
-    buffer.push_back(opcode);
-
     if (modrm.use) buffer.push_back(::x86::getModRM(modrm.mod, modrm.reg, modrm.rm));
 
     switch (movType)
@@ -1010,9 +1006,7 @@ void x86::Mov_Instruction::encodeS(std::vector<uint8_t>& buffer)
 
 uint64_t x86::Mov_Instruction::sizeS()
 {
-    uint64_t s = 1;
-
-    if (useOpcodeEscape) s++;
+    uint64_t s = 0;
 
     switch (movType)
     {
