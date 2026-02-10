@@ -3,6 +3,7 @@ from tests.lasm.lasm import run_lasm
 from tests.lasm.nasm import run_nasm
 
 from pathlib import Path
+from typing import Union, Sequence
 import logging
 import shutil
 
@@ -119,21 +120,25 @@ def check_if_files_equal(p1: Path, p2: Path, blocksize: int = 8192) -> bool:
                 return False
             if not b1:
                 return True
-
-def write_cmp_file(cmp_file: Path, content: list[list[Path]]):
+def write_cmp_file(cmp_file: Path, content: Sequence[Sequence[Union[Path, str]]]):
     cmp_file.write_text("")
 
-    num_cols = max(len(content) for cmp in content)
+    if not content:
+        return
+
+    num_cols = max(len(row) for row in content)
     col_widths = [0] * num_cols
-    for cmp in content:
-        for i, cell, in enumerate(cmp):
-            col_widths[i] = max(col_widths[i], len(cell))
+    for row in content:
+        for i, cell in enumerate(row):
+            s = str(cell)
+            col_widths[i] = max(col_widths[i], len(s))
     
     with cmp_file.open('a', encoding="utf-8") as f:
-        for cmp in content:
-            for i, cell in enumerate(cmp):
-                f.write(cell.ljust(col_widths[i]))
-                if i < len(cmp) - 1:
+        for row in content:
+            for i, cell in enumerate(row):
+                s = str(cell)
+                f.write(s.ljust(col_widths[i]))
+                if i < len(row) - 1:
                     f.write("  ")
             f.write("\n")
 
@@ -158,7 +163,7 @@ def test(dir: Path, log_dir: Path):
         test_assemblers: list[str] = []
         for test_assembler_raw in test_assemblers_raw:
             if test_assembler_raw in assemblers:
-                if shutil.which(test_assembler_raw):
+                if shutil.which(test_assembler_raw) or test_assembler_raw == "lasm":
                     test_assemblers.append(test_assembler_raw)
                 else:
                     logger.warning(f"{test_assembler_raw} couldn't be found")
