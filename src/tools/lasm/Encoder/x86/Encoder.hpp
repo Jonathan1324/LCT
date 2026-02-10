@@ -38,6 +38,12 @@ namespace x86
         void evaluateDisplacement();
         bool optimizeDisplacement();
 
+        void parseMemory(
+            const Parser::Instruction::Memory& mem,
+            BitMode bits,
+            uint64_t pointerSize
+        );
+
         Instruction(::Encoder::Encoder& e) : ::Encoder::Encoder::Instruction(e) {}
 
         bool use16BitPrefix = false;

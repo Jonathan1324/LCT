@@ -203,3 +203,34 @@ uint8_t x86::getRegSize(uint64_t reg, BitMode mode)
 
     return 0;
 }
+
+bool x86::isGPR(uint64_t reg)
+{
+    switch (reg)
+    {
+        case AL: case CL: case DL: case BL:
+        case AH: case CH: case DH: case BH:
+        case SPL: case BPL: case SIL: case DIL:
+        case R8B: case R9B: case R10B: case R11B:
+        case R12B: case R13B: case R14B: case R15B:
+
+        case AX: case CX: case DX: case BX:
+        case SP: case BP: case SI: case DI:
+        case R8W: case R9W: case R10W: case R11W:
+        case R12W: case R13W: case R14W: case R15W:
+
+        case EAX: case ECX: case EDX: case EBX:
+        case ESP: case EBP: case ESI: case EDI:
+        case R8D: case R9D: case R10D: case R11D:
+        case R12D: case R13D: case R14D: case R15D:
+
+        case RAX: case RCX: case RDX: case RBX:
+        case RSP: case RBP: case RSI: case RDI:
+        case R8: case R9: case R10: case R11:
+        case R12: case R13: case R14: case R15:
+            return true;
+
+        default:
+            return false;
+    }
+}

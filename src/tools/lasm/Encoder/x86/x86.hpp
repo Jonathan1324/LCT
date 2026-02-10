@@ -58,4 +58,6 @@ namespace x86 {
     std::tuple<uint8_t, bool, bool> getReg(uint64_t reg);
 
     uint8_t getRegSize(uint64_t reg, BitMode mode);
+
+    bool isGPR(uint64_t reg);
 }
