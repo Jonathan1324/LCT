@@ -15,7 +15,7 @@ namespace x86 {
 
         bool optimize() override {return false;} // TODO
 
-        std::vector<uint8_t> encode() override;
+        void encodeS(std::vector<uint8_t>& buffer) override;
 
         uint64_t size() override;
 

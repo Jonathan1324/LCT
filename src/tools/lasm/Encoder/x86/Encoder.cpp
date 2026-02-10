@@ -80,3 +80,10 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
 
     return nullptr;
 }
+
+std::vector<uint8_t> x86::Instruction::encode()
+{
+    std::vector<uint8_t> buffer;
+    encodeS(buffer);
+    return buffer;
+}

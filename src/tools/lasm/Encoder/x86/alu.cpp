@@ -484,17 +484,15 @@ void x86::Two_Argument_ALU_Instruction::evaluate()
     }
 }
 
-std::vector<uint8_t> x86::Two_Argument_ALU_Instruction::encode()
+void x86::Two_Argument_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    std::vector<uint8_t> instr;
+    if (use16BitPrefix) buffer.push_back(prefix16Bit);
 
-    if (use16BitPrefix) instr.push_back(prefix16Bit);
+    if (rex.use) buffer.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
 
-    if (rex.use) instr.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
+    buffer.push_back(opcode);
 
-    instr.push_back(opcode);
-
-    if (modrm.use) instr.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
+    if (modrm.use) buffer.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
 
     switch (aluType)
     {
@@ -508,10 +506,10 @@ std::vector<uint8_t> x86::Two_Argument_ALU_Instruction::encode()
         {
             uint32_t sizeInBytes = specific.alu_reg_imm.sizeInBits / 8;
 
-            uint64_t oldSize = instr.size();
-            instr.resize(oldSize + sizeInBytes);
+            uint64_t oldSize = buffer.size();
+            buffer.resize(oldSize + sizeInBytes);
 
-            std::memcpy(instr.data() + oldSize, &specific.alu_reg_imm.value, sizeInBytes);
+            std::memcpy(buffer.data() + oldSize, &specific.alu_reg_imm.value, sizeInBytes);
 
             if (usedReloc)
             {
@@ -548,8 +546,6 @@ std::vector<uint8_t> x86::Two_Argument_ALU_Instruction::encode()
         default:
             throw Exception::InternalError("Unknown aluType", -1, -1);
     }
-
-    return instr;
 }
 
 uint64_t x86::Two_Argument_ALU_Instruction::size()
@@ -1066,19 +1062,17 @@ void x86::Mul_Div_ALU_Instruction::evaluate()
     }
 }
 
-std::vector<uint8_t> x86::Mul_Div_ALU_Instruction::encode()
+void x86::Mul_Div_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    std::vector<uint8_t> instr;
+    if (use16BitPrefix) buffer.push_back(prefix16Bit);
 
-    if (use16BitPrefix) instr.push_back(prefix16Bit);
+    if (rex.use) buffer.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
 
-    if (rex.use) instr.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
+    if (useOpcodeEscape) buffer.push_back(opcodeEscape);
 
-    if (useOpcodeEscape) instr.push_back(opcodeEscape);
+    buffer.push_back(opcode);
 
-    instr.push_back(opcode);
-
-    if (modrm.use) instr.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
+    if (modrm.use) buffer.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
 
     switch (mulDivType)
     {
@@ -1088,10 +1082,10 @@ std::vector<uint8_t> x86::Mul_Div_ALU_Instruction::encode()
         {
             uint32_t sizeInBytes = threeOperandsSpecific.sizeInBits / 8;
 
-            uint64_t oldSize = instr.size();
-            instr.resize(oldSize + sizeInBytes);
+            uint64_t oldSize = buffer.size();
+            buffer.resize(oldSize + sizeInBytes);
 
-            std::memcpy(instr.data() + oldSize, &threeOperandsSpecific.value, sizeInBytes);
+            std::memcpy(buffer.data() + oldSize, &threeOperandsSpecific.value, sizeInBytes);
 
             if (usedReloc)
             {
@@ -1129,8 +1123,6 @@ std::vector<uint8_t> x86::Mul_Div_ALU_Instruction::encode()
         default:
             throw Exception::InternalError("Unknown aluType", -1, -1);
     }
-
-    return instr;
 }
 
 uint64_t x86::Mul_Div_ALU_Instruction::size()
@@ -1405,21 +1397,19 @@ void x86::Shift_Rotate_ALU_Instruction::evaluate()
     }
 }
 
-std::vector<uint8_t> x86::Shift_Rotate_ALU_Instruction::encode()
+void x86::Shift_Rotate_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    std::vector<uint8_t> instr;
+    if (use16BitPrefix) buffer.push_back(prefix16Bit);
 
-    if (use16BitPrefix) instr.push_back(prefix16Bit);
+    if (rex.use) buffer.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
 
-    if (rex.use) instr.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
+    buffer.push_back(opcode);
 
-    instr.push_back(opcode);
-
-    if (modrm.use) instr.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
+    if (modrm.use) buffer.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
 
     if (usesImmediate)
     {
-        instr.push_back(count);
+        buffer.push_back(count);
 
         if (usedReloc)
         {
@@ -1440,8 +1430,6 @@ std::vector<uint8_t> x86::Shift_Rotate_ALU_Instruction::encode()
             );
         }
     }
-
-    return instr;
 }
 
 uint64_t x86::Shift_Rotate_ALU_Instruction::size()
@@ -2058,24 +2046,22 @@ void x86::Argument_ALU_Instruction::evaluate()
     }
 }
 
-std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
+void x86::Argument_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    std::vector<uint8_t> instr;
+    if (use16BitPrefix) buffer.push_back(prefix16Bit);
+    if (use16BitAddressPrefix) buffer.push_back(addressPrefix16Bit);
 
-    if (use16BitPrefix) instr.push_back(prefix16Bit);
-    if (use16BitAddressPrefix) instr.push_back(addressPrefix16Bit);
+    if (rex.use) buffer.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
 
-    if (rex.use) instr.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
-
-    instr.push_back(opcode);
+    buffer.push_back(opcode);
 
     if (modrm.use)
     {
-        if (sib.use) instr.push_back(getModRM(modrm.mod, modrm.reg, modRMSIB));
-        else        instr.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
+        if (sib.use) buffer.push_back(getModRM(modrm.mod, modrm.reg, modRMSIB));
+        else         buffer.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
     }
 
-    if (sib.use) instr.push_back(getSIB(sib.scale, sib.index, modrm.rm));
+    if (sib.use) buffer.push_back(getSIB(sib.scale, sib.index, modrm.rm));
 
     bool directAddressing = false;
     if (use16BitAddressing) directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == 6);
@@ -2084,7 +2070,7 @@ std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
     // TODO: FIXME: EVERYTHING
     if (modrm.mod == Mod::INDIRECT_DISP8)
     {
-        instr.push_back(static_cast<uint8_t>(displacement_value));
+        buffer.push_back(static_cast<uint8_t>(displacement_value));
 
         if (usedReloc)
         {
@@ -2113,10 +2099,10 @@ std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
         if (use16BitAddressing) sizeInBytes = 2;
         else                    sizeInBytes = 4;
 
-        uint64_t oldSize = instr.size();
-        instr.resize(oldSize + sizeInBytes);
+        uint64_t oldSize = buffer.size();
+        buffer.resize(oldSize + sizeInBytes);
 
-        std::memcpy(instr.data() + oldSize, &displacement_value, sizeInBytes);
+        std::memcpy(buffer.data() + oldSize, &displacement_value, sizeInBytes);
 
         if (usedReloc)
         {
@@ -2143,8 +2129,6 @@ std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
             );
         }
     }
-
-    return instr;
 }
 
 uint64_t x86::Argument_ALU_Instruction::size()

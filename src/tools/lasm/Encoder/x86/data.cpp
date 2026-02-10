@@ -941,19 +941,17 @@ void x86::Mov_Instruction::evaluate()
     }
 }
 
-std::vector<uint8_t> x86::Mov_Instruction::encode()
+void x86::Mov_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    std::vector<uint8_t> instr;
+    if (use16BitPrefix) buffer.push_back(prefix16Bit);
 
-    if (use16BitPrefix) instr.push_back(prefix16Bit);
+    if (rex.use) buffer.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
 
-    if (rex.use) instr.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
+    if (useOpcodeEscape) buffer.push_back(opcodeEscape);
 
-    if (useOpcodeEscape) instr.push_back(opcodeEscape);
+    buffer.push_back(opcode);
 
-    instr.push_back(opcode);
-
-    if (modrm.use) instr.push_back(::x86::getModRM(modrm.mod, modrm.reg, modrm.rm));
+    if (modrm.use) buffer.push_back(::x86::getModRM(modrm.mod, modrm.reg, modrm.rm));
 
     switch (movType)
     {
@@ -967,10 +965,10 @@ std::vector<uint8_t> x86::Mov_Instruction::encode()
         {
             uint32_t sizeInBytes = specific.mov_reg_imm.sizeInBits / 8;
 
-            uint64_t oldSize = instr.size();
-            instr.resize(oldSize + sizeInBytes);
+            uint64_t oldSize = buffer.size();
+            buffer.resize(oldSize + sizeInBytes);
 
-            std::memcpy(instr.data() + oldSize, &specific.mov_reg_imm.value, sizeInBytes);
+            std::memcpy(buffer.data() + oldSize, &specific.mov_reg_imm.value, sizeInBytes);
 
             if (usedReloc)
             {
@@ -1008,8 +1006,6 @@ std::vector<uint8_t> x86::Mov_Instruction::encode()
         default:
             throw Exception::InternalError("Unknown movType", -1, -1);
     }
-
-    return instr;
 }
 
 uint64_t x86::Mov_Instruction::size()

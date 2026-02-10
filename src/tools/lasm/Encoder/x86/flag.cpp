@@ -48,9 +48,9 @@ x86::Simple_Flag_Instruction::Simple_Flag_Instruction(::Encoder::Encoder& e, Bit
     }
 }
 
-std::vector<uint8_t> x86::Simple_Flag_Instruction::encode()
+void x86::Simple_Flag_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    return {opcode};
+    buffer.push_back(opcode);
 }
 
 uint64_t x86::Simple_Flag_Instruction::size()

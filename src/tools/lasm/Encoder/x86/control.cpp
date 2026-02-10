@@ -20,9 +20,9 @@ x86::Simple_Control_Instruction::Simple_Control_Instruction(::Encoder::Encoder& 
     }
 }
 
-std::vector<uint8_t> x86::Simple_Control_Instruction::encode()
+void x86::Simple_Control_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    return {opcode};
+    buffer.push_back(opcode);
 }
 
 uint64_t x86::Simple_Control_Instruction::size()

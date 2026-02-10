@@ -51,7 +51,7 @@ void x86::Argument_Interrupt_Instruction::evaluate()
     }
 }
 
-std::vector<uint8_t> x86::Argument_Interrupt_Instruction::encode()
+void x86::Argument_Interrupt_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
     if (usedReloc)
     {
@@ -67,7 +67,8 @@ std::vector<uint8_t> x86::Argument_Interrupt_Instruction::encode()
         );
     }
 
-    return {opcode, argument_value};
+    buffer.push_back(opcode);
+    buffer.push_back(argument_value);
 }
 
 uint64_t x86::Argument_Interrupt_Instruction::size()
@@ -137,18 +138,14 @@ x86::Simple_Interrupt_Instruction::Simple_Interrupt_Instruction(::Encoder::Encod
     }
 }
 
-std::vector<uint8_t> x86::Simple_Interrupt_Instruction::encode()
+void x86::Simple_Interrupt_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    std::vector<uint8_t> instr;
+    if (use16BitPrefix) buffer.push_back(prefix16Bit);
+    if (rex.use) buffer.push_back(getRex(rex.w, rex.r, rex.x, rex.b));
 
-    if (use16BitPrefix) instr.push_back(prefix16Bit);
-    if (rex.use) instr.push_back(getRex(rex.w, rex.r, rex.x, rex.b));
-
-    if (useOpcodeEscape) instr.push_back(opcodeEscape);
+    if (useOpcodeEscape) buffer.push_back(opcodeEscape);
             
-    instr.push_back(opcode);
-
-    return instr;
+    buffer.push_back(opcode);
 }
 
 uint64_t x86::Simple_Interrupt_Instruction::size()

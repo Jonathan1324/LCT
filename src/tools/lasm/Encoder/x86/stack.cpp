@@ -90,15 +90,11 @@ x86::Simple_Stack_Instruction::Simple_Stack_Instruction(::Encoder::Encoder& e, B
     }
 }
 
-std::vector<uint8_t> x86::Simple_Stack_Instruction::encode()
+void x86::Simple_Stack_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    std::vector<uint8_t> instr;
+    if (use16BitPrefix) buffer.push_back(prefix16Bit);
 
-    if (use16BitPrefix) instr.push_back(prefix16Bit);
-
-    instr.push_back(opcode);
-
-    return instr;
+    buffer.push_back(opcode);
 }
 
 uint64_t x86::Simple_Stack_Instruction::size()

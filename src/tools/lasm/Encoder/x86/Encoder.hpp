@@ -24,7 +24,11 @@ namespace x86
     public:
         virtual ~Instruction() {};
 
+        std::vector<uint8_t> encode() override;
+
     protected:
+        virtual void encodeS(std::vector<uint8_t>& buffer) = 0;
+
         Instruction(::Encoder::Encoder& e) : ::Encoder::Encoder::Instruction(e) {}
 
         uint8_t opcode;
