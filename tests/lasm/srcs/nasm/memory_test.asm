@@ -8,4 +8,4 @@ section .text
     global _start
 
 _start:
-    not dword [rbp - 8]
+    not word [eax]

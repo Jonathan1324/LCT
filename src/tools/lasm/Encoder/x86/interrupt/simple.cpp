@@ -73,7 +73,6 @@ bool x86::Simple_Interrupt_Instruction::optimize()
 
 void x86::Simple_Interrupt_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    if (use16BitPrefix) buffer.push_back(prefix16Bit);
     if (rex.use) buffer.push_back(getRex(rex.w, rex.r, rex.x, rex.b));
 
     if (useOpcodeEscape) buffer.push_back(opcodeEscape);
@@ -81,11 +80,10 @@ void x86::Simple_Interrupt_Instruction::encodeS(std::vector<uint8_t>& buffer)
     buffer.push_back(opcode);
 }
 
-uint64_t x86::Simple_Interrupt_Instruction::size()
+uint64_t x86::Simple_Interrupt_Instruction::sizeS()
 {
     uint64_t s = 1;
 
-    if (use16BitPrefix) s++;
     if (rex.use) s++;
 
     if (useOpcodeEscape) s++;

@@ -73,7 +73,7 @@ void x86::Argument_Interrupt_Instruction::encodeS(std::vector<uint8_t>& buffer)
     buffer.push_back(argument_value);
 }
 
-uint64_t x86::Argument_Interrupt_Instruction::size()
+uint64_t x86::Argument_Interrupt_Instruction::sizeS()
 {
     return 2;
 }

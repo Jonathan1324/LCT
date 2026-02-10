@@ -84,6 +84,23 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
 std::vector<uint8_t> x86::Instruction::encode()
 {
     std::vector<uint8_t> buffer;
+
+    if (use16BitPrefix) buffer.push_back(prefix16Bit);
+    if (use16BitAddressPrefix) buffer.push_back(addressPrefix16Bit);
+
     encodeS(buffer);
+
     return buffer;
+}
+
+uint64_t x86::Instruction::size()
+{
+    uint64_t s = 0;
+
+    if (use16BitPrefix) s++;
+    if (use16BitAddressPrefix) s++;
+
+    s += sizeS();
+
+    return s;
 }

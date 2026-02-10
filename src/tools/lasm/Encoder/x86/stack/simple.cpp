@@ -99,16 +99,12 @@ bool x86::Simple_Stack_Instruction::optimize()
 
 void x86::Simple_Stack_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    if (use16BitPrefix) buffer.push_back(prefix16Bit);
-
     buffer.push_back(opcode);
 }
 
-uint64_t x86::Simple_Stack_Instruction::size()
+uint64_t x86::Simple_Stack_Instruction::sizeS()
 {
     uint64_t s = 1;
-
-    if (use16BitPrefix) s++;
 
     return s;
 }

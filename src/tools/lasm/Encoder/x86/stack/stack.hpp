@@ -15,6 +15,6 @@ namespace x86 {
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 
-        uint64_t size() override;
+        uint64_t sizeS() override;
     };
 }
