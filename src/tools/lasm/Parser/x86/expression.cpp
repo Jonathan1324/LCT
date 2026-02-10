@@ -72,6 +72,7 @@ std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parseExpression()
         node->op = op;
         node->left = left;
         node->right = right;
+
         left = node;
     }
 
@@ -93,6 +94,7 @@ std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parseTerm()
         node->op = op;
         node->left = left;
         node->right = right;
+
         left = node;
     }
 
@@ -111,6 +113,7 @@ std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parseUnary()
         node->type = ExprNode::Type::UNARY_OP;
         node->unary_op = op;
         node->operand = operand;
+
         return node;
     }
 
@@ -186,122 +189,10 @@ uint64_t ExpressionParser::getRegister(const std::string& s)
         return regIt->second;
 }
 
+// TODO: Add
 std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::simplify(std::shared_ptr<ExprNode> e)
 {
     if (!e) return nullptr;
-
-    if (e->left) e->left = simplify(e->left);
-    if (e->right) e->right = simplify(e->right);
-    if (e->operand) e->operand = simplify(e->operand);
-
-    bool leftHasReg = hasRegister(e->left);
-    bool rightHasReg = hasRegister(e->right);
-
-    if (e->left && e->right && 
-        e->left->type == ExprNode::Type::NUMBER && e->right->type == ExprNode::Type::NUMBER)
-    {
-        uint64_t result = 0;
-        bool valid = true;
-
-        switch (e->op)
-        {
-            case '+': result = e->left->value + e->right->value; break;
-            case '-': result = e->left->value - e->right->value; break;
-            case '*': result = e->left->value * e->right->value; break;
-            case '/':
-                if (e->right->value != 0) result = e->left->value / e->right->value;
-                else valid = false;
-                break;
-            case '%':
-                if (e->right->value != 0) result = e->left->value % e->right->value;
-                else valid = false;
-                break;
-        }
-
-        if (valid)
-        {
-            std::shared_ptr<ExpressionParser::ExprNode> newNode = std::make_shared<ExprNode>();
-            newNode->type = ExprNode::Type::NUMBER;
-            newNode->value = result;
-            return newNode;
-        }
-    }
-
-    if ((e->op == '*' || e->op == '/') && rightHasReg && e->right && e->right->type == ExprNode::Type::BINARY_OP)
-    {
-        char rightOp = e->right->op;
-        if (rightOp == '+' || rightOp == '-')
-        {
-            std::shared_ptr<ExpressionParser::ExprNode> a = e->left;
-            std::shared_ptr<ExpressionParser::ExprNode> b = e->right->left;
-            std::shared_ptr<ExpressionParser::ExprNode> reg = e->right->right;
-            char op = e->right->op;
-
-            std::shared_ptr<ExpressionParser::ExprNode> leftMult = std::make_shared<ExprNode>();
-            leftMult->type = ExprNode::Type::BINARY_OP;
-            leftMult->op = e->op;
-            leftMult->left = a;
-            leftMult->right = b;
-
-            std::shared_ptr<ExpressionParser::ExprNode> rightMult = std::make_shared<ExprNode>();
-            rightMult->type = ExprNode::Type::BINARY_OP;
-            rightMult->op = e->op;
-            rightMult->left = a;
-            rightMult->right = reg;
-
-            std::shared_ptr<ExpressionParser::ExprNode> result = std::make_shared<ExprNode>();
-            result->type = ExprNode::Type::BINARY_OP;
-            result->op = op;
-            result->left = leftMult;
-            result->right = rightMult;
-
-            return simplify(result);
-        }
-    }
-
-    if ((e->op == '+' || e->op == '-') && leftHasReg && e->left && e->left->type == ExprNode::Type::BINARY_OP)
-    {
-        char leftOp = e->left->op;
-        if (leftOp == '+' || leftOp == '-')
-        {
-            std::shared_ptr<ExpressionParser::ExprNode> reg = e->left->left;
-            std::shared_ptr<ExpressionParser::ExprNode> a = e->left->right;
-            std::shared_ptr<ExpressionParser::ExprNode> b = e->right;
-
-            std::shared_ptr<ExpressionParser::ExprNode> newRight = std::make_shared<ExprNode>();
-            newRight->type = ExprNode::Type::BINARY_OP;
-            newRight->op = e->op;
-            newRight->left = a;
-            newRight->right = b;
-
-            std::shared_ptr<ExpressionParser::ExprNode> result = std::make_shared<ExprNode>();
-            result->type = ExprNode::Type::BINARY_OP;
-            result->op = leftOp;
-            result->left = reg;
-            result->right = newRight;
-
-            return simplify(result);
-        }
-    }
-
-    if ((leftHasReg || rightHasReg) && (e->op == '/' || e->op == '%'))
-    {
-        throw std::runtime_error("Cannot simplify: register in division or modulo");
-    }
-
-    if (e->op == '*' && (leftHasReg || rightHasReg))
-    {
-        if (e->left && e->left->type == ExprNode::Type::BINARY_OP && 
-            (e->left->op == '+' || e->left->op == '-') && hasRegister(e->left))
-        {
-            throw std::runtime_error("Cannot simplify: register in addition/subtraction under multiplication");
-        }
-        if (e->right && e->right->type == ExprNode::Type::BINARY_OP && 
-            (e->right->op == '+' || e->right->op == '-') && hasRegister(e->right))
-        {
-            throw std::runtime_error("Cannot simplify: register in addition/subtraction under multiplication");
-        }
-    }
 
     return e;
 }
@@ -394,8 +285,6 @@ Parser::Immediate ExpressionParser::convertToImmediate(std::shared_ptr<ExprNode>
 
     throw std::runtime_error("Unsupported node type in addressing mode");
 }
-
-// TODO: Make better
 
 struct WorkItem {
     std::shared_ptr<ExpressionParser::ExprNode> node;

@@ -58,6 +58,7 @@
     if (mode.has_displacement)
     {
         mem.use_displacement = true;
+        exprParser.printTree(mode.displacement);
         mem.displacement = exprParser.convertToImmediate(mode.displacement);
     }
 

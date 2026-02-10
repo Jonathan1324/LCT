@@ -2061,7 +2061,7 @@ void x86::Argument_ALU_Instruction::evaluate()
 
             // TODO: Check for overflow
 
-            displacement_value = static_cast<uint64_t>(result);
+            displacement_value = static_cast<uint64_t>(static_cast<int64_t>(result));
         }
     }
 }

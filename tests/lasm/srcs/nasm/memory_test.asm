@@ -8,4 +8,4 @@ section .text
     global _start
 
 _start:
-    not dword [esp - 136]
+    not dword [rax - 1000 + _start + rax + rax]
