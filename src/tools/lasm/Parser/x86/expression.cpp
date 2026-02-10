@@ -298,6 +298,8 @@ ExpressionParser::AddressingMode ExpressionParser::extractAddressingMode(std::sh
     if (!e) return mode;
 
     std::unordered_map<uint64_t, std::vector<std::shared_ptr<ExprNode>>> regTerms;
+    std::vector<uint64_t> regs;
+
     std::vector<std::shared_ptr<ExprNode>> constTerms;
 
     std::vector<WorkItem> stack = {{e, +1}};
@@ -351,6 +353,9 @@ ExpressionParser::AddressingMode ExpressionParser::extractAddressingMode(std::sh
         }
         else if (node->type == ExprNode::Type::REGISTER)
         {
+            if (regTerms.find(node->reg) == regTerms.end())
+                regs.push_back(node->reg);
+
             if (sign == 1)
                 regTerms[node->reg].push_back(nullptr);
             else
@@ -395,18 +400,15 @@ ExpressionParser::AddressingMode ExpressionParser::extractAddressingMode(std::sh
                 factor = mul;
             }
 
+            if (regTerms.find(regNode->reg) == regTerms.end())
+                regs.push_back(regNode->reg);
+
             regTerms[regNode->reg].push_back(factor);
         }
         else
         {
             throw std::runtime_error("Invalid term in addressing mode");
         }
-    }
-
-    std::vector<uint64_t> regs;
-    for (auto& [reg, terms] : regTerms)
-    {
-        regs.push_back(reg);
     }
 
     if (regs.size() > 2)
