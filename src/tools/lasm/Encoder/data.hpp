@@ -14,6 +14,8 @@ namespace Encoder
 
             void evaluate() override;
 
+            bool optimize() override {return false;} // TODO
+
             std::vector<uint8_t> encode() override;
 
             uint64_t size() override;
@@ -24,6 +26,16 @@ namespace Encoder
 
             uint64_t bufferSize;
             std::vector<uint8_t> buffer;
+
+            struct RelocInfo {
+                uint64_t relocOffset;
+                int64_t offset;
+                std::string usedSection;
+                bool isExtern;
+                ::Encoder::RelocationSize size;
+            };
+
+            std::vector<RelocInfo> relocs;
         };
     }
 }

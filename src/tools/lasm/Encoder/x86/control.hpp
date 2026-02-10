@@ -12,6 +12,8 @@ namespace x86 {
 
         void evaluate() override {}
 
+        bool optimize() override {return false;} // TODO
+
         std::vector<uint8_t> encode() override;
 
         uint64_t size() override;

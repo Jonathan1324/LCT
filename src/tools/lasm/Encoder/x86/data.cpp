@@ -921,34 +921,10 @@ void x86::Mov_Instruction::evaluate()
 
             if (evaluation.useOffset)
             {
-                uint64_t currentOffset = 1; // opcode
-                if (use16BitPrefix) currentOffset++;
-                if (useREX) currentOffset++;
-                if (useOpcodeEscape) currentOffset++;
-                if (useModRM) currentOffset++;
-
-                specific.mov_reg_imm.value = evaluation.offset; // TODO: Check for overflow
-
-                ::Encoder::RelocationSize relocSize;
-                switch (specific.mov_reg_imm.sizeInBits)
-                {
-                    case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
-                    case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
-                    case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
-                    case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
-                    default: throw Exception::InternalError("Unknown size in bits " + std::to_string(specific.mov_reg_imm.sizeInBits), -1, -1);
-                }
-
-                AddRelocation(
-                    currentOffset,
-                    evaluation.offset,
-                    true,
-                    evaluation.usedSection,
-                    ::Encoder::RelocationType::Absolute,
-                    relocSize,
-                    false, // TODO: Check if signed
-                    evaluation.isExtern
-                );
+                usedReloc = true;
+                relocUsedSection = evaluation.usedSection;
+                relocIsExtern = evaluation.isExtern;
+                specific.mov_reg_imm.value = evaluation.offset;
             }
             else
             {
@@ -995,6 +971,36 @@ std::vector<uint8_t> x86::Mov_Instruction::encode()
             instr.resize(oldSize + sizeInBytes);
 
             std::memcpy(instr.data() + oldSize, &specific.mov_reg_imm.value, sizeInBytes);
+
+            if (usedReloc)
+            {
+                uint64_t currentOffset = 1; // opcode
+                if (use16BitPrefix) currentOffset++;
+                if (useREX) currentOffset++;
+                if (useOpcodeEscape) currentOffset++;
+                if (useModRM) currentOffset++;
+
+                ::Encoder::RelocationSize relocSize;
+                switch (specific.mov_reg_imm.sizeInBits)
+                {
+                    case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
+                    case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
+                    case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
+                    case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
+                    default: throw Exception::InternalError("Unknown size in bits " + std::to_string(specific.mov_reg_imm.sizeInBits), -1, -1);
+                }
+
+                AddRelocation(
+                    currentOffset,
+                    specific.mov_reg_imm.value,
+                    true,
+                    relocUsedSection,
+                    ::Encoder::RelocationType::Absolute,
+                    relocSize,
+                    false, // TODO: Check if signed
+                    relocIsExtern
+                );
+            }
 
             break;
         }

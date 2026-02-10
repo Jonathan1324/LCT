@@ -3,6 +3,7 @@
 #include "../Encoder.hpp"
 #include <x86/Instructions.hpp>
 #include <tuple>
+#include "x86.hpp"
 
 namespace x86
 {
@@ -16,5 +17,44 @@ namespace x86
         ::Encoder::Encoder::Instruction* GetInstruction(const Parser::Instruction::Instruction& instruction) override;
 
         std::vector<uint8_t> EncodePadding(size_t length) override;
+    };
+
+    class Instruction : public ::Encoder::Encoder::Instruction
+    {
+    public:
+        virtual ~Instruction() {};
+
+    protected:
+        Instruction(::Encoder::Encoder& e) : ::Encoder::Encoder::Instruction(e) {}
+
+        uint8_t opcode;
+        bool useOpcodeEscape = false;
+
+        bool use16BitPrefix = false;
+        bool use16BitAddressPrefix = false;
+
+        struct REX {
+            bool use = false;
+
+            bool w = false;
+            bool r = false;
+            bool x = false;
+            bool b = false;
+        } rex;
+
+        struct ModRM {
+            bool use = false;
+
+            ::x86::Mod mod;
+            uint8_t reg;
+            uint8_t rm;
+        } modrm;
+
+        struct SIB {
+            bool use = false;
+
+            uint8_t index;
+            Scale scale;
+        } sib;
     };
 }

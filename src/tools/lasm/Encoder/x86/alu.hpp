@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../Encoder.hpp"
+#include "Encoder.hpp"
 #include "x86.hpp"
 
 namespace x86 {
-    class Two_Argument_ALU_Instruction : public ::Encoder::Encoder::Instruction
+    class Two_Argument_ALU_Instruction : public ::x86::Instruction
     {
     public:
         Two_Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
@@ -12,6 +12,8 @@ namespace x86 {
         ~Two_Argument_ALU_Instruction() override {}
 
         void evaluate() override;
+
+        bool optimize() override {return false;} // TODO
 
         std::vector<uint8_t> encode() override;
 
@@ -25,8 +27,6 @@ namespace x86 {
         //       implement
 
     private:
-        uint8_t opcode;
-
         Parser::Instruction::Operand mainOperand;
         Parser::Instruction::Operand otherOperand;
 
@@ -46,27 +46,20 @@ namespace x86 {
             } alu_reg_imm;
         } specific;
 
-        bool use16BitPrefix = false;
-        
-        bool useREX = false;
-        bool rexW = false;
-        bool rexR = false;
-        bool rexX = false;
-        bool rexB = false;
-
-        bool useModRM = false;
-        ::x86::Mod mod_mod;
-        uint8_t mod_reg;
-        uint8_t mod_rm;
+        bool usedReloc = false;
+        std::string evalUsedSection;
+        bool evalIsExtern;
     };
 
-    class Mul_Div_ALU_Instruction : public ::Encoder::Encoder::Instruction
+    class Mul_Div_ALU_Instruction : public ::x86::Instruction
     {
     public:
         Mul_Div_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
         ~Mul_Div_ALU_Instruction() override {}
 
         void evaluate() override;
+
+        bool optimize() override {return false;} // TODO
 
         std::vector<uint8_t> encode() override;
 
@@ -80,8 +73,6 @@ namespace x86 {
         //       implement
 
     private:
-        uint8_t opcode;
-
         Parser::Instruction::Operand mainOperand;
         
         // Only when Two/ThreeOperands
@@ -95,35 +86,26 @@ namespace x86 {
             uint64_t value;
         } threeOperandsSpecific;
 
+        bool usedReloc = false;
+        std::string evalUsedSection;
+        bool evalIsExtern;
+
         enum class MulDivType {
             Simple,
             TwoOperands,
             ThreeOperands
         } mulDivType;
-
-        bool use16BitPrefix = false;
-        
-        bool useREX = false;
-        bool rexW = false;
-        bool rexR = false;
-        bool rexX = false;
-        bool rexB = false;
-
-        bool useOpcodeEscape = false;
-
-        bool useModRM = false;
-        ::x86::Mod mod_mod;
-        uint8_t mod_reg;
-        uint8_t mod_rm;
     };
 
-    class Shift_Rotate_ALU_Instruction : public ::Encoder::Encoder::Instruction
+    class Shift_Rotate_ALU_Instruction : public ::x86::Instruction
     {
     public:
         Shift_Rotate_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
         ~Shift_Rotate_ALU_Instruction() override {}
 
         void evaluate() override;
+
+        bool optimize() override {return false;} // TODO
 
         std::vector<uint8_t> encode() override;
 
@@ -136,29 +118,18 @@ namespace x86 {
         //       should use shift by 1 opcode when count = 1
 
     private:
-        uint8_t opcode;
+        bool usedReloc = false;
+        std::string relocUsedSection;
+        bool relocIsExtern;
 
         bool usesImmediate = false;
         uint8_t count;
 
         Parser::Instruction::Operand mainOperand;
         Parser::Instruction::Operand countOperand;
-
-        bool use16BitPrefix = false;
-        
-        bool useREX = false;
-        bool rexW = false;
-        bool rexR = false;
-        bool rexX = false;
-        bool rexB = false;
-
-        bool useModRM = false;
-        ::x86::Mod mod_mod;
-        uint8_t mod_reg;
-        uint8_t mod_rm;
     };
 
-    class Argument_ALU_Instruction : public ::Encoder::Encoder::Instruction
+    class Argument_ALU_Instruction : public ::x86::Instruction
     {
     public:
         Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
@@ -166,38 +137,26 @@ namespace x86 {
 
         void evaluate() override;
 
+        bool optimize() override;
+
         std::vector<uint8_t> encode() override;
 
         uint64_t size() override;
 
     private:
-        uint8_t opcode;
-
-        bool use16BitPrefix = false;
-        bool use16BitAddressPrefix = false;
-        
-        bool useREX = false;
-        bool rexW = false;
-        bool rexR = false;
-        bool rexX = false;
-        bool rexB = false;
-
-        bool useModRM = false;
-        ::x86::Mod mod_mod;
-        uint8_t mod_reg;
-        uint8_t mod_rm;
-
-        BitMode bitmode;
-
-        bool useSIB = false;
-        Scale sib_scale;
-        uint8_t sib_index;
+        bool usedReloc = false;
+        std::string evalUsedSection;
+        bool evalIsExtern;
 
         bool use16BitAddressing = false;
+        bool use64BitAddressing = false;
 
         bool use_displacement = false;
         bool is_displacement_signed = false;
         Parser::Immediate displacement_immediate;
-        uint64_t displacement_value = 0;
+
+        bool displacement_can_optimize = true;
+        bool displacement_optimized = false;
+        int64_t displacement_value = 0;
     };
 }

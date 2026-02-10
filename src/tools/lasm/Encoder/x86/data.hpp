@@ -13,6 +13,8 @@ namespace x86 {
 
         void evaluate() override;
 
+        bool optimize() override {return false;} // TODO
+
         std::vector<uint8_t> encode() override;
 
         uint64_t size() override;
@@ -38,6 +40,10 @@ namespace x86 {
                 uint64_t value;
             } mov_reg_imm;
         } specific;
+
+        bool usedReloc = false;
+        std::string relocUsedSection;
+        bool relocIsExtern;
 
         bool use16BitPrefix = false;
         

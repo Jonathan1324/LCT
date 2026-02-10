@@ -105,9 +105,9 @@ namespace Encoder
 
             Instruction(Encoder& e) : enc(e) {}
 
-            BitMode getBitMode() { return enc.bits; }
+            inline BitMode getBitMode() { return enc.bits; }
 
-            ::Encoder::Evaluation Evaluate(
+            inline ::Encoder::Evaluation Evaluate(
                 const Parser::Immediate& immediate
             )
             { return enc.Evaluate(immediate, enc.bytesWritten, enc.sectionOffset, enc.currentSection); }
@@ -140,6 +140,7 @@ namespace Encoder
             virtual std::vector<uint8_t> encode() = 0;
             virtual uint64_t size() = 0;
             virtual void evaluate() = 0;
+            virtual bool optimize() = 0;
         };
 
         Encoder(const Context& _context, Architecture _arch, BitMode _bits, const Parser::Parser* _parser);
@@ -155,6 +156,14 @@ namespace Encoder
         const std::vector<Relocation>& getRelocations() const { return relocations; }
         
     protected:
+        void Initialize();
+
+        void EvaluationPhase();
+        void CalculationPhase();
+        bool OptimizationPhase();
+
+        void GenerateCode();
+
         virtual Instruction* GetInstruction(const Parser::Instruction::Instruction& instruction) = 0;
 
         virtual std::vector<uint8_t> EncodePadding(size_t length) = 0;

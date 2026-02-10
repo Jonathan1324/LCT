@@ -5,7 +5,7 @@
 #include <cstring>
 
 x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::Encoder::Encoder::Instruction(e)
+    : ::x86::Instruction(e)
 {
     switch (mnemonic)
     {
@@ -115,19 +115,19 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
 
                     aluType = AluType::ALU_REG_REG;
 
-                    mod_mod = ::x86::Mod::REGISTER;
+                    modrm.mod = ::x86::Mod::REGISTER;
 
-                    useModRM = true;
+                    modrm.use = true;
 
                     auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
                     auto [otherI, otherUseREX, otherSetREX] = ::x86::getReg(otherReg.reg);
 
                     if (mainUseREX || otherUseREX)
-                        useREX = true;
+                        rex.use = true;
                     if (mainSetREX)
-                        rexB = true;
+                        rex.b = true;
                     if (otherSetREX)
-                        rexR = true;
+                        rex.r = true;
 
                     uint8_t mainRegSize = getRegSize(mainReg.reg, bits);
                     uint8_t otherRegSize = getRegSize(otherReg.reg, bits);
@@ -135,8 +135,8 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     if (mainRegSize != otherRegSize)
                         throw Exception::SemanticError("Can't use instruction with registers of different size", -1, -1);
 
-                    mod_reg = otherI;
-                    mod_rm = mainI;
+                    modrm.reg = otherI;
+                    modrm.rm = mainI;
 
                     if (mainRegSize == 8)
                     {
@@ -180,8 +180,8 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                             break;
 
                         case 64:
-                            useREX = true;
-                            rexW = true;
+                            rex.use = true;
+                            rex.w = true;
                             break;
 
                         case 8:
@@ -191,10 +191,10 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                             throw Exception::InternalError("Unknown mainRegSize", -1, -1);
                     }
 
-                    if (useREX && (mainReg.reg == AH || mainReg.reg == CH ||
-                                mainReg.reg == DH || mainReg.reg == BH ||
-                                otherReg.reg == AH || otherReg.reg == CH ||
-                                otherReg.reg == DH || otherReg.reg == BH))
+                    if (rex.use && (mainReg.reg == AH || mainReg.reg == CH ||
+                                    mainReg.reg == DH || mainReg.reg == BH ||
+                                    otherReg.reg == AH || otherReg.reg == CH ||
+                                    otherReg.reg == DH || otherReg.reg == BH))
                         throw Exception::SemanticError("Can't use high 8-bit regs using new registers", -1, -1);
                 }
                 else if (std::holds_alternative<Parser::Instruction::Memory>(otherOperand))
@@ -302,8 +302,8 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
 
                             is64bit = true;
 
-                            useREX = true;
-                            rexW = true;
+                            rex.use = true;
+                            rex.w = true;
 
                             break;
 
@@ -332,8 +332,8 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                             break;
 
                         case RAX:
-                            useREX = true;
-                            rexW = true;
+                            rex.use = true;
+                            rex.w = true;
 
                             accumulatorReg = true;
                             break;
@@ -376,17 +376,17 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     {
                         auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
 
-                        if (mainUseREX) useREX = true;
-                        if (mainSetREX) rexB = true;
+                        if (mainUseREX) rex.use = true;
+                        if (mainSetREX) rex.b = true;
 
-                        useModRM = true;
+                        modrm.use = true;
 
-                        mod_mod = Mod::REGISTER;
-                        mod_rm = mainI;
+                        modrm.mod = Mod::REGISTER;
+                        modrm.rm = mainI;
 
                         if (mnemonic == TEST)
                         {
-                            mod_reg = 0;
+                            modrm.reg = 0;
                             
                             if (specific.alu_reg_imm.sizeInBits == 8)
                             {
@@ -401,14 +401,14 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                         {
                             switch (mnemonic)
                             {
-                                case ADD: mod_reg = 0; break;
-                                case OR:  mod_reg = 1; break;
-                                case ADC: mod_reg = 2; break;
-                                case SBB: mod_reg = 3; break;
-                                case AND: mod_reg = 4; break;
-                                case SUB: mod_reg = 5; break;
-                                case XOR: mod_reg = 6; break;
-                                case CMP: mod_reg = 7; break;
+                                case ADD: modrm.reg = 0; break;
+                                case OR:  modrm.reg = 1; break;
+                                case ADC: modrm.reg = 2; break;
+                                case SBB: modrm.reg = 3; break;
+                                case AND: modrm.reg = 4; break;
+                                case SUB: modrm.reg = 5; break;
+                                case XOR: modrm.reg = 6; break;
+                                case CMP: modrm.reg = 7; break;
                             }
 
                             if (specific.alu_reg_imm.sizeInBits == 8)
@@ -464,33 +464,10 @@ void x86::Two_Argument_ALU_Instruction::evaluate()
 
             if (evaluation.useOffset)
             {
-                uint64_t currentOffset = 1; // opcode
-                if (use16BitPrefix) currentOffset++;
-                if (useREX) currentOffset++;
-                if (useModRM) currentOffset++;
-
-                specific.alu_reg_imm.value = evaluation.offset; // TODO: Check for overflow
-
-                ::Encoder::RelocationSize relocSize;
-                switch (specific.alu_reg_imm.sizeInBits)
-                {
-                    case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
-                    case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
-                    case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
-                    case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
-                    default: throw Exception::InternalError("Unknown size in bits " + std::to_string(specific.alu_reg_imm.sizeInBits), -1, -1);
-                }
-
-                AddRelocation(
-                    currentOffset,
-                    evaluation.offset,
-                    true,
-                    evaluation.usedSection,
-                    ::Encoder::RelocationType::Absolute,
-                    relocSize,
-                    false, // TODO: Check if signed
-                    evaluation.isExtern
-                );
+                usedReloc = true;
+                evalUsedSection = evaluation.usedSection;
+                evalIsExtern = evaluation.isExtern;
+                specific.alu_reg_imm.value = evaluation.offset;
             }
             else
             {
@@ -513,11 +490,11 @@ std::vector<uint8_t> x86::Two_Argument_ALU_Instruction::encode()
 
     if (use16BitPrefix) instr.push_back(prefix16Bit);
 
-    if (useREX) instr.push_back(::x86::getRex(rexW, rexR, rexX, rexB));
+    if (rex.use) instr.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
 
     instr.push_back(opcode);
 
-    if (useModRM) instr.push_back(getModRM(mod_mod, mod_reg, mod_rm));
+    if (modrm.use) instr.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
 
     switch (aluType)
     {
@@ -536,6 +513,35 @@ std::vector<uint8_t> x86::Two_Argument_ALU_Instruction::encode()
 
             std::memcpy(instr.data() + oldSize, &specific.alu_reg_imm.value, sizeInBytes);
 
+            if (usedReloc)
+            {
+                uint64_t currentOffset = 1; // opcode
+                if (use16BitPrefix) currentOffset++;
+                if (rex.use) currentOffset++;
+                if (modrm.use) currentOffset++;
+
+                ::Encoder::RelocationSize relocSize;
+                switch (specific.alu_reg_imm.sizeInBits)
+                {
+                    case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
+                    case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
+                    case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
+                    case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
+                    default: throw Exception::InternalError("Unknown size in bits " + std::to_string(specific.alu_reg_imm.sizeInBits), -1, -1);
+                }
+
+                AddRelocation(
+                    currentOffset,
+                    specific.alu_reg_imm.value,
+                    true,
+                    evalUsedSection,
+                    ::Encoder::RelocationType::Absolute,
+                    relocSize,
+                    false, // TODO: Check if signed
+                    evalIsExtern
+                );
+            }
+
             break;
         }
 
@@ -552,7 +558,7 @@ uint64_t x86::Two_Argument_ALU_Instruction::size()
 
     if (use16BitPrefix) s++;
 
-    if (useREX) s++;
+    if (rex.use) s++;
 
     switch (aluType)
     {
@@ -575,13 +581,13 @@ uint64_t x86::Two_Argument_ALU_Instruction::size()
             throw Exception::InternalError("Unknown aluType", -1, -1);
     }
 
-    if (useModRM) s++;
+    if (modrm.use) s++;
 
     return s;
 }
 
 x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::Encoder::Encoder::Instruction(e)
+    : ::x86::Instruction(e)
 {
     switch (mnemonic)
     {
@@ -653,8 +659,8 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                 auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
                 uint8_t mainRegSize = getRegSize(mainReg.reg, bits);
 
-                if (mainUseREX) useREX = true;
-                if (mainSetREX) rexR = true;
+                if (mainUseREX) rex.use = true;
+                if (mainSetREX) rex.r = true;
 
                 if (operands.size() == 2)
                 {
@@ -720,21 +726,21 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                                     throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
                         }
 
-                        mod_mod = Mod::REGISTER;
+                        modrm.mod = Mod::REGISTER;
 
-                        useModRM = true;
+                        modrm.use = true;
 
                         auto [secondI, secondUseREX, secondSetREX] = ::x86::getReg(secondReg.reg);
                         uint8_t secondRegSize = getRegSize(secondReg.reg, bits);
 
-                        if (secondUseREX) useREX = true;
-                        if (secondSetREX) rexB = true;
+                        if (secondUseREX) rex.use = true;
+                        if (secondSetREX) rex.b = true;
 
                         if (mainRegSize != secondRegSize)
                             throw Exception::SemanticError("Can't use instruction with registers of different size", -1, -1);
 
-                        mod_reg = mainI;
-                        mod_rm = secondI;
+                        modrm.reg = mainI;
+                        modrm.rm = secondI;
 
                         switch (mainRegSize)
                         {
@@ -747,8 +753,8 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                                 break;
 
                             case 64:
-                                useREX = true;
-                                rexW = true;
+                                rex.use = true;
+                                rex.w = true;
                                 break;
 
                             case 8:
@@ -835,21 +841,21 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                                     throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
                         }
 
-                        mod_mod = Mod::REGISTER;
+                        modrm.mod = Mod::REGISTER;
 
-                        useModRM = true;
+                        modrm.use = true;
 
                         auto [secondI, secondUseREX, secondSetREX] = ::x86::getReg(secondReg.reg);
                         uint8_t secondRegSize = getRegSize(secondReg.reg, bits);
 
-                        if (secondUseREX) useREX = true;
-                        if (secondSetREX) rexB = true;
+                        if (secondUseREX) rex.use = true;
+                        if (secondSetREX) rex.b = true;
 
                         if (mainRegSize != secondRegSize)
                             throw Exception::SemanticError("Can't use instruction with registers of different size", -1, -1);
                         
-                        mod_reg = mainI;
-                        mod_rm = secondI;
+                        modrm.reg = mainI;
+                        modrm.rm = secondI;
 
                         switch (mainRegSize)
                         {
@@ -873,8 +879,8 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                                 threeOperandsSpecific.max = std::numeric_limits<uint64_t>::max();
                                 threeOperandsSpecific.sizeInBits = 64;
 
-                                useREX = true;
-                                rexW = true;
+                                rex.use = true;
+                                rex.w = true;
                                 break;
 
                             case 8:
@@ -969,16 +975,16 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                             throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
                 }
 
-                mod_mod = Mod::REGISTER;
+                modrm.mod = Mod::REGISTER;
 
-                useModRM = true;
+                modrm.use = true;
 
                 auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
 
-                mod_rm = mainI;
+                modrm.rm = mainI;
 
-                if (mainUseREX) useREX = true;
-                if (mainSetREX) rexB = true;
+                if (mainUseREX) rex.use = true;
+                if (mainSetREX) rex.b = true;
 
                 uint8_t mainRegSize = getRegSize(mainReg.reg, bits);
 
@@ -993,8 +999,8 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                         break;
 
                     case 64:
-                        useREX = true;
-                        rexW = true;
+                        rex.use = true;
+                        rex.w = true;
                         break;
 
                     case 8:
@@ -1009,10 +1015,10 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
 
                 switch (mnemonic)
                 {
-                    case MUL:  mod_reg = 4; break;
-                    case IMUL: mod_reg = 5; break;
-                    case DIV:  mod_reg = 6; break;
-                    case IDIV: mod_reg = 7; break;
+                    case MUL:  modrm.reg = 4; break;
+                    case IMUL: modrm.reg = 5; break;
+                    case DIV:  modrm.reg = 6; break;
+                    case IDIV: modrm.reg = 7; break;
                 }
             }
             else
@@ -1040,34 +1046,10 @@ void x86::Mul_Div_ALU_Instruction::evaluate()
 
             if (evaluation.useOffset)
             {
-                uint64_t currentOffset = 1; // Opcode
-                if (use16BitPrefix) currentOffset++;
-                if (useREX) currentOffset++;
-                if (useOpcodeEscape) currentOffset++;
-                if (useModRM) currentOffset++;
-
-                threeOperandsSpecific.value = evaluation.offset; // TODO: Check for overflow
-
-                ::Encoder::RelocationSize relocSize;
-                switch (threeOperandsSpecific.sizeInBits)
-                {
-                    case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
-                    case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
-                    case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
-                    case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
-                    default: throw Exception::InternalError("Unknown size in bits " + std::to_string(threeOperandsSpecific.sizeInBits), -1, -1);
-                }
-
-                AddRelocation(
-                    currentOffset,
-                    evaluation.offset,
-                    true,
-                    evaluation.usedSection,
-                    ::Encoder::RelocationType::Absolute,
-                    relocSize,
-                    false, // TODO: Check if signed
-                    evaluation.isExtern
-                );
+                usedReloc = true;
+                evalUsedSection = evaluation.usedSection;
+                evalIsExtern = evaluation.isExtern;
+                threeOperandsSpecific.value = evaluation.offset;
             }
             else
             {
@@ -1090,13 +1072,13 @@ std::vector<uint8_t> x86::Mul_Div_ALU_Instruction::encode()
 
     if (use16BitPrefix) instr.push_back(prefix16Bit);
 
-    if (useREX) instr.push_back(::x86::getRex(rexW, rexR, rexX, rexB));
+    if (rex.use) instr.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
 
     if (useOpcodeEscape) instr.push_back(opcodeEscape);
 
     instr.push_back(opcode);
 
-    if (useModRM) instr.push_back(getModRM(mod_mod, mod_reg, mod_rm));
+    if (modrm.use) instr.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
 
     switch (mulDivType)
     {
@@ -1110,6 +1092,36 @@ std::vector<uint8_t> x86::Mul_Div_ALU_Instruction::encode()
             instr.resize(oldSize + sizeInBytes);
 
             std::memcpy(instr.data() + oldSize, &threeOperandsSpecific.value, sizeInBytes);
+
+            if (usedReloc)
+            {
+                uint64_t currentOffset = 1; // Opcode
+                if (use16BitPrefix) currentOffset++;
+                if (rex.use) currentOffset++;
+                if (useOpcodeEscape) currentOffset++;
+                if (modrm.use) currentOffset++;
+
+                ::Encoder::RelocationSize relocSize;
+                switch (threeOperandsSpecific.sizeInBits)
+                {
+                    case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
+                    case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
+                    case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
+                    case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
+                    default: throw Exception::InternalError("Unknown size in bits " + std::to_string(threeOperandsSpecific.sizeInBits), -1, -1);
+                }
+
+                AddRelocation(
+                    currentOffset,
+                    threeOperandsSpecific.value,
+                    true,
+                    evalUsedSection,
+                    ::Encoder::RelocationType::Absolute,
+                    relocSize,
+                    false, // TODO: Check if signed
+                    evalIsExtern
+                );
+            }
 
             break;
         }
@@ -1127,11 +1139,11 @@ uint64_t x86::Mul_Div_ALU_Instruction::size()
 
     if (use16BitPrefix) s++;
 
-    if (useREX) s++;
+    if (rex.use) s++;
 
     if (useOpcodeEscape) s++;
 
-    if (useModRM) s++;
+    if (modrm.use) s++;
 
     switch (mulDivType)
     {
@@ -1154,7 +1166,7 @@ uint64_t x86::Mul_Div_ALU_Instruction::size()
 }
 
 x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::Encoder::Encoder::Instruction(e)
+    : ::x86::Instruction(e)
 {
     switch (mnemonic)
     {
@@ -1230,31 +1242,31 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
                     if (countReg.reg != Registers::CL)
                         throw Exception::InternalError("2 operand of shift/rotate instruction needs to be CL", -1, -1);
 
-                    mod_mod = Mod::REGISTER;
+                    modrm.mod = Mod::REGISTER;
 
-                    useModRM = true;
+                    modrm.use = true;
 
                     auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
                     uint8_t mainRegSize = getRegSize(mainReg.reg, bits);
 
-                    if (mainUseREX) useREX = true;
-                    if (mainSetREX) rexB = true;
+                    if (mainUseREX) rex.use = true;
+                    if (mainSetREX) rex.b = true;
 
-                    mod_rm = mainI;
+                    modrm.rm = mainI;
 
                     if (mainRegSize == 8) opcode = 0xD2;
                     else                  opcode = 0xD3;
 
                     switch (mnemonic)
                     {
-                        case Instructions::ROL: mod_reg = 0; break;
-                        case Instructions::ROR: mod_reg = 1; break;
-                        case Instructions::RCL: mod_reg = 2; break;
-                        case Instructions::RCR: mod_reg = 3; break;
+                        case Instructions::ROL: modrm.reg = 0; break;
+                        case Instructions::ROR: modrm.reg = 1; break;
+                        case Instructions::RCL: modrm.reg = 2; break;
+                        case Instructions::RCR: modrm.reg = 3; break;
                         case Instructions::SHL: case Instructions::SAL:
-                            mod_reg = 4; break;
-                        case Instructions::SHR: mod_reg = 5; break;
-                        case Instructions::SAR: mod_reg = 7; break;
+                            modrm.reg = 4; break;
+                        case Instructions::SHR: modrm.reg = 5; break;
+                        case Instructions::SAR: modrm.reg = 7; break;
                     }
 
                     switch (mainRegSize)
@@ -1268,8 +1280,8 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
                             break;
 
                         case 64:
-                            useREX = true;
-                            rexW = true;
+                            rex.use = true;
+                            rex.w = true;
                             break;
 
                         case 8:
@@ -1288,31 +1300,31 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
                 {
                     usesImmediate = true;
 
-                    mod_mod = Mod::REGISTER;
+                    modrm.mod = Mod::REGISTER;
 
-                    useModRM = true;
+                    modrm.use = true;
 
                     auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
                     uint8_t mainRegSize = getRegSize(mainReg.reg, bits);
 
-                    if (mainUseREX) useREX = true;
-                    if (mainSetREX) rexB = true;
+                    if (mainUseREX) rex.use = true;
+                    if (mainSetREX) rex.b = true;
 
-                    mod_rm = mainI;
+                    modrm.rm = mainI;
 
                     if (mainRegSize == 8) opcode = 0xC0;
                     else                  opcode = 0xC1;
 
                     switch (mnemonic)
                     {
-                        case Instructions::ROL: mod_reg = 0; break;
-                        case Instructions::ROR: mod_reg = 1; break;
-                        case Instructions::RCL: mod_reg = 2; break;
-                        case Instructions::RCR: mod_reg = 3; break;
+                        case Instructions::ROL: modrm.reg = 0; break;
+                        case Instructions::ROR: modrm.reg = 1; break;
+                        case Instructions::RCL: modrm.reg = 2; break;
+                        case Instructions::RCR: modrm.reg = 3; break;
                         case Instructions::SHL: case Instructions::SAL:
-                            mod_reg = 4; break;
-                        case Instructions::SHR: mod_reg = 5; break;
-                        case Instructions::SAR: mod_reg = 7; break;
+                            modrm.reg = 4; break;
+                        case Instructions::SHR: modrm.reg = 5; break;
+                        case Instructions::SAR: modrm.reg = 7; break;
                     }
 
                     switch (mainRegSize)
@@ -1326,8 +1338,8 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
                             break;
 
                         case 64:
-                            useREX = true;
-                            rexW = true;
+                            rex.use = true;
+                            rex.w = true;
                             break;
 
                         case 8:
@@ -1376,23 +1388,10 @@ void x86::Shift_Rotate_ALU_Instruction::evaluate()
 
         if (evaluation.useOffset)
         {
-            uint64_t currentOffset = 1; // opcode
-            if (use16BitPrefix) currentOffset++;
-            if (useREX) currentOffset++;
-            if (useModRM) currentOffset++;
-
+            usedReloc = true;
+            relocUsedSection = evaluation.usedSection;
+            relocIsExtern = evaluation.isExtern;
             count = static_cast<uint8_t>(evaluation.offset); // TODO: Check for overflow
-
-            AddRelocation(
-                currentOffset,
-                evaluation.offset,
-                true,
-                evaluation.usedSection,
-                ::Encoder::RelocationType::Absolute,
-                ::Encoder::RelocationSize::Bit8,
-                false, // TODO: Check if signed
-                evaluation.isExtern
-            );
         }
         else
         {
@@ -1412,15 +1411,34 @@ std::vector<uint8_t> x86::Shift_Rotate_ALU_Instruction::encode()
 
     if (use16BitPrefix) instr.push_back(prefix16Bit);
 
-    if (useREX) instr.push_back(::x86::getRex(rexW, rexR, rexX, rexB));
+    if (rex.use) instr.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
 
     instr.push_back(opcode);
 
-    if (useModRM) instr.push_back(getModRM(mod_mod, mod_reg, mod_rm));
+    if (modrm.use) instr.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
 
     if (usesImmediate)
     {
         instr.push_back(count);
+
+        if (usedReloc)
+        {
+            uint64_t currentOffset = 1; // opcode
+            if (use16BitPrefix) currentOffset++;
+            if (rex.use) currentOffset++;
+            if (modrm.use) currentOffset++;
+
+            AddRelocation(
+                currentOffset,
+                static_cast<uint64_t>(count),
+                true,
+                relocUsedSection,
+                ::Encoder::RelocationType::Absolute,
+                ::Encoder::RelocationSize::Bit8,
+                false, // TODO: Check if signed
+                relocIsExtern
+            );
+        }
     }
 
     return instr;
@@ -1432,9 +1450,9 @@ uint64_t x86::Shift_Rotate_ALU_Instruction::size()
 
     if (use16BitPrefix) s++;
 
-    if (useREX) s++;
+    if (rex.use) s++;
 
-    if (useModRM) s++;
+    if (modrm.use) s++;
 
     if (usesImmediate) s++;
 
@@ -1442,9 +1460,8 @@ uint64_t x86::Shift_Rotate_ALU_Instruction::size()
 }
 
 x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::Encoder::Encoder::Instruction(e)
+    : ::x86::Instruction(e)
 {
-    bitmode = bits;
     switch (mnemonic)
     {
         case Instructions::NOT: case Instructions::NEG:
@@ -1509,17 +1526,17 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                             throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
                 }
 
-                useModRM = true;
+                modrm.use = true;
 
-                mod_mod = Mod::REGISTER;
+                modrm.mod = Mod::REGISTER;
 
                 auto [idx, regUseREX, regSetREX] = getReg(reg.reg);
                 uint8_t regSize = getRegSize(reg.reg, bits);
 
-                if (regUseREX) useREX = true;
-                if (regSetREX) rexB = true;
+                if (regUseREX) rex.use = true;
+                if (regSetREX) rex.b = true;
 
-                mod_rm = idx;
+                modrm.rm = idx;
 
                 if (regSize == 8)
                 {
@@ -1538,11 +1555,11 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                 switch (mnemonic)
                 {
-                    case Instructions::NOT: mod_reg = 2; break;
-                    case Instructions::NEG: mod_reg = 3; break;
+                    case Instructions::NOT: modrm.reg = 2; break;
+                    case Instructions::NEG: modrm.reg = 3; break;
 
-                    case Instructions::INC: mod_reg = 0; break;
-                    case Instructions::DEC: mod_reg = 1; break;
+                    case Instructions::INC: modrm.reg = 0; break;
+                    case Instructions::DEC: modrm.reg = 1; break;
                 }
 
                 switch (regSize)
@@ -1556,8 +1573,8 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         break;
 
                     case 64:
-                        useREX = true;
-                        rexW = true;
+                        rex.use = true;
+                        rex.w = true;
                         break;
 
                     case 8:
@@ -1570,7 +1587,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                 if (bits != BitMode::Bits64 && regSize != 8 &&
                     (mnemonic == Instructions::INC || mnemonic == Instructions::DEC))
                 {
-                    useModRM = false;
+                    modrm.use = false;
 
                     if (mnemonic == Instructions::INC)
                         opcode = 0x40 + idx;
@@ -1582,9 +1599,9 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
             {
                 Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(operand);
                 
-                useModRM = true;
+                modrm.use = true;
 
-                mod_mod = Mod::INDIRECT;
+                modrm.mod = Mod::INDIRECT;
 
                 if (mem.pointer_size == Parser::Instruction::Memory::NO_POINTER_SIZE)
                     throw Exception::SyntaxError("Pointer size not specified for memory operand", -1, -1);
@@ -1622,7 +1639,8 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                 uint64_t scale;
 
-                if (mem_reg_size == 16) use16BitAddressing = true;
+                if      (mem_reg_size == 16) use16BitAddressing = true;
+                else if (mem_reg_size == 64) use64BitAddressing = true;
 
                 // FIXME: Fix
                 if (mem.use_reg1 && mem.use_reg2)
@@ -1807,10 +1825,10 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     {
                         switch (scale)
                         {
-                            case 1: sib_scale = Scale::x1; break;
-                            case 2: sib_scale = Scale::x2; break;
-                            case 4: sib_scale = Scale::x4; break;
-                            case 8: sib_scale = Scale::x8; break;
+                            case 1: sib.scale = Scale::x1; break;
+                            case 2: sib.scale = Scale::x2; break;
+                            case 4: sib.scale = Scale::x4; break;
+                            case 8: sib.scale = Scale::x8; break;
                             default:
                                 throw Exception::SemanticError("Scale must be 1, 2, 4, or 8", -1, -1); // TODO
                         }
@@ -1862,7 +1880,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         addressing_mode = 6;  // Direct address
                     }
 
-                    mod_rm = addressing_mode;
+                    modrm.rm = addressing_mode;
 
                     if (mem.use_displacement)
                     {
@@ -1870,13 +1888,13 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         displacement_immediate = mem.displacement;
 
                         if (addressing_mode == 6)  // Direct address
-                            mod_mod = Mod::INDIRECT;
+                            modrm.mod = Mod::INDIRECT;
                         else
-                            mod_mod = Mod::INDIRECT_DISP32;
+                            modrm.mod = Mod::INDIRECT_DISP32;
                     }
                     else
                     {
-                        mod_mod = Mod::INDIRECT;
+                        modrm.mod = Mod::INDIRECT;
                     }
                 }
                 else // 32,64
@@ -1895,26 +1913,26 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     {
                         auto [baseI, baseUseREX, baseSetREX] = getReg(baseReg);
 
-                        if (baseUseREX) useREX = true;
-                        if (baseSetREX) rexB = true;
+                        if (baseUseREX) rex.use = true;
+                        if (baseSetREX) rex.b = true;
 
-                        mod_rm = baseI;
+                        modrm.rm = baseI;
 
-                        sib_index = SIB_NoIndex;
-                        if (baseI == modRMSIB) useSIB = true;
+                        sib.index = SIB_NoIndex;
+                        if (baseI == modRMSIB) sib.use = true;
 
                         if (baseI == modRMDisp)
                         {
-                            mod_mod = Mod::INDIRECT_DISP8;
+                            modrm.mod = Mod::INDIRECT_DISP8;
                         }
                     }
                     else if (hasIndex)
                     {
-                        mod_mod = Mod::INDIRECT;
-                        mod_rm = modRMDisp;
+                        modrm.mod = Mod::INDIRECT;
+                        modrm.rm = modRMDisp;
                         
-                        useSIB = true;
-                        sib_index = SIB_NoIndex;
+                        sib.use = true;
+                        sib.index = SIB_NoIndex;
                     }
 
                     if (hasIndex)
@@ -1924,16 +1942,16 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         if (indexI == SIB_NoIndex && !indexSetREX)
                             throw Exception::SemanticError("Can't use ESP/RSP as index register", -1, -1);
 
-                        if (indexUseREX) useREX = true;
-                        if (indexSetREX) rexX = true;
+                        if (indexUseREX) rex.use = true;
+                        if (indexSetREX) rex.x = true;
 
-                        useSIB = true;
-                        sib_index = indexI;
+                        sib.use = true;
+                        sib.index = indexI;
                     }
 
                     if (mem.use_displacement)
                     {
-                        if (hasBase) mod_mod = Mod::INDIRECT_DISP32;
+                        if (hasBase) modrm.mod = Mod::INDIRECT_DISP32;
 
                         use_displacement = true;
                         displacement_immediate = mem.displacement;
@@ -1942,17 +1960,17 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         {
                             if (bits == BitMode::Bits64)
                             {
-                                mod_mod = Mod::INDIRECT;
-                                mod_rm = modRMDisp;
+                                modrm.mod = Mod::INDIRECT;
+                                modrm.rm = modRMDisp;
                             
-                                useSIB = true;
-                                sib_scale = Scale::x1;
-                                sib_index = SIB_NoIndex;
+                                sib.use = true;
+                                sib.scale = Scale::x1;
+                                sib.index = SIB_NoIndex;
                             }
                             else
                             {
-                                mod_mod = Mod::INDIRECT;
-                                mod_rm = modRMDisp;
+                                modrm.mod = Mod::INDIRECT;
+                                modrm.rm = modRMDisp;
                             }
                         }
                     }
@@ -1975,11 +1993,11 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                 switch (mnemonic)
                 {
-                    case Instructions::NOT: mod_reg = 2; break;
-                    case Instructions::NEG: mod_reg = 3; break;
+                    case Instructions::NOT: modrm.reg = 2; break;
+                    case Instructions::NEG: modrm.reg = 3; break;
 
-                    case Instructions::INC: mod_reg = 0; break;
-                    case Instructions::DEC: mod_reg = 1; break;
+                    case Instructions::INC: modrm.reg = 0; break;
+                    case Instructions::DEC: modrm.reg = 1; break;
                 }
 
                 switch (mem.pointer_size)
@@ -1995,8 +2013,8 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     case 64:
                         if (bits != BitMode::Bits64)
                                 throw Exception::SemanticError("Can't use 64 bit size of memory in 16/32 bit", -1, -1);
-                        useREX = true;
-                        rexW = true;
+                        rex.use = true;
+                        rex.w = true;
                         break;
 
                     case 8:
@@ -2023,37 +2041,11 @@ void x86::Argument_ALU_Instruction::evaluate()
 
         if (evaluation.useOffset)
         {
-            // TODO
-            uint64_t currentOffset = 1; // opcode
-            if (use16BitPrefix) currentOffset++;
-            if (use16BitAddressPrefix) currentOffset++;
-            if (useREX) currentOffset++;
-            if (useModRM) currentOffset++;
-            if (useSIB) currentOffset++;
-
-            displacement_value = evaluation.offset; // TODO: Check for overflow
-
-            ::Encoder::RelocationSize relocSize;
-            if (mod_mod == Mod::INDIRECT_DISP8)
-            {
-                relocSize = ::Encoder::RelocationSize::Bit8;
-            }
-            else // DISP32 or mod_rm = modRMDisp
-            {
-                if (use16BitAddressing) relocSize = ::Encoder::RelocationSize::Bit16;
-                else                    relocSize = ::Encoder::RelocationSize::Bit32;
-            }
-
-            AddRelocation(
-                currentOffset,
-                evaluation.offset,
-                true,
-                evaluation.usedSection,
-                ::Encoder::RelocationType::Absolute,
-                relocSize,
-                is_displacement_signed,
-                evaluation.isExtern
-            );
+            usedReloc = true;
+            evalUsedSection = evaluation.usedSection;
+            evalIsExtern = evaluation.isExtern;
+            displacement_value = evaluation.offset;
+            displacement_can_optimize = false;
         }
         else
         {
@@ -2061,7 +2053,7 @@ void x86::Argument_ALU_Instruction::evaluate()
 
             // TODO: Check for overflow
 
-            displacement_value = static_cast<uint64_t>(static_cast<int64_t>(result));
+            displacement_value = static_cast<uint64_t>(result);
         }
     }
 }
@@ -2073,28 +2065,49 @@ std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
     if (use16BitPrefix) instr.push_back(prefix16Bit);
     if (use16BitAddressPrefix) instr.push_back(addressPrefix16Bit);
 
-    if (useREX) instr.push_back(::x86::getRex(rexW, rexR, rexX, rexB));
+    if (rex.use) instr.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
 
     instr.push_back(opcode);
 
-    if (useModRM)
+    if (modrm.use)
     {
-        if (useSIB) instr.push_back(getModRM(mod_mod, mod_reg, modRMSIB));
-        else        instr.push_back(getModRM(mod_mod, mod_reg, mod_rm));
+        if (sib.use) instr.push_back(getModRM(modrm.mod, modrm.reg, modRMSIB));
+        else        instr.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
     }
 
-    if (useSIB) instr.push_back(getSIB(sib_scale, sib_index, mod_rm));
+    if (sib.use) instr.push_back(getSIB(sib.scale, sib.index, modrm.rm));
 
     bool directAddressing = false;
-    if (use16BitAddressing) directAddressing = (mod_mod == Mod::INDIRECT && mod_rm == 6);
-    else                    directAddressing = (mod_mod == Mod::INDIRECT && mod_rm == modRMDisp);
+    if (use16BitAddressing) directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == 6);
+    else                    directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == modRMDisp);
 
     // TODO: FIXME: EVERYTHING
-    if (mod_mod == Mod::INDIRECT_DISP8)
+    if (modrm.mod == Mod::INDIRECT_DISP8)
     {
         instr.push_back(static_cast<uint8_t>(displacement_value));
+
+        if (usedReloc)
+        {
+            uint64_t currentOffset = 1; // opcode
+            if (use16BitPrefix) currentOffset++;
+            if (use16BitAddressPrefix) currentOffset++;
+            if (rex.use) currentOffset++;
+            if (modrm.use) currentOffset++;
+            if (sib.use) currentOffset++;
+
+            AddRelocation(
+                currentOffset,
+                displacement_value,
+                true,
+                evalUsedSection,
+                ::Encoder::RelocationType::Absolute,
+                ::Encoder::RelocationSize::Bit8,
+                is_displacement_signed,
+                evalIsExtern
+            );
+        }
     }
-    else if (mod_mod == Mod::INDIRECT_DISP32 || directAddressing)
+    else if (modrm.mod == Mod::INDIRECT_DISP32 || directAddressing)
     {
         uint32_t sizeInBytes;
         if (use16BitAddressing) sizeInBytes = 2;
@@ -2104,6 +2117,31 @@ std::vector<uint8_t> x86::Argument_ALU_Instruction::encode()
         instr.resize(oldSize + sizeInBytes);
 
         std::memcpy(instr.data() + oldSize, &displacement_value, sizeInBytes);
+
+        if (usedReloc)
+        {
+            uint64_t currentOffset = 1; // opcode
+            if (use16BitPrefix) currentOffset++;
+            if (use16BitAddressPrefix) currentOffset++;
+            if (rex.use) currentOffset++;
+            if (modrm.use) currentOffset++;
+            if (sib.use) currentOffset++;
+
+            ::Encoder::RelocationSize relocSize;
+            if (use16BitAddressing) relocSize = ::Encoder::RelocationSize::Bit16;
+            else                    relocSize = ::Encoder::RelocationSize::Bit32;
+
+            AddRelocation(
+                currentOffset,
+                displacement_value,
+                true,
+                evalUsedSection,
+                ::Encoder::RelocationType::Absolute,
+                relocSize,
+                is_displacement_signed,
+                evalIsExtern
+            );
+        }
     }
 
     return instr;
@@ -2116,23 +2154,40 @@ uint64_t x86::Argument_ALU_Instruction::size()
     if (use16BitPrefix) s++;
     if (use16BitAddressPrefix) s++;
 
-    if (useREX) s++;
+    if (rex.use) s++;
 
-    if (useModRM) s++;
+    if (modrm.use) s++;
 
-    if (useSIB) s++;
+    if (sib.use) s++;
 
     bool directAddressing = false;
-    if (use16BitAddressing) directAddressing = (mod_mod == Mod::INDIRECT && mod_rm == 6);
-    else                    directAddressing = (mod_mod == Mod::INDIRECT && mod_rm == modRMDisp);
+    if (use16BitAddressing) directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == 6);
+    else                    directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == modRMDisp);
 
     // TODO: FIXME: EVERYTHING
-    if      (mod_mod == Mod::INDIRECT_DISP8)  s++;
-    else if (mod_mod == Mod::INDIRECT_DISP32 || directAddressing)
+    if      (modrm.mod == Mod::INDIRECT_DISP8)  s++;
+    else if (modrm.mod == Mod::INDIRECT_DISP32 || directAddressing)
     {
         if (use16BitAddressing) s += 2;
         else                    s += 4;
     }
 
     return s;
+}
+
+bool x86::Argument_ALU_Instruction::optimize()
+{
+    if (use_displacement && modrm.mod != Mod::INDIRECT && displacement_can_optimize && !displacement_optimized)
+    {
+        if (displacement_value < -128 || displacement_value > 127)
+            return false;
+
+        displacement_optimized = true;
+
+        modrm.mod = Mod::INDIRECT_DISP8;
+
+        return true;
+    }
+    
+    return false;
 }

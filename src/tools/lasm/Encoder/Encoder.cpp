@@ -17,6 +17,21 @@ Encoder::Encoder::Encoder(const Context& _context, Architecture _arch, BitMode _
 
 void Encoder::Encoder::Encode()
 {
+    Initialize();
+
+    bool changed = true;
+    while (changed)
+    {
+        CalculationPhase();
+        EvaluationPhase();
+        changed = OptimizationPhase();
+    }
+
+    GenerateCode();
+}
+
+void Encoder::Encoder::Initialize()
+{
     const std::vector<Parser::Section>& parsedSections = parser->getSections();
     sections.clear();
 
@@ -125,7 +140,42 @@ void Encoder::Encoder::Encode()
 
         sections.push_back(sec);
     }
+}
 
+void Encoder::Encoder::EvaluationPhase()
+{
+    bytesWritten = 0;
+    for (auto& section : sections)
+    {
+        currentSection = &section.name;
+        sectionOffset = 0;
+
+        for (const SectionEntry& entry : section.instructions)
+        {
+            if (entry.isInstruction())
+            {
+                Instruction* instruction = entry.getInstruction();
+                instruction->evaluate();
+
+                uint64_t size = instruction->size();
+
+                sectionOffset += size;
+                bytesWritten += size;
+            }
+            else if (entry.isLabel() || entry.isConstant())
+            {
+                // Ignore
+            }
+            else
+            {
+                throw Exception::InternalError("Couldn't find logic for Encoder::SectionEntry", -1, -1);
+            }
+        }
+    }
+}
+
+void Encoder::Encoder::CalculationPhase()
+{
     bytesWritten = 0;
     for (auto& section : sections)
     {
@@ -182,7 +232,50 @@ void Encoder::Encoder::Encode()
     }
 
     resolveConstants(true);
+}
 
+bool Encoder::Encoder::OptimizationPhase()
+{
+    bool changed = false;
+
+    bytesWritten = 0;
+    for (auto& section : sections)
+    {
+        sectionStarts[section.name] = bytesWritten;
+        currentSection = &section.name;
+        sectionOffset = 0;
+
+        for (const SectionEntry& entry : section.instructions)
+        {
+            if (entry.isInstruction())
+            {
+                Instruction* instruction = entry.getInstruction();
+
+                if (instruction->optimize())
+                    changed = true;
+
+                uint64_t size = instruction->size();
+
+                sectionOffset += size;
+                bytesWritten += size;
+            }
+            else if (entry.isLabel() || entry.isConstant())
+            {
+                // Ignore
+            }
+            else
+            {
+                throw Exception::InternalError("Couldn't find logic for Encoder::SectionEntry", -1, -1);
+            }
+        }
+    }
+
+    return changed;
+}
+
+void Encoder::Encoder::GenerateCode()
+{
+    relocations.clear();
 
     bytesWritten = 0;
     for (auto& section : sections)
@@ -196,7 +289,6 @@ void Encoder::Encoder::Encode()
             {
                 Instruction* instruction = entry.getInstruction();
 
-                instruction->evaluate();
                 std::vector<uint8_t> encoded = instruction->encode();
                 uint64_t size = instruction->size();
 

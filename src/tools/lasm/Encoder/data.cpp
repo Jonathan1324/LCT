@@ -26,10 +26,12 @@ void Encoder::Data::Data_Instruction::evaluate()
 {
     buffer.clear();
 
+    uint64_t offset = 0;
     for (const Parser::Immediate& value : values)
     {
         Evaluation evaluation = Evaluate(value);
 
+        offset += valueSize;
         if (evaluation.useOffset)
         {
             for (size_t i = 0; i < valueSize; i++)
@@ -38,28 +40,24 @@ void Encoder::Data::Data_Instruction::evaluate()
                 buffer.push_back(byte);
             }
 
-            ::Encoder::RelocationSize relocSize;
+            RelocInfo relocInfo;
+            relocInfo.relocOffset = offset;
+            relocInfo.offset = evaluation.offset;
+            relocInfo.usedSection = evaluation.usedSection;
+            relocInfo.isExtern = evaluation.isExtern;
+
             switch (valueSize)
             {
-                case 1: relocSize = ::Encoder::RelocationSize::Bit8; break;
-                case 2: relocSize = ::Encoder::RelocationSize::Bit16; break;
-                case 3: relocSize = ::Encoder::RelocationSize::Bit24; break;
-                case 4: relocSize = ::Encoder::RelocationSize::Bit32; break;
-                case 8: relocSize = ::Encoder::RelocationSize::Bit64; break;
+                case 1: relocInfo.size = ::Encoder::RelocationSize::Bit8; break;
+                case 2: relocInfo.size = ::Encoder::RelocationSize::Bit16; break;
+                case 3: relocInfo.size = ::Encoder::RelocationSize::Bit24; break;
+                case 4: relocInfo.size = ::Encoder::RelocationSize::Bit32; break;
+                case 8: relocInfo.size = ::Encoder::RelocationSize::Bit64; break;
 
                 default: throw Exception::InternalError("Unknown size in bits " + std::to_string(valueSize), -1, -1);
             }
 
-            AddRelocation(
-                0,
-                evaluation.offset,
-                true,
-                evaluation.usedSection,
-                RelocationType::Absolute,
-                relocSize,
-                false, // TODO: Check if signed
-                evaluation.isExtern
-            );
+            relocs.push_back(std::move(relocInfo));
         }
         else
         {
@@ -74,6 +72,20 @@ void Encoder::Data::Data_Instruction::evaluate()
 
 std::vector<uint8_t> Encoder::Data::Data_Instruction::encode()
 {
+    for (const RelocInfo& relocInfo : relocs)
+    {
+        AddRelocation(
+            relocInfo.relocOffset,
+            relocInfo.offset,
+            true,
+            relocInfo.usedSection,
+            RelocationType::Absolute,
+            relocInfo.size,
+            false, // TODO: Check if signed
+            relocInfo.isExtern
+        );
+    }
+
     return buffer;
 }
 

@@ -35,18 +35,10 @@ void x86::Argument_Interrupt_Instruction::evaluate()
 
     if (evaluation.useOffset)
     {
+        usedReloc = true;
+        relocUsedSection = evaluation.usedSection;
+        relocIsExtern = evaluation.isExtern;
         argument_value = static_cast<uint8_t>(evaluation.offset); // TODO: Check for overflow
-
-        AddRelocation(
-            1, // opcode
-            evaluation.offset,
-            true,
-            evaluation.usedSection,
-            ::Encoder::RelocationType::Absolute,
-            ::Encoder::RelocationSize::Bit8,
-            false, // Not signed
-            evaluation.isExtern
-        );
     }
     else
     {
@@ -61,6 +53,20 @@ void x86::Argument_Interrupt_Instruction::evaluate()
 
 std::vector<uint8_t> x86::Argument_Interrupt_Instruction::encode()
 {
+    if (usedReloc)
+    {
+        AddRelocation(
+            1, // opcode
+            static_cast<uint64_t>(argument_value),
+            true,
+            relocUsedSection,
+            ::Encoder::RelocationType::Absolute,
+            ::Encoder::RelocationSize::Bit8,
+            false, // Not signed
+            relocIsExtern
+        );
+    }
+
     return {opcode, argument_value};
 }
 
