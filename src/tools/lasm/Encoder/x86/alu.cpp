@@ -1817,10 +1817,6 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     }
                 }
 
-                std::cout << "Base: " << hasBase << "," << baseReg << std::endl;
-                std::cout << "Index: " << hasIndex << "," << indexReg << std::endl;
-                std::cout << "Scale: " << hasIndex << "," << scale << std::endl;
-
                 if (mem_reg_size == 16)
                 {
                     if (bits == BitMode::Bits64)

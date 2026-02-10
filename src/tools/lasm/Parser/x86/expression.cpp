@@ -395,7 +395,13 @@ Parser::Immediate ExpressionParser::convertToImmediate(std::shared_ptr<ExprNode>
     throw std::runtime_error("Unsupported node type in addressing mode");
 }
 
-// FIXME
+// TODO: Make better
+
+struct WorkItem {
+    std::shared_ptr<ExpressionParser::ExprNode> node;
+    int sign;
+};
+
 ExpressionParser::AddressingMode ExpressionParser::extractAddressingMode(std::shared_ptr<ExprNode> e)
 {
     AddressingMode mode;
@@ -405,42 +411,102 @@ ExpressionParser::AddressingMode ExpressionParser::extractAddressingMode(std::sh
     std::unordered_map<uint64_t, std::vector<std::shared_ptr<ExprNode>>> regTerms;
     std::vector<std::shared_ptr<ExprNode>> constTerms;
 
-    std::vector<std::shared_ptr<ExprNode>> stack = {e};
+    std::vector<WorkItem> stack = {{e, +1}};
     
     while (!stack.empty())
     {
-        auto node = stack.back();
+        auto [node, sign] = stack.back();
         stack.pop_back();
 
         if (!node) continue;
 
         if (node->type == ExprNode::Type::BINARY_OP && node->op == '+')
         {
-            stack.push_back(node->right);
-            stack.push_back(node->left);
+            stack.push_back({node->right, sign});
+            stack.push_back({node->left, sign});
+        }
+        else if (node->type == ExprNode::Type::BINARY_OP && node->op == '-')
+        {
+            stack.push_back({node->right, -sign});
+            stack.push_back({node->left, sign});
+        }
+        else if (node->type == ExprNode::Type::UNARY_OP && node->op == '+')
+        {
+            stack.push_back({node->operand, sign});
+        }
+        else if (node->type == ExprNode::Type::UNARY_OP && node->op == '-')
+        {
+            stack.push_back({node->operand, -sign});
         }
         else if (node->type == ExprNode::Type::NUMBER || node->type == ExprNode::Type::LABEL)
         {
-            constTerms.push_back(node);
-        }
-        else if (node->type == ExprNode::Type::REGISTER)
-        {
-            regTerms[node->reg].push_back(nullptr);
-        }
-        else if (node->type == ExprNode::Type::BINARY_OP && node->op == '*')
-        {
-            if (node->left->type == ExprNode::Type::REGISTER)
+            if (sign == 1)
             {
-                regTerms[node->left->reg].push_back(node->right);
-            }
-            else if (node->right->type == ExprNode::Type::REGISTER)
-            {
-                regTerms[node->right->reg].push_back(node->left);
+                constTerms.push_back(node);
             }
             else
             {
-                throw std::runtime_error("Invalid multiplication in addressing mode");
+                std::shared_ptr<ExprNode> mul = std::make_shared<ExprNode>();
+                mul->type = ExprNode::Type::BINARY_OP;
+                mul->op = '*';
+
+                std::shared_ptr<ExprNode> minusOne = std::make_shared<ExprNode>();
+                minusOne->type = ExprNode::Type::NUMBER;
+                minusOne->value = -1;
+
+                mul->left = minusOne;
+                mul->right = node;
+
+                constTerms.push_back(mul);
             }
+        }
+        else if (node->type == ExprNode::Type::REGISTER)
+        {
+            if (sign == 1)
+                regTerms[node->reg].push_back(nullptr);
+            else
+            {
+                std::shared_ptr<ExprNode> minusOne = std::make_shared<ExprNode>();
+                minusOne->type = ExprNode::Type::NUMBER;
+                minusOne->value = -1;
+                regTerms[node->reg].push_back(minusOne);
+            }
+        }
+        else if (node->type == ExprNode::Type::BINARY_OP && node->op == '*')
+        {
+            std::shared_ptr<ExprNode> regNode = nullptr;
+            std::shared_ptr<ExprNode> factor = nullptr;
+
+            if (node->left->type == ExprNode::Type::REGISTER)
+            {
+                regNode = node->left;
+                factor = node->right;
+            }
+            else if (node->right->type == ExprNode::Type::REGISTER)
+            {
+                regNode = node->right;
+                factor = node->left;
+            }
+            else
+                throw std::runtime_error("Invalid multiplication in addressing mode");
+
+            if (sign == -1)
+            {
+                std::shared_ptr<ExprNode> mul = std::make_shared<ExprNode>();
+                mul->type = ExprNode::Type::BINARY_OP;
+                mul->op = '*';
+
+                std::shared_ptr<ExprNode> minusOne = std::make_shared<ExprNode>();
+                minusOne->type = ExprNode::Type::NUMBER;
+                minusOne->value = -1;
+
+                mul->left = minusOne;
+                mul->right = node;
+
+                factor = mul;
+            }
+
+            regTerms[regNode->reg].push_back(factor);
         }
         else
         {
