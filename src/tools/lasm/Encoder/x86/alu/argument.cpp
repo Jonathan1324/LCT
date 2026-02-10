@@ -16,107 +16,69 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
             Parser::Instruction::Operand operand = operands[0];
 
+            uint64_t size;
             if (std::holds_alternative<Parser::Instruction::Register>(operand))
             {
                 Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(operand);
+                size = parseRegister(reg, bits, Parser::Instruction::Memory::NO_POINTER_SIZE, false);
+            }
+            else if (std::holds_alternative<Parser::Instruction::Memory>(operand))
+            {
+                Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(operand);
+                size = parseMemory(mem, bits, Parser::Instruction::Memory::NO_POINTER_SIZE);
+            }
 
-                switch (reg.reg)
-                {
-                    case SPL:
-                    case BPL:
-                    case SIL:
-                    case DIL:
-                    case R8B:
-                    case R9B:
-                    case R10B:
-                    case R11B:
-                    case R12B:
-                    case R13B:
-                    case R14B:
-                    case R15B:
-                    case R8W:
-                    case R9W:
-                    case R10W:
-                    case R11W:
-                    case R12W:
-                    case R13W:
-                    case R14W:
-                    case R15W:
-                    case R8D:
-                    case R9D:
-                    case R10D:
-                    case R11D:
-                    case R12D:
-                    case R13D:
-                    case R14D:
-                    case R15D:
-                    case RAX:
-                    case RCX:
-                    case RDX:
-                    case RBX:
-                    case RSP:
-                    case RBP:
-                    case RSI:
-                    case RDI:
-                    case R8:
-                    case R9:
-                    case R10:
-                    case R11:
-                    case R12:
-                    case R13:
-                    case R14:
-                    case R15:
-                        if (bits != BitMode::Bits64)
-                            throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
-                }
+            if (size == 8)
+            {
+                if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
+                    opcode = 0xF6;
+                else // INC, DEC
+                    opcode = 0xFE;
+            }
+            else
+            {
+                if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
+                    opcode = 0xF7;
+                else // INC, DEC
+                    opcode = 0xFF;
+            }
 
-                uint64_t size = parseRegister(reg, bits, Parser::Instruction::Memory::NO_POINTER_SIZE, false);
+            switch (mnemonic)
+            {
+                case Instructions::NOT: modrm.reg = 2; break;
+                case Instructions::NEG: modrm.reg = 3; break;
 
-                if (size == 8)
-                {
-                    if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
-                        opcode = 0xF6;
-                    else // INC, DEC
-                        opcode = 0xFE;
-                }
-                else
-                {
-                    if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
-                        opcode = 0xF7;
-                    else // INC, DEC
-                        opcode = 0xFF;
-                }
+                case Instructions::INC: modrm.reg = 0; break;
+                case Instructions::DEC: modrm.reg = 1; break;
+            }
 
-                switch (mnemonic)
-                {
-                    case Instructions::NOT: modrm.reg = 2; break;
-                    case Instructions::NEG: modrm.reg = 3; break;
+            switch (size)
+            {
+                case 16:
+                    if (bits != BitMode::Bits16) use16BitPrefix = true;
+                    break;
+                
+                case 32:
+                    if (bits == BitMode::Bits16) use16BitPrefix = true;
+                    break;
 
-                    case Instructions::INC: modrm.reg = 0; break;
-                    case Instructions::DEC: modrm.reg = 1; break;
-                }
+                case 64:
+                    if (bits != BitMode::Bits64)
+                            throw Exception::SemanticError("Can't use 64 bit size in 16/32 bit", -1, -1);
+                    rex.use = true;
+                    rex.w = true;
+                    break;
 
-                switch (size)
-                {
-                    case 16:
-                        if (bits != BitMode::Bits16) use16BitPrefix = true;
-                        break;
-                    
-                    case 32:
-                        if (bits == BitMode::Bits16) use16BitPrefix = true;
-                        break;
+                case 8:
+                    break;
 
-                    case 64:
-                        rex.use = true;
-                        rex.w = true;
-                        break;
+                default:
+                    throw Exception::InternalError("Invalid size", -1, -1);
+            }
 
-                    case 8:
-                        break;
-
-                    default:
-                        throw Exception::InternalError("Unknown mainRegSize", -1, -1);
-                }
+            if (std::holds_alternative<Parser::Instruction::Register>(operand))
+            {
+                Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(operand);
 
                 if (bits != BitMode::Bits64 && size != 8 &&
                     (mnemonic == Instructions::INC || mnemonic == Instructions::DEC))
@@ -127,60 +89,6 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         opcode = 0x40 + getRegIndex(reg);
                     else // DEC
                         opcode = 0x48 + getRegIndex(reg);
-                }
-            }
-            else if (std::holds_alternative<Parser::Instruction::Memory>(operand))
-            {
-                Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(operand);
-                
-                uint64_t size = parseMemory(mem, bits, Parser::Instruction::Memory::NO_POINTER_SIZE);
-
-                if (size == 8)
-                {
-                    if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
-                        opcode = 0xF6;
-                    else // INC, DEC
-                        opcode = 0xFE;
-                }
-                else
-                {
-                    if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
-                        opcode = 0xF7;
-                    else // INC, DEC
-                        opcode = 0xFF;
-                }
-
-                switch (mnemonic)
-                {
-                    case Instructions::NOT: modrm.reg = 2; break;
-                    case Instructions::NEG: modrm.reg = 3; break;
-
-                    case Instructions::INC: modrm.reg = 0; break;
-                    case Instructions::DEC: modrm.reg = 1; break;
-                }
-
-                switch (size)
-                {
-                    case 16:
-                        if (bits != BitMode::Bits16) use16BitPrefix = true;
-                        break;
-                    
-                    case 32:
-                        if (bits == BitMode::Bits16) use16BitPrefix = true;
-                        break;
-
-                    case 64:
-                        if (bits != BitMode::Bits64)
-                                throw Exception::SemanticError("Can't use 64 bit size of memory in 16/32 bit", -1, -1);
-                        rex.use = true;
-                        rex.w = true;
-                        break;
-
-                    case 8:
-                        break;
-
-                    default:
-                        throw Exception::InternalError("Unknown mainRegSize", -1, -1);
                 }
             }
 

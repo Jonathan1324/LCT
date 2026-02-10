@@ -424,6 +424,8 @@ uint64_t ::x86::Instruction::parseRegister(
     uint64_t expectedSize,
     bool isReg
 ) {
+    checkReg(reg, bits);
+
     modrm.use = true;
     modrm.mod = Mod::REGISTER;
 

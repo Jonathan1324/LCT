@@ -282,3 +282,56 @@ bool x86::Instruction::optimizeDisplacement()
 
     return false;
 }
+
+void x86::Instruction::checkReg(const Parser::Instruction::Register& reg, BitMode bits)
+{
+    if (bits == BitMode::Bits64) return;
+    switch (reg.reg)
+    {
+        case SPL:
+        case BPL:
+        case SIL:
+        case DIL:
+        case R8B:
+        case R9B:
+        case R10B:
+        case R11B:
+        case R12B:
+        case R13B:
+        case R14B:
+        case R15B:
+        case R8W:
+        case R9W:
+        case R10W:
+        case R11W:
+        case R12W:
+        case R13W:
+        case R14W:
+        case R15W:
+        case R8D:
+        case R9D:
+        case R10D:
+        case R11D:
+        case R12D:
+        case R13D:
+        case R14D:
+        case R15D:
+        case RAX:
+        case RCX:
+        case RDX:
+        case RBX:
+        case RSP:
+        case RBP:
+        case RSI:
+        case RDI:
+        case R8:
+        case R9:
+        case R10:
+        case R11:
+        case R12:
+        case R13:
+        case R14:
+        case R15:
+            throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
+    }
+}

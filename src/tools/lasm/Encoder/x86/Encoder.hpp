@@ -56,6 +56,8 @@ namespace x86
             return std::get<0>(getReg(reg.reg));
         }
 
+        void checkReg(const Parser::Instruction::Register& reg, BitMode bits);
+
         Instruction(::Encoder::Encoder& e) : ::Encoder::Encoder::Instruction(e) {}
 
         bool use16BitPrefix = false;
