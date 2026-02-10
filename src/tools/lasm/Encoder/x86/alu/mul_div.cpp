@@ -19,304 +19,136 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
             {
                 if (!std::holds_alternative<Parser::Instruction::Register>(mainOperand))
                 {
-                    throw Exception::SyntaxError("2/3 Operand imul: first operand can't be memory", -1, -1);
+                    throw Exception::SyntaxError("First Operand of 2/3 imul has to be a register", -1, -1);
                 }
                 Parser::Instruction::Register mainReg = std::get<Parser::Instruction::Register>(mainOperand);
+                uint64_t mainSize = parseRegister(mainReg, bits, Parser::Instruction::Memory::NO_POINTER_SIZE, true);
 
-                switch (mainReg.reg)
-                {
-                    case SPL:
-                    case BPL:
-                    case SIL:
-                    case DIL:
-                    case R8B:
-                    case R9B:
-                    case R10B:
-                    case R11B:
-                    case R12B:
-                    case R13B:
-                    case R14B:
-                    case R15B:
-                    case R8W:
-                    case R9W:
-                    case R10W:
-                    case R11W:
-                    case R12W:
-                    case R13W:
-                    case R14W:
-                    case R15W:
-                    case R8D:
-                    case R9D:
-                    case R10D:
-                    case R11D:
-                    case R12D:
-                    case R13D:
-                    case R14D:
-                    case R15D:
-                    case RAX:
-                    case RCX:
-                    case RDX:
-                    case RBX:
-                    case RSP:
-                    case RBP:
-                    case RSI:
-                    case RDI:
-                    case R8:
-                    case R9:
-                    case R10:
-                    case R11:
-                    case R12:
-                    case R13:
-                    case R14:
-                    case R15:
-                        if (bits != BitMode::Bits64)
-                            throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
-                }
-
-                auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
-                uint8_t mainRegSize = getRegSize(mainReg.reg, bits);
-
-                if (mainUseREX) rex.use = true;
-                if (mainSetREX) rex.r = true;
+                if (!isGPR(mainReg.reg))
+                    throw Exception::SemanticError("Mul/Div ALU instruction only accepts GPRs", -1, -1);
 
                 if (operands.size() == 2)
                 {
+                    secondOperand = operands[1];
+
+                    uint64_t secondSize;
+                    if (std::holds_alternative<Parser::Instruction::Register>(secondOperand))
+                    {
+                        Parser::Instruction::Register secondReg = std::get<Parser::Instruction::Register>(secondOperand);
+                        secondSize = parseRegister(secondReg, bits, mainSize, false);
+
+                        if (!isGPR(secondReg.reg))
+                            throw Exception::SemanticError("Mul/Div ALU instruction only accepts GPRs", -1, -1);
+                    }
+                    else if (std::holds_alternative<Parser::Instruction::Memory>(secondOperand))
+                    {
+                        Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(secondOperand);
+                        secondSize = parseMemory(mem, bits, mainSize);
+                    }
+                    else
+                    {
+                        throw Exception::InternalError("Immediate not allowed for 2 operand imul instruction", -1, -1);
+                    }
+
                     mulDivType = MulDivType::TwoOperands;
 
                     useOpcodeEscape = true;
                     
                     opcode = 0xAF;
 
-                    secondOperand = operands[1];
+                    if (mainSize != secondSize)
+                        throw Exception::SemanticError("Can't use instruction with operands of different size", -1, -1);
 
-                    if (std::holds_alternative<Parser::Instruction::Register>(secondOperand))
+                    switch (mainSize)
                     {
-                        Parser::Instruction::Register secondReg = std::get<Parser::Instruction::Register>(secondOperand);
+                        case 16:
+                            if (bits != BitMode::Bits16) use16BitPrefix = true;
+                            break;
+                        
+                        case 32:
+                            if (bits == BitMode::Bits16) use16BitPrefix = true;
+                            break;
 
-                        switch (secondReg.reg)
-                        {
-                            case SPL:
-                            case BPL:
-                            case SIL:
-                            case DIL:
-                            case R8B:
-                            case R9B:
-                            case R10B:
-                            case R11B:
-                            case R12B:
-                            case R13B:
-                            case R14B:
-                            case R15B:
-                            case R8W:
-                            case R9W:
-                            case R10W:
-                            case R11W:
-                            case R12W:
-                            case R13W:
-                            case R14W:
-                            case R15W:
-                            case R8D:
-                            case R9D:
-                            case R10D:
-                            case R11D:
-                            case R12D:
-                            case R13D:
-                            case R14D:
-                            case R15D:
-                            case RAX:
-                            case RCX:
-                            case RDX:
-                            case RBX:
-                            case RSP:
-                            case RBP:
-                            case RSI:
-                            case RDI:
-                            case R8:
-                            case R9:
-                            case R10:
-                            case R11:
-                            case R12:
-                            case R13:
-                            case R14:
-                            case R15:
-                                if (bits != BitMode::Bits64)
-                                    throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
-                        }
+                        case 64:
+                            rex.use = true;
+                            rex.w = true;
+                            break;
 
-                        modrm.mod = Mod::REGISTER;
+                        case 8:
+                            throw Exception::SemanticError("Can't use 2 operand imul with 8 bit registers", -1, -1);
+                            break;
 
-                        modrm.use = true;
-
-                        auto [secondI, secondUseREX, secondSetREX] = ::x86::getReg(secondReg.reg);
-                        uint8_t secondRegSize = getRegSize(secondReg.reg, bits);
-
-                        if (secondUseREX) rex.use = true;
-                        if (secondSetREX) rex.b = true;
-
-                        if (mainRegSize != secondRegSize)
-                            throw Exception::SemanticError("Can't use instruction with registers of different size", -1, -1);
-
-                        modrm.reg = mainI;
-                        modrm.rm = secondI;
-
-                        switch (mainRegSize)
-                        {
-                            case 16:
-                                if (bits != BitMode::Bits16) use16BitPrefix = true;
-                                break;
-                            
-                            case 32:
-                                if (bits == BitMode::Bits16) use16BitPrefix = true;
-                                break;
-
-                            case 64:
-                                rex.use = true;
-                                rex.w = true;
-                                break;
-
-                            case 8:
-                                throw Exception::SemanticError("Can't use 2 operand imul with 8 bit registers", -1, -1);
-                                break;
-
-                            default:
-                                throw Exception::InternalError("Unknown mainRegSize", -1, -1);
-                        }
-                    }
-                    else if (std::holds_alternative<Parser::Instruction::Memory>(secondOperand))
-                    {
-                        throw Exception::InternalError("Memory not supported yet", -1, -1);
-                        // TODO
-                    }
-                    else
-                    {
-                        throw Exception::InternalError("Immediate not allowed for 2 operand imul instruction", -1, -1);
+                        default:
+                            throw Exception::InternalError("Unknown mainRegSize", -1, -1);
                     }
                 }
                 else if (operands.size() == 3)
                 {
-                    mulDivType = MulDivType::ThreeOperands;
-
-                    opcode = 0x69;
-
                     secondOperand = operands[1];
-                    
-                    if (!std::holds_alternative<Parser::Immediate>(operands[2]))
-                        throw Exception::InternalError("imul 3 operands: third operands needs to be an immediate", -1, -1);
-                    thirdOperand = std::get<Parser::Immediate>(operands[2]);
 
+                    uint64_t secondSize;
                     if (std::holds_alternative<Parser::Instruction::Register>(secondOperand))
                     {
                         Parser::Instruction::Register secondReg = std::get<Parser::Instruction::Register>(secondOperand);
+                        secondSize = parseRegister(secondReg, bits, mainSize, false);
 
-                        switch (secondReg.reg)
-                        {
-                            case SPL:
-                            case BPL:
-                            case SIL:
-                            case DIL:
-                            case R8B:
-                            case R9B:
-                            case R10B:
-                            case R11B:
-                            case R12B:
-                            case R13B:
-                            case R14B:
-                            case R15B:
-                            case R8W:
-                            case R9W:
-                            case R10W:
-                            case R11W:
-                            case R12W:
-                            case R13W:
-                            case R14W:
-                            case R15W:
-                            case R8D:
-                            case R9D:
-                            case R10D:
-                            case R11D:
-                            case R12D:
-                            case R13D:
-                            case R14D:
-                            case R15D:
-                            case RAX:
-                            case RCX:
-                            case RDX:
-                            case RBX:
-                            case RSP:
-                            case RBP:
-                            case RSI:
-                            case RDI:
-                            case R8:
-                            case R9:
-                            case R10:
-                            case R11:
-                            case R12:
-                            case R13:
-                            case R14:
-                            case R15:
-                                if (bits != BitMode::Bits64)
-                                    throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
-                        }
-
-                        modrm.mod = Mod::REGISTER;
-
-                        modrm.use = true;
-
-                        auto [secondI, secondUseREX, secondSetREX] = ::x86::getReg(secondReg.reg);
-                        uint8_t secondRegSize = getRegSize(secondReg.reg, bits);
-
-                        if (secondUseREX) rex.use = true;
-                        if (secondSetREX) rex.b = true;
-
-                        if (mainRegSize != secondRegSize)
-                            throw Exception::SemanticError("Can't use instruction with registers of different size", -1, -1);
-                        
-                        modrm.reg = mainI;
-                        modrm.rm = secondI;
-
-                        switch (mainRegSize)
-                        {
-                            case 16:
-                                if (bits != BitMode::Bits16) use16BitPrefix = true;
-
-                                threeOperandsSpecific.max = std::numeric_limits<uint16_t>::max();
-                                threeOperandsSpecific.sizeInBits = 16;
-
-                                break;
-                            
-                            case 32:
-                                if (bits == BitMode::Bits16) use16BitPrefix = true;
-
-                                threeOperandsSpecific.max = std::numeric_limits<uint32_t>::max();
-                                threeOperandsSpecific.sizeInBits = 32;
-
-                                break;
-
-                            case 64:
-                                threeOperandsSpecific.max = std::numeric_limits<uint64_t>::max();
-                                threeOperandsSpecific.sizeInBits = 64;
-
-                                rex.use = true;
-                                rex.w = true;
-                                break;
-
-                            case 8:
-                                throw Exception::SemanticError("Can't use 3 operand imul with 8 bit registers", -1, -1);
-                                break;
-
-                            default:
-                                throw Exception::InternalError("Unknown mainRegSize", -1, -1);
-                        }
+                        if (!isGPR(secondReg.reg))
+                            throw Exception::SemanticError("Mul/Div ALU instruction only accepts GPRs", -1, -1);
                     }
                     else if (std::holds_alternative<Parser::Instruction::Memory>(secondOperand))
                     {
-                        throw Exception::InternalError("Memory not supported yet", -1, -1);
-                        // TODO
+                        Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(secondOperand);
+                        secondSize = parseMemory(mem, bits, mainSize);
                     }
                     else
                     {
                         throw Exception::InternalError("Immediate as seconds operand not allowed for 3 operand imul instruction", -1, -1);
                     }
+
+                    mulDivType = MulDivType::ThreeOperands;
+
+                    opcode = 0x69;
+
+                    if (mainSize != secondSize)
+                        throw Exception::SemanticError("Can't use instruction with registers of different size", -1, -1);
+
+                    switch (mainSize)
+                    {
+                        case 16:
+                            if (bits != BitMode::Bits16) use16BitPrefix = true;
+
+                            threeOperandsSpecific.max = std::numeric_limits<uint16_t>::max();
+                            threeOperandsSpecific.sizeInBits = 16;
+
+                            break;
+                        
+                        case 32:
+                            if (bits == BitMode::Bits16) use16BitPrefix = true;
+
+                            threeOperandsSpecific.max = std::numeric_limits<uint32_t>::max();
+                            threeOperandsSpecific.sizeInBits = 32;
+
+                            break;
+
+                        case 64:
+                            threeOperandsSpecific.max = std::numeric_limits<uint32_t>::max();
+                            threeOperandsSpecific.sizeInBits = 32;
+
+                            rex.use = true;
+                            rex.w = true;
+                            break;
+
+                        case 8:
+                            throw Exception::SemanticError("Can't use 3 operand imul with 8 bit registers", -1, -1);
+                            break;
+
+                        default:
+                            throw Exception::InternalError("Unknown mainRegSize", -1, -1);
+                    }
+
+                    if (!std::holds_alternative<Parser::Immediate>(operands[2]))
+                        throw Exception::InternalError("imul 3 operands: third operands needs to be an immediate", -1, -1);
+                    thirdOperand = std::get<Parser::Immediate>(operands[2]);
                 }
                 else
                 {
@@ -338,109 +170,52 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
 
             mainOperand = operands[0];
 
+            uint64_t size;
             if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
             {
-                Parser::Instruction::Register mainReg = std::get<Parser::Instruction::Register>(mainOperand);
+                Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
+                size = parseRegister(reg, bits, Parser::Instruction::Memory::NO_POINTER_SIZE, false);
 
-                switch (mainReg.reg)
-                {
-                    case SPL:
-                    case BPL:
-                    case SIL:
-                    case DIL:
-                    case R8B:
-                    case R9B:
-                    case R10B:
-                    case R11B:
-                    case R12B:
-                    case R13B:
-                    case R14B:
-                    case R15B:
-                    case R8W:
-                    case R9W:
-                    case R10W:
-                    case R11W:
-                    case R12W:
-                    case R13W:
-                    case R14W:
-                    case R15W:
-                    case R8D:
-                    case R9D:
-                    case R10D:
-                    case R11D:
-                    case R12D:
-                    case R13D:
-                    case R14D:
-                    case R15D:
-                    case RAX:
-                    case RCX:
-                    case RDX:
-                    case RBX:
-                    case RSP:
-                    case RBP:
-                    case RSI:
-                    case RDI:
-                    case R8:
-                    case R9:
-                    case R10:
-                    case R11:
-                    case R12:
-                    case R13:
-                    case R14:
-                    case R15:
-                        if (bits != BitMode::Bits64)
-                            throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
-                }
-
-                modrm.mod = Mod::REGISTER;
-
-                modrm.use = true;
-
-                auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
-
-                modrm.rm = mainI;
-
-                if (mainUseREX) rex.use = true;
-                if (mainSetREX) rex.b = true;
-
-                uint8_t mainRegSize = getRegSize(mainReg.reg, bits);
-
-                switch (mainRegSize)
-                {
-                    case 16:
-                        if (bits != BitMode::Bits16) use16BitPrefix = true;
-                        break;
-                    
-                    case 32:
-                        if (bits == BitMode::Bits16) use16BitPrefix = true;
-                        break;
-
-                    case 64:
-                        rex.use = true;
-                        rex.w = true;
-                        break;
-
-                    case 8:
-                        break;
-
-                    default:
-                        throw Exception::InternalError("Unknown mainRegSize", -1, -1);
-                }
-
-                if (mainRegSize == 8) opcode = 0xF6;
-                else                  opcode = 0xF7;
-
-                switch (mnemonic)
-                {
-                    case MUL:  modrm.reg = 4; break;
-                    case IMUL: modrm.reg = 5; break;
-                    case DIV:  modrm.reg = 6; break;
-                    case IDIV: modrm.reg = 7; break;
-                }
+                if (!isGPR(reg.reg))
+                    throw Exception::SemanticError("Mul/Div ALU instruction only accepts GPRs", -1, -1);
             }
-            else
+            else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
             {
-                throw Exception::InternalError("Memory/Immediate not allowed for mul/div instruction", -1, -1);
+                Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(mainOperand);
+                size = parseMemory(mem, bits, Parser::Instruction::Memory::NO_POINTER_SIZE);
+            }
+
+            switch (size)
+            {
+                case 16:
+                    if (bits != BitMode::Bits16) use16BitPrefix = true;
+                    break;
+                    
+                case 32:
+                    if (bits == BitMode::Bits16) use16BitPrefix = true;
+                    break;
+
+                case 64:
+                    rex.use = true;
+                    rex.w = true;
+                    break;
+
+                case 8:
+                    break;
+
+                default:
+                    throw Exception::InternalError("Unknown size", -1, -1);
+            }
+
+            if (size == 8) opcode = 0xF6;
+            else           opcode = 0xF7;
+
+            switch (mnemonic)
+            {
+                case MUL:  modrm.reg = 4; break;
+                case IMUL: modrm.reg = 5; break;
+                case DIV:  modrm.reg = 6; break;
+                case IDIV: modrm.reg = 7; break;
             }
 
             break;

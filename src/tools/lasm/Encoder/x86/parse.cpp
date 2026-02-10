@@ -8,10 +8,14 @@ uint64_t ::x86::Instruction::parseMemory(
     modrm.use = true;
     modrm.mod = Mod::INDIRECT;
 
-    if (expectedSize == Parser::Instruction::Memory::NO_POINTER_SIZE && mem.pointer_size == Parser::Instruction::Memory::NO_POINTER_SIZE)
+    uint64_t memSize = mem.pointer_size;
+
+    if (expectedSize == Parser::Instruction::Memory::NO_POINTER_SIZE && memSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
         throw Exception::SyntaxError("Pointer size not specified for memory operand", -1, -1);
-    else if (expectedSize != Parser::Instruction::Memory::NO_POINTER_SIZE && mem.pointer_size != expectedSize)
+    else if (expectedSize != Parser::Instruction::Memory::NO_POINTER_SIZE && memSize != Parser::Instruction::Memory::NO_POINTER_SIZE && mem.pointer_size != expectedSize)
         throw Exception::SyntaxError("Pointer size does not match the expected size", -1, -1);
+    else if (expectedSize != Parser::Instruction::Memory::NO_POINTER_SIZE)
+        memSize = expectedSize;
 
     uint8_t mem_reg_size;
 
@@ -415,7 +419,7 @@ uint64_t ::x86::Instruction::parseMemory(
         }
     }
 
-    return mem.pointer_size;
+    return memSize;
 }
 
 uint64_t ::x86::Instruction::parseRegister(
