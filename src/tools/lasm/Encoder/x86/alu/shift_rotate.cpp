@@ -14,7 +14,7 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
         case Instructions::RCL: case Instructions::RCR:
         {
             if (operands.size() != 2)
-                throw Exception::InternalError("Wrong argument count for shift/rotate alu instruction", -1, -1);
+                throw Exception::InternalError("Wrong argument count for Shift/Rotate ALU instruction", -1, -1);
 
             mainOperand = operands[0];
             countOperand = operands[1];
@@ -24,6 +24,9 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
             {
                 Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
                 size = parseRegister(reg, bits, Parser::Instruction::Memory::NO_POINTER_SIZE, false);
+
+                if (!isGPR(reg.reg))
+                    throw Exception::SemanticError("Shift/Rotate ALU instruction only accepts GPRs", -1, -1);
             }
             else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
             {
@@ -36,7 +39,7 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
                 Parser::Instruction::Register countReg = std::get<Parser::Instruction::Register>(countOperand);
                 
                 if (countReg.reg != Registers::CL)
-                    throw Exception::InternalError("2 operand of shift/rotate instruction needs to be CL", -1, -1);
+                    throw Exception::InternalError("2 operand of Shift/Rotate ALU instruction needs to be CL", -1, -1);
 
                 if (size == 8) opcode = 0xD2;
                 else                  opcode = 0xD3;
