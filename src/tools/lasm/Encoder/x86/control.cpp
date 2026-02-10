@@ -3,7 +3,7 @@
 #include <x86/Instructions.hpp>
 
 x86::Simple_Control_Instruction::Simple_Control_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic)
-    : ::Encoder::Encoder::Instruction(e)
+    : ::x86::Instruction(e)
 {
     switch (mnemonic)
     {

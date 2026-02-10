@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../Encoder.hpp"
+#include "Encoder.hpp"
 
 namespace x86 {
-    class Argument_Interrupt_Instruction : public ::Encoder::Encoder::Instruction
+    class Argument_Interrupt_Instruction : public ::x86::Instruction
     {
     public:
         Argument_Interrupt_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
@@ -18,8 +18,6 @@ namespace x86 {
         uint64_t size() override;
 
     private:
-        uint8_t opcode;
-
         bool usedReloc = false;
         std::string relocUsedSection;
         bool relocIsExtern;
@@ -29,7 +27,7 @@ namespace x86 {
         uint8_t argument_value;
     };
 
-    class Simple_Interrupt_Instruction : public ::Encoder::Encoder::Instruction
+    class Simple_Interrupt_Instruction : public ::x86::Instruction
     {
     public:
         Simple_Interrupt_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic);
@@ -42,18 +40,5 @@ namespace x86 {
         std::vector<uint8_t> encode() override;
 
         uint64_t size() override;
-
-    private:
-        uint8_t opcode;
-
-        bool use16BitPrefix = false;
-
-        bool useREX = false;
-        bool rexW = false;
-        bool rexR = false;
-        bool rexX = false;
-        bool rexB = false;
-
-        bool useOpcodeEscape = false;
     };
 }

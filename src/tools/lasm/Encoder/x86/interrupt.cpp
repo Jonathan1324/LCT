@@ -4,7 +4,7 @@
 #include "x86.hpp"
 
 x86::Argument_Interrupt_Instruction::Argument_Interrupt_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::Encoder::Encoder::Instruction(e)
+    : ::x86::Instruction(e)
 {
     switch (mnemonic)
     {
@@ -77,7 +77,7 @@ uint64_t x86::Argument_Interrupt_Instruction::size()
 
 
 x86::Simple_Interrupt_Instruction::Simple_Interrupt_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic)
-    : ::Encoder::Encoder::Instruction(e)
+    : ::x86::Instruction(e)
 {
     switch (mnemonic)
     {
@@ -92,8 +92,8 @@ x86::Simple_Interrupt_Instruction::Simple_Interrupt_Instruction(::Encoder::Encod
 
             opcode = 0xCF;
 
-            useREX = true;
-            rexW = true;
+            rex.use = true;
+            rex.w = true;
 
             break;
 
@@ -142,7 +142,7 @@ std::vector<uint8_t> x86::Simple_Interrupt_Instruction::encode()
     std::vector<uint8_t> instr;
 
     if (use16BitPrefix) instr.push_back(prefix16Bit);
-    if (useREX) instr.push_back(getRex(rexW, rexR, rexX, rexB));
+    if (rex.use) instr.push_back(getRex(rex.w, rex.r, rex.x, rex.b));
 
     if (useOpcodeEscape) instr.push_back(opcodeEscape);
             
@@ -156,7 +156,7 @@ uint64_t x86::Simple_Interrupt_Instruction::size()
     uint64_t s = 1;
 
     if (use16BitPrefix) s++;
-    if (useREX) s++;
+    if (rex.use) s++;
 
     if (useOpcodeEscape) s++;
 

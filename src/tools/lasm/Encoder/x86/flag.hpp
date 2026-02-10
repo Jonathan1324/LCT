@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../Encoder.hpp"
+#include "Encoder.hpp"
 
 namespace x86 {
-    class Simple_Flag_Instruction : public ::Encoder::Encoder::Instruction
+    class Simple_Flag_Instruction : public ::x86::Instruction
     {
     public:
         Simple_Flag_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic);
@@ -16,8 +16,5 @@ namespace x86 {
         std::vector<uint8_t> encode() override;
 
         uint64_t size() override;
-
-    private:
-        uint8_t opcode;
     };
 }

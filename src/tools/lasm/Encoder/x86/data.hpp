@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../Encoder.hpp"
+#include "Encoder.hpp"
 #include "x86.hpp"
 
 namespace x86 {
-    class Mov_Instruction : public ::Encoder::Encoder::Instruction
+    class Mov_Instruction : public ::x86::Instruction
     {
     public:
         Mov_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
@@ -20,8 +20,6 @@ namespace x86 {
         uint64_t size() override;
 
     private:
-        uint8_t opcode;
-
         Parser::Instruction::Operand destinationOperand;
         Parser::Instruction::Operand sourceOperand;
 
@@ -44,20 +42,5 @@ namespace x86 {
         bool usedReloc = false;
         std::string relocUsedSection;
         bool relocIsExtern;
-
-        bool use16BitPrefix = false;
-        
-        bool useREX = false;
-        bool rexW = false;
-        bool rexR = false;
-        bool rexX = false;
-        bool rexB = false;
-
-        bool useOpcodeEscape = false;
-
-        bool useModRM = false;
-        ::x86::Mod mod_mod;
-        uint8_t mod_reg;
-        uint8_t mod_rm;
     };
 }

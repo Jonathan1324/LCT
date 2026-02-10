@@ -5,7 +5,7 @@
 #include <cstring>
 
 x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::Encoder::Encoder::Instruction(e)
+    : ::x86::Instruction(e)
 {
     switch (mnemonic)
     {
@@ -147,20 +147,20 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
 
                     movType = MovType::MOV_REG_REG;
 
-                    mod_mod = ::x86::Mod::REGISTER;
+                    modrm.mod = ::x86::Mod::REGISTER;
 
-                    useModRM = true;
+                    modrm.use = true;
 
                     // FIXME: not only for non special regs
                     auto [destI, destUseREX, destSetREX] = ::x86::getReg(destReg.reg);
                     auto [srcI, srcUseREX, srcSetREX] = ::x86::getReg(srcReg.reg);
 
                     if (destUseREX || srcUseREX)
-                        useREX = true;
+                        rex.use = true;
                     if (destSetREX)
-                        rexB = true;
+                        rex.b = true;
                     if (srcSetREX)
-                        rexR = true;
+                        rex.r = true;
 
                     uint8_t destRegSize = getRegSize(destReg.reg, bits);
                     uint8_t srcRegSize = getRegSize(srcReg.reg, bits);
@@ -181,8 +181,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                         case GS:
                             opcode = 0x8E;
 
-                            mod_reg = destI;
-                            mod_rm = srcI;
+                            modrm.reg = destI;
+                            modrm.rm = srcI;
 
                             usingSpecialRegDest = true;
                             break;
@@ -197,8 +197,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             useOpcodeEscape = true;
                             opcode = 0x22;
 
-                            mod_reg = destI;
-                            mod_rm = srcI;
+                            modrm.reg = destI;
+                            modrm.rm = srcI;
 
                             usingSpecialRegDest = true;
                             break;
@@ -213,11 +213,11 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             useOpcodeEscape = true;
                             opcode = 0x22;
 
-                            useREX = true;
-                            rexR = true;
+                            rex.use = true;
+                            rex.r = true;
 
-                            mod_reg = destI;
-                            mod_rm = srcI;
+                            modrm.reg = destI;
+                            modrm.rm = srcI;
 
                             usingSpecialRegDest = true;
                             break;
@@ -231,8 +231,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             useOpcodeEscape = true;
                             opcode = 0x23;
 
-                            mod_reg = destI;
-                            mod_rm = srcI;
+                            modrm.reg = destI;
+                            modrm.rm = srcI;
 
                             usingSpecialRegDest = true;
                             break;
@@ -247,11 +247,11 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             useOpcodeEscape = true;
                             opcode = 0x23;
 
-                            useREX = true;
-                            rexR = true;
+                            rex.use = true;
+                            rex.r = true;
 
-                            mod_reg = destI;
-                            mod_rm = srcI;
+                            modrm.reg = destI;
+                            modrm.rm = srcI;
 
                             usingSpecialRegDest = true;
                             break;
@@ -267,8 +267,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             useOpcodeEscape = true;
                             opcode = 0x26;
 
-                            mod_reg = destI;
-                            mod_rm = srcI;
+                            modrm.reg = destI;
+                            modrm.rm = srcI;
 
                             usingSpecialRegDest = true;
                             break;
@@ -284,8 +284,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                         case GS:
                             opcode = 0x8C;
 
-                            mod_reg = srcI;
-                            mod_rm = destI;
+                            modrm.reg = srcI;
+                            modrm.rm = destI;
 
                             usingSpecialRegSrc = true;
                             break;
@@ -300,8 +300,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             useOpcodeEscape = true;
                             opcode = 0x20;
 
-                            mod_reg = srcI;
-                            mod_rm = destI;
+                            modrm.reg = srcI;
+                            modrm.rm = destI;
 
                             usingSpecialRegSrc = true;
                             break;
@@ -316,11 +316,11 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             useOpcodeEscape = true;
                             opcode = 0x20;
 
-                            useREX = true;
-                            rexR = true;
+                            rex.use = true;
+                            rex.r = true;
 
-                            mod_reg = srcI;
-                            mod_rm = destI;
+                            modrm.reg = srcI;
+                            modrm.rm = destI;
 
                             usingSpecialRegSrc = true;
                             break;
@@ -334,8 +334,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             useOpcodeEscape = true;
                             opcode = 0x21;
 
-                            mod_reg = srcI;
-                            mod_rm = destI;
+                            modrm.reg = srcI;
+                            modrm.rm = destI;
 
                             usingSpecialRegSrc = true;
                             break;
@@ -350,11 +350,11 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             useOpcodeEscape = true;
                             opcode = 0x21;
 
-                            useREX = true;
-                            rexR = true;
+                            rex.use = true;
+                            rex.r = true;
 
-                            mod_reg = srcI;
-                            mod_rm = destI;
+                            modrm.reg = srcI;
+                            modrm.rm = destI;
 
                             usingSpecialRegSrc = true;
                             break;
@@ -370,8 +370,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             useOpcodeEscape = true;
                             opcode = 0x24;
 
-                            mod_reg = srcI;
-                            mod_rm = destI;
+                            modrm.reg = srcI;
+                            modrm.rm = destI;
 
                             usingSpecialRegSrc = true;
                             break;
@@ -408,8 +408,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             case R15B:
                                 opcode = 0x88; // mov r/m8, r8
 
-                                mod_reg = srcI;
-                                mod_rm = destI;
+                                modrm.reg = srcI;
+                                modrm.rm = destI;
                                 break;
 
                             case AX:
@@ -432,8 +432,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                                     use16BitPrefix = true;
                                 opcode = 0x89; // mov r/m16, r16
 
-                                mod_reg = srcI;
-                                mod_rm = destI;
+                                modrm.reg = srcI;
+                                modrm.rm = destI;
                                 break;
 
                             case EAX:
@@ -456,8 +456,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                                     use16BitPrefix = true;
                                 opcode = 0x89; // mov r/m32, r32
 
-                                mod_reg = srcI;
-                                mod_rm = destI;
+                                modrm.reg = srcI;
+                                modrm.rm = destI;
                                 break;
 
                             case RAX:
@@ -478,11 +478,11 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             case R15:
                                 opcode = 0x89; // mov r/m64, r64
 
-                                useREX = true;
-                                rexW = true;
+                                rex.use = true;
+                                rex.w = true;
 
-                                mod_reg = srcI;
-                                mod_rm = destI;
+                                modrm.reg = srcI;
+                                modrm.rm = destI;
                                 break;
 
                             default:
@@ -490,10 +490,10 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                         }
                     }
 
-                    if (useREX && (destReg.reg == AH || destReg.reg == CH ||
-                                destReg.reg == DH || destReg.reg == BH ||
-                                srcReg.reg == AH || srcReg.reg == CH ||
-                                srcReg.reg == DH || srcReg.reg == BH))
+                    if (rex.use && (destReg.reg == AH || destReg.reg == CH ||
+                                    destReg.reg == DH || destReg.reg == BH ||
+                                    srcReg.reg == AH || srcReg.reg == CH ||
+                                    srcReg.reg == DH || srcReg.reg == BH))
                         throw Exception::SemanticError("Can't use high 8-bit regs using new registers", -1, -1);
                 }
                 else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
@@ -608,7 +608,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                         case BPL:
                         case SIL:
                         case DIL:
-                            useREX = true;
+                            rex.use = true;
                             break;
 
                         case R8B:
@@ -635,8 +635,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                         case R13D:
                         case R14D:
                         case R15D:
-                            useREX = true;
-                            rexB = true;
+                            rex.use = true;
+                            rex.b = true;
                             break;
 
                         case R8:
@@ -647,9 +647,9 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                         case R13:
                         case R14:
                         case R15:
-                            useREX = true;
-                            rexB = true;
-                            rexW = true;
+                            rex.use = true;
+                            rex.b = true;
+                            rex.w = true;
                             break;
 
                         case RAX:
@@ -660,8 +660,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                         case RBP:
                         case RSI:
                         case RDI:
-                            useREX = true;
-                            rexW = true;
+                            rex.use = true;
+                            rex.w = true;
                             break;
                     }
 
@@ -947,13 +947,13 @@ std::vector<uint8_t> x86::Mov_Instruction::encode()
 
     if (use16BitPrefix) instr.push_back(prefix16Bit);
 
-    if (useREX) instr.push_back(::x86::getRex(rexW, rexR, rexX, rexB));
+    if (rex.use) instr.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
 
     if (useOpcodeEscape) instr.push_back(opcodeEscape);
 
     instr.push_back(opcode);
 
-    if (useModRM) instr.push_back(::x86::getModRM(mod_mod, mod_reg, mod_rm));
+    if (modrm.use) instr.push_back(::x86::getModRM(modrm.mod, modrm.reg, modrm.rm));
 
     switch (movType)
     {
@@ -976,9 +976,9 @@ std::vector<uint8_t> x86::Mov_Instruction::encode()
             {
                 uint64_t currentOffset = 1; // opcode
                 if (use16BitPrefix) currentOffset++;
-                if (useREX) currentOffset++;
+                if (rex.use) currentOffset++;
                 if (useOpcodeEscape) currentOffset++;
-                if (useModRM) currentOffset++;
+                if (modrm.use) currentOffset++;
 
                 ::Encoder::RelocationSize relocSize;
                 switch (specific.mov_reg_imm.sizeInBits)
@@ -1018,7 +1018,7 @@ uint64_t x86::Mov_Instruction::size()
 
     if (use16BitPrefix) s++;
 
-    if (useREX) s++;
+    if (rex.use) s++;
 
     if (useOpcodeEscape) s++;
 
@@ -1043,7 +1043,7 @@ uint64_t x86::Mov_Instruction::size()
             throw Exception::InternalError("Unknown movType", -1, -1);
     }
 
-    if (useModRM) s++;
+    if (modrm.use) s++;
 
     return s;
 }
