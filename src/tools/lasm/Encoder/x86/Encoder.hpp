@@ -38,11 +38,23 @@ namespace x86
         void evaluateDisplacement();
         bool optimizeDisplacement();
 
-        void parseMemory(
+        uint64_t parseMemory(
             const Parser::Instruction::Memory& mem,
             BitMode bits,
-            uint64_t pointerSize
+            uint64_t expectedSize
         );
+
+        uint64_t parseRegister(
+            const Parser::Instruction::Register& reg,
+            BitMode bits,
+            uint64_t expectedSize,
+            bool isReg
+        );
+
+        inline uint8_t getRegIndex(const Parser::Instruction::Register& reg)
+        {
+            return std::get<0>(getReg(reg.reg));
+        }
 
         Instruction(::Encoder::Encoder& e) : ::Encoder::Encoder::Instruction(e) {}
 

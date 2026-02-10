@@ -70,19 +70,9 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                             throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
                 }
 
-                modrm.use = true;
+                uint64_t size = parseRegister(reg, bits, Parser::Instruction::Memory::NO_POINTER_SIZE, false);
 
-                modrm.mod = Mod::REGISTER;
-
-                auto [idx, regUseREX, regSetREX] = getReg(reg.reg);
-                uint8_t regSize = getRegSize(reg.reg, bits);
-
-                if (regUseREX) rex.use = true;
-                if (regSetREX) rex.b = true;
-
-                modrm.rm = idx;
-
-                if (regSize == 8)
+                if (size == 8)
                 {
                     if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
                         opcode = 0xF6;
@@ -106,7 +96,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     case Instructions::DEC: modrm.reg = 1; break;
                 }
 
-                switch (regSize)
+                switch (size)
                 {
                     case 16:
                         if (bits != BitMode::Bits16) use16BitPrefix = true;
@@ -128,24 +118,24 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                         throw Exception::InternalError("Unknown mainRegSize", -1, -1);
                 }
 
-                if (bits != BitMode::Bits64 && regSize != 8 &&
+                if (bits != BitMode::Bits64 && size != 8 &&
                     (mnemonic == Instructions::INC || mnemonic == Instructions::DEC))
                 {
                     modrm.use = false;
 
                     if (mnemonic == Instructions::INC)
-                        opcode = 0x40 + idx;
+                        opcode = 0x40 + getRegIndex(reg);
                     else // DEC
-                        opcode = 0x48 + idx;
+                        opcode = 0x48 + getRegIndex(reg);
                 }
             }
             else if (std::holds_alternative<Parser::Instruction::Memory>(operand))
             {
                 Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(operand);
                 
-                parseMemory(mem, bits, Parser::Instruction::Memory::NO_POINTER_SIZE);
+                uint64_t size = parseMemory(mem, bits, Parser::Instruction::Memory::NO_POINTER_SIZE);
 
-                if (mem.pointer_size == 8)
+                if (size == 8)
                 {
                     if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
                         opcode = 0xF6;
@@ -169,7 +159,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     case Instructions::DEC: modrm.reg = 1; break;
                 }
 
-                switch (mem.pointer_size)
+                switch (size)
                 {
                     case 16:
                         if (bits != BitMode::Bits16) use16BitPrefix = true;

@@ -1,16 +1,16 @@
 #include "Encoder.hpp"
 
-void ::x86::Instruction::parseMemory(
+uint64_t ::x86::Instruction::parseMemory(
     const Parser::Instruction::Memory& mem,
     BitMode bits,
-    uint64_t pointerSize
+    uint64_t expectedSize
 ) {
     modrm.use = true;
     modrm.mod = Mod::INDIRECT;
 
-    if (pointerSize == Parser::Instruction::Memory::NO_POINTER_SIZE && mem.pointer_size == Parser::Instruction::Memory::NO_POINTER_SIZE)
+    if (expectedSize == Parser::Instruction::Memory::NO_POINTER_SIZE && mem.pointer_size == Parser::Instruction::Memory::NO_POINTER_SIZE)
         throw Exception::SyntaxError("Pointer size not specified for memory operand", -1, -1);
-    else if (pointerSize != Parser::Instruction::Memory::NO_POINTER_SIZE && mem.pointer_size != pointerSize)
+    else if (expectedSize != Parser::Instruction::Memory::NO_POINTER_SIZE && mem.pointer_size != expectedSize)
         throw Exception::SyntaxError("Pointer size does not match the expected size", -1, -1);
 
     uint8_t mem_reg_size;
@@ -414,4 +414,34 @@ void ::x86::Instruction::parseMemory(
             }
         }
     }
+
+    return mem.pointer_size;
+}
+
+uint64_t ::x86::Instruction::parseRegister(
+    const Parser::Instruction::Register& reg,
+    BitMode bits,
+    uint64_t expectedSize,
+    bool isReg
+) {
+    modrm.use = true;
+    modrm.mod = Mod::REGISTER;
+
+    auto [regIndex, regUseREX, regSetREX] = getReg(reg.reg);
+    uint8_t regSize = getRegSize(reg.reg, bits);
+
+    if (expectedSize != Parser::Instruction::Memory::NO_POINTER_SIZE && regSize != expectedSize)
+        throw Exception::SyntaxError("Register size does not match the expected size", -1, -1);
+
+    if (regUseREX) rex.use = true;
+    if (regSetREX)
+    {
+        if (isReg) rex.r = true;
+        else       rex.b = true;
+    }
+
+    if (isReg) modrm.reg = regIndex;
+    else       modrm.rm = regIndex;
+
+    return regSize;
 }
