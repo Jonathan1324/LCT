@@ -21,6 +21,9 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
             {
                 Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(operand);
                 size = parseRegister(reg, bits, Parser::Instruction::Memory::NO_POINTER_SIZE, false);
+
+                if (!isGPR(reg.reg))
+                    throw Exception::SemanticError("Argument ALU instruction only accepts GPRs", -1, -1);
             }
             else if (std::holds_alternative<Parser::Instruction::Memory>(operand))
             {
