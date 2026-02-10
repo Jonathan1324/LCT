@@ -490,8 +490,6 @@ bool x86::Mul_Div_ALU_Instruction::optimize()
 
 void x86::Mul_Div_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    if (modrm.use) buffer.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
-
     switch (mulDivType)
     {
         case MulDivType::Simple: case MulDivType::TwoOperands: break;
@@ -546,8 +544,6 @@ void x86::Mul_Div_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 uint64_t x86::Mul_Div_ALU_Instruction::sizeS()
 {
     uint64_t s = 0;
-
-    if (modrm.use) s++;
 
     switch (mulDivType)
     {

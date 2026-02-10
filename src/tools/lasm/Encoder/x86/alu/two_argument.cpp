@@ -490,8 +490,6 @@ bool x86::Two_Argument_ALU_Instruction::optimize()
 
 void x86::Two_Argument_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    if (modrm.use) buffer.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
-
     switch (aluType)
     {
         case AluType::ALU_REG_REG:
@@ -570,8 +568,6 @@ uint64_t x86::Two_Argument_ALU_Instruction::sizeS()
         default:
             throw Exception::InternalError("Unknown aluType", -1, -1);
     }
-
-    if (modrm.use) s++;
 
     return s;
 }

@@ -93,6 +93,18 @@ std::vector<uint8_t> x86::Instruction::encode()
     if (useOpcodeEscape) buffer.push_back(opcodeEscape);
     buffer.push_back(opcode);
 
+    if (modrm.use)
+    {
+        if (sib.use) buffer.push_back(getModRM(modrm.mod, modrm.reg, modRMSIB));
+        else         buffer.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
+    }
+
+    if (sib.use)
+    {
+        if (modrm.use) buffer.push_back(getSIB(sib.scale, sib.index, modrm.rm));
+        else           throw Exception::InternalError("Can't use SIB without ModR/M", -1, -1);
+    }
+
     encodeS(buffer);
 
     return buffer;
@@ -109,6 +121,9 @@ uint64_t x86::Instruction::size()
 
     if (useOpcodeEscape) s++;
     s++; // Opcode
+
+    if (modrm.use) s++;
+    if (sib.use) s++;
 
     s += sizeS();
 

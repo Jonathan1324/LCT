@@ -947,8 +947,6 @@ bool x86::Mov_Instruction::optimize()
 
 void x86::Mov_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    if (modrm.use) buffer.push_back(::x86::getModRM(modrm.mod, modrm.reg, modrm.rm));
-
     switch (movType)
     {
         case MovType::MOV_REG_REG:
@@ -1028,8 +1026,6 @@ uint64_t x86::Mov_Instruction::sizeS()
         default:
             throw Exception::InternalError("Unknown movType", -1, -1);
     }
-
-    if (modrm.use) s++;
 
     return s;
 }

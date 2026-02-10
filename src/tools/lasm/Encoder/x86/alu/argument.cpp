@@ -621,14 +621,6 @@ bool x86::Argument_ALU_Instruction::optimize()
 
 void x86::Argument_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    if (modrm.use)
-    {
-        if (sib.use) buffer.push_back(getModRM(modrm.mod, modrm.reg, modRMSIB));
-        else         buffer.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
-    }
-
-    if (sib.use) buffer.push_back(getSIB(sib.scale, sib.index, modrm.rm));
-
     bool directAddressing = false;
     if (use16BitAddressing) directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == 6);
     else                    directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == modRMDisp);
@@ -700,10 +692,6 @@ void x86::Argument_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 uint64_t x86::Argument_ALU_Instruction::sizeS()
 {
     uint64_t s = 0;
-
-    if (modrm.use) s++;
-
-    if (sib.use) s++;
 
     bool directAddressing = false;
     if (use16BitAddressing) directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == 6);
