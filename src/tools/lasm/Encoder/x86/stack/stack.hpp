@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Encoder.hpp"
+#include "../Encoder.hpp"
 
 namespace x86 {
     class Simple_Stack_Instruction : public ::x86::Instruction
@@ -9,9 +9,9 @@ namespace x86 {
         Simple_Stack_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic);
         ~Simple_Stack_Instruction() override {}
 
-        void evaluate() override {}
+        void evaluate() override;
 
-        bool optimize() override {return false;} // TODO
+        bool optimize() override;
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 

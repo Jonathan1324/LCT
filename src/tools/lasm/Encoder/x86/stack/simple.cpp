@@ -1,8 +1,5 @@
 #include "stack.hpp"
 
-#include <x86/Instructions.hpp>
-#include "x86.hpp"
-
 x86::Simple_Stack_Instruction::Simple_Stack_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic)
     : ::x86::Instruction(e)
 {
@@ -88,6 +85,16 @@ x86::Simple_Stack_Instruction::Simple_Stack_Instruction(::Encoder::Encoder& e, B
         default:
             throw Exception::InternalError("Unknown simple control instruction", -1, -1, nullptr);
     }
+}
+
+void x86::Simple_Stack_Instruction::evaluate()
+{
+
+}
+
+bool x86::Simple_Stack_Instruction::optimize()
+{
+    return false;
 }
 
 void x86::Simple_Stack_Instruction::encodeS(std::vector<uint8_t>& buffer)

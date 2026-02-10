@@ -1,6 +1,5 @@
 #include "data.hpp"
 
-#include <x86/Instructions.hpp>
 #include <limits>
 #include <cstring>
 
@@ -939,6 +938,11 @@ void x86::Mov_Instruction::evaluate()
             break;
         }
     }
+}
+
+bool x86::Mov_Instruction::optimize()
+{
+    return false;
 }
 
 void x86::Mov_Instruction::encodeS(std::vector<uint8_t>& buffer)

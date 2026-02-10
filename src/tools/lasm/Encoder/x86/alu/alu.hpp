@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Encoder.hpp"
-#include "x86.hpp"
+#include "../Encoder.hpp"
+#include "../x86.hpp"
 
 namespace x86 {
     class Two_Argument_ALU_Instruction : public ::x86::Instruction
@@ -13,7 +13,7 @@ namespace x86 {
 
         void evaluate() override;
 
-        bool optimize() override {return false;} // TODO
+        bool optimize() override;
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 
@@ -59,7 +59,7 @@ namespace x86 {
 
         void evaluate() override;
 
-        bool optimize() override {return false;} // TODO
+        bool optimize() override;
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 
@@ -105,7 +105,7 @@ namespace x86 {
 
         void evaluate() override;
 
-        bool optimize() override {return false;} // TODO
+        bool optimize() override;
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 

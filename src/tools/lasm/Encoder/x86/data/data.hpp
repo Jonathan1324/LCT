@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Encoder.hpp"
-#include "x86.hpp"
+#include "../Encoder.hpp"
 
 namespace x86 {
     class Mov_Instruction : public ::x86::Instruction
@@ -13,11 +12,14 @@ namespace x86 {
 
         void evaluate() override;
 
-        bool optimize() override {return false;} // TODO
+        bool optimize() override;
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 
         uint64_t size() override;
+
+        // TODO:
+        //   Optimize
 
     private:
         Parser::Instruction::Operand destinationOperand;

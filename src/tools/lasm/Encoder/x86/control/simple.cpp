@@ -1,7 +1,5 @@
 #include "control.hpp"
 
-#include <x86/Instructions.hpp>
-
 x86::Simple_Control_Instruction::Simple_Control_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic)
     : ::x86::Instruction(e)
 {
@@ -18,6 +16,16 @@ x86::Simple_Control_Instruction::Simple_Control_Instruction(::Encoder::Encoder& 
         default:
             throw Exception::InternalError("Unknown simple control instruction", -1, -1, nullptr);
     }
+}
+
+void x86::Simple_Control_Instruction::evaluate()
+{
+
+}
+
+bool x86::Simple_Control_Instruction::optimize()
+{
+    return false;
 }
 
 void x86::Simple_Control_Instruction::encodeS(std::vector<uint8_t>& buffer)

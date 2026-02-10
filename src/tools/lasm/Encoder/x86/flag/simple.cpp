@@ -1,7 +1,5 @@
 #include "flag.hpp"
 
-#include <x86/Instructions.hpp>
-
 x86::Simple_Flag_Instruction::Simple_Flag_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic)
     : ::x86::Instruction(e)
 {
@@ -46,6 +44,16 @@ x86::Simple_Flag_Instruction::Simple_Flag_Instruction(::Encoder::Encoder& e, Bit
         default:
             throw Exception::InternalError("Unknown simple control instruction", -1, -1, nullptr);
     }
+}
+
+void x86::Simple_Flag_Instruction::evaluate()
+{
+
+}
+
+bool x86::Simple_Flag_Instruction::optimize()
+{
+    return false;
 }
 
 void x86::Simple_Flag_Instruction::encodeS(std::vector<uint8_t>& buffer)
