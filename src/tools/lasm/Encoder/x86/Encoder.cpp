@@ -88,6 +88,8 @@ std::vector<uint8_t> x86::Instruction::encode()
     if (use16BitPrefix) buffer.push_back(prefix16Bit);
     if (use16BitAddressPrefix) buffer.push_back(addressPrefix16Bit);
 
+    if (rex.use) buffer.push_back(getRex(rex.w, rex.r, rex.x, rex.b));
+
     encodeS(buffer);
 
     return buffer;
@@ -99,6 +101,8 @@ uint64_t x86::Instruction::size()
 
     if (use16BitPrefix) s++;
     if (use16BitAddressPrefix) s++;
+
+    if (rex.use) s++;
 
     s += sizeS();
 

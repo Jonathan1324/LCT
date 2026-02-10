@@ -104,7 +104,5 @@ void x86::Simple_Stack_Instruction::encodeS(std::vector<uint8_t>& buffer)
 
 uint64_t x86::Simple_Stack_Instruction::sizeS()
 {
-    uint64_t s = 1;
-
-    return s;
+    return 1;
 }

@@ -250,8 +250,6 @@ bool x86::Shift_Rotate_ALU_Instruction::optimize()
 
 void x86::Shift_Rotate_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    if (rex.use) buffer.push_back(::x86::getRex(rex.w, rex.r, rex.x, rex.b));
-
     buffer.push_back(opcode);
 
     if (modrm.use) buffer.push_back(getModRM(modrm.mod, modrm.reg, modrm.rm));
@@ -284,8 +282,6 @@ void x86::Shift_Rotate_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
 uint64_t x86::Shift_Rotate_ALU_Instruction::sizeS()
 {
     uint64_t s = 1;
-
-    if (rex.use) s++;
 
     if (modrm.use) s++;
 

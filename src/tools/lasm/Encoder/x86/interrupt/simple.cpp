@@ -73,8 +73,6 @@ bool x86::Simple_Interrupt_Instruction::optimize()
 
 void x86::Simple_Interrupt_Instruction::encodeS(std::vector<uint8_t>& buffer)
 {
-    if (rex.use) buffer.push_back(getRex(rex.w, rex.r, rex.x, rex.b));
-
     if (useOpcodeEscape) buffer.push_back(opcodeEscape);
             
     buffer.push_back(opcode);
@@ -83,8 +81,6 @@ void x86::Simple_Interrupt_Instruction::encodeS(std::vector<uint8_t>& buffer)
 uint64_t x86::Simple_Interrupt_Instruction::sizeS()
 {
     uint64_t s = 1;
-
-    if (rex.use) s++;
 
     if (useOpcodeEscape) s++;
 
