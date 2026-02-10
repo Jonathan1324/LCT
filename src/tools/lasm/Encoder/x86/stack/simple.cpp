@@ -86,13 +86,3 @@ x86::Simple_Stack_Instruction::Simple_Stack_Instruction(::Encoder::Encoder& e, B
             throw Exception::InternalError("Unknown simple control instruction", -1, -1, nullptr);
     }
 }
-
-void x86::Simple_Stack_Instruction::evaluate()
-{
-
-}
-
-bool x86::Simple_Stack_Instruction::optimize()
-{
-    return false;
-}

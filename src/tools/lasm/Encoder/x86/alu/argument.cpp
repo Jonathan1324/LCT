@@ -183,8 +183,23 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                 uint64_t scale;
 
-                if      (mem_reg_size == 16) use16BitAddressing = true;
-                else if (mem_reg_size == 64) use64BitAddressing = true;
+                switch (mem_reg_size)
+                {
+                    case 16:
+                        addressMode = AddressMode::Bits16;
+                        break;
+
+                    case 32:
+                        addressMode = AddressMode::Bits32;
+                        break;
+
+                    case 64:
+                        addressMode = AddressMode::Bits64;
+                        break;
+
+                    default:
+                        throw Exception::SemanticError("Memory operand registers need to be 16, 32 or 64 bits in size", -1, -1);
+                }
 
                 // FIXME: Fix
                 if (mem.use_reg1 && mem.use_reg2)
@@ -280,7 +295,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                     Int128& result = evaluation.result;
 
-                    if (use16BitAddressing)
+                    if (addressMode == AddressMode::Bits16)
                     {
                         scale = result;
                         
@@ -360,7 +375,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                 if (hasIndex)
                 {
-                    if (use16BitAddressing)
+                    if (addressMode == AddressMode::Bits16)
                     {
                         if (scale != 1)
                             throw Exception::SemanticError("Scale must be 1 when using 16 bit addressing", -1, -1);
@@ -428,11 +443,15 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
                     if (mem.use_displacement)
                     {
-                        use_displacement = true;
-                        displacement_immediate = mem.displacement;
+                        displacement.use = true;
+                        displacement.immediate = mem.displacement;
 
                         if (addressing_mode == 6)  // Direct address
+                        {
                             modrm.mod = Mod::INDIRECT;
+                            displacement.can_optimize = false;
+                            displacement.direct_addressing = true;
+                        }
                         else
                             modrm.mod = Mod::INDIRECT_DISP32;
                     }
@@ -450,7 +469,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     {
                         if (bits != BitMode::Bits64)
                             throw Exception::SemanticError("64-bit registers only in 64-bit mode", -1, -1);
-                        is_displacement_signed = true;
+                        displacement.is_signed = true;
                     }
 
                     if (hasBase)
@@ -497,11 +516,13 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                     {
                         if (hasBase) modrm.mod = Mod::INDIRECT_DISP32;
 
-                        use_displacement = true;
-                        displacement_immediate = mem.displacement;
+                        displacement.use = true;
+                        displacement.immediate = mem.displacement;
 
                         if (!hasBase && !hasIndex)
                         {
+                            displacement.direct_addressing = true;
+
                             if (bits == BitMode::Bits64)
                             {
                                 modrm.mod = Mod::INDIRECT;
@@ -510,11 +531,15 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                                 sib.use = true;
                                 sib.scale = Scale::x1;
                                 sib.index = SIB_NoIndex;
+
+                                displacement.can_optimize = false;
                             }
                             else
                             {
                                 modrm.mod = Mod::INDIRECT;
                                 modrm.rm = modRMDisp;
+
+                                displacement.can_optimize = false;
                             }
                         }
                     }
@@ -575,135 +600,4 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
         default:
             throw Exception::InternalError("Unknown argument ALU instruction", -1, -1, nullptr);
     }
-}
-
-void x86::Argument_ALU_Instruction::evaluate()
-{
-    if (use_displacement)
-    {
-        ::Encoder::Evaluation evaluation = Evaluate(displacement_immediate);
-
-        if (evaluation.useOffset)
-        {
-            usedReloc = true;
-            evalUsedSection = evaluation.usedSection;
-            evalIsExtern = evaluation.isExtern;
-            displacement_value = evaluation.offset;
-            displacement_can_optimize = false;
-        }
-        else
-        {
-            Int128 result = evaluation.result;
-
-            // TODO: Check for overflow
-
-            displacement_value = static_cast<uint64_t>(result);
-        }
-    }
-}
-
-bool x86::Argument_ALU_Instruction::optimize()
-{
-    if (use_displacement && modrm.mod != Mod::INDIRECT && displacement_can_optimize && !displacement_optimized)
-    {
-        if (displacement_value < -128 || displacement_value > 127)
-            return false;
-
-        displacement_optimized = true;
-
-        modrm.mod = Mod::INDIRECT_DISP8;
-
-        return true;
-    }
-    
-    return false;
-}
-
-void x86::Argument_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
-{
-    bool directAddressing = false;
-    if (use16BitAddressing) directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == 6);
-    else                    directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == modRMDisp);
-
-    // TODO: FIXME: EVERYTHING
-    if (modrm.mod == Mod::INDIRECT_DISP8)
-    {
-        buffer.push_back(static_cast<uint8_t>(displacement_value));
-
-        if (usedReloc)
-        {
-            uint64_t currentOffset = 1; // opcode
-            if (use16BitPrefix) currentOffset++;
-            if (use16BitAddressPrefix) currentOffset++;
-            if (rex.use) currentOffset++;
-            if (modrm.use) currentOffset++;
-            if (sib.use) currentOffset++;
-
-            AddRelocation(
-                currentOffset,
-                displacement_value,
-                true,
-                evalUsedSection,
-                ::Encoder::RelocationType::Absolute,
-                ::Encoder::RelocationSize::Bit8,
-                is_displacement_signed,
-                evalIsExtern
-            );
-        }
-    }
-    else if (modrm.mod == Mod::INDIRECT_DISP32 || directAddressing)
-    {
-        uint32_t sizeInBytes;
-        if (use16BitAddressing) sizeInBytes = 2;
-        else                    sizeInBytes = 4;
-
-        uint64_t oldSize = buffer.size();
-        buffer.resize(oldSize + sizeInBytes);
-
-        std::memcpy(buffer.data() + oldSize, &displacement_value, sizeInBytes);
-
-        if (usedReloc)
-        {
-            uint64_t currentOffset = 1; // opcode
-            if (use16BitPrefix) currentOffset++;
-            if (use16BitAddressPrefix) currentOffset++;
-            if (rex.use) currentOffset++;
-            if (modrm.use) currentOffset++;
-            if (sib.use) currentOffset++;
-
-            ::Encoder::RelocationSize relocSize;
-            if (use16BitAddressing) relocSize = ::Encoder::RelocationSize::Bit16;
-            else                    relocSize = ::Encoder::RelocationSize::Bit32;
-
-            AddRelocation(
-                currentOffset,
-                displacement_value,
-                true,
-                evalUsedSection,
-                ::Encoder::RelocationType::Absolute,
-                relocSize,
-                is_displacement_signed,
-                evalIsExtern
-            );
-        }
-    }
-}
-
-uint64_t x86::Argument_ALU_Instruction::sizeS()
-{
-    uint64_t s = 0;
-
-    bool directAddressing = false;
-    if (use16BitAddressing) directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == 6);
-    else                    directAddressing = (modrm.mod == Mod::INDIRECT && modrm.rm == modRMDisp);
-
-    // TODO: FIXME: EVERYTHING
-    if      (modrm.mod == Mod::INDIRECT_DISP8)  s++;
-    else if (modrm.mod == Mod::INDIRECT_DISP32 || directAddressing)
-    {
-        if (use16BitAddressing) s += 2;
-        else                    s += 4;
-    }
-
-    return s;
 }

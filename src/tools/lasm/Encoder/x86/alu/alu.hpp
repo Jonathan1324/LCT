@@ -11,9 +11,9 @@ namespace x86 {
 
         ~Two_Argument_ALU_Instruction() override {}
 
-        void evaluate() override;
+        void evaluateS() override;
 
-        bool optimize() override;
+        bool optimizeS() override;
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 
@@ -57,9 +57,9 @@ namespace x86 {
         Mul_Div_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
         ~Mul_Div_ALU_Instruction() override {}
 
-        void evaluate() override;
+        void evaluateS() override;
 
-        bool optimize() override;
+        bool optimizeS() override;
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 
@@ -103,9 +103,9 @@ namespace x86 {
         Shift_Rotate_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
         ~Shift_Rotate_ALU_Instruction() override {}
 
-        void evaluate() override;
+        void evaluateS() override;
 
-        bool optimize() override;
+        bool optimizeS() override;
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 
@@ -135,28 +135,9 @@ namespace x86 {
         Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
         ~Argument_ALU_Instruction() override {}
 
-        void evaluate() override;
-
-        bool optimize() override;
-
-        void encodeS(std::vector<uint8_t>& buffer) override;
-
-        uint64_t sizeS() override;
-
     private:
         bool usedReloc = false;
         std::string evalUsedSection;
         bool evalIsExtern;
-
-        bool use16BitAddressing = false;
-        bool use64BitAddressing = false;
-
-        bool use_displacement = false;
-        bool is_displacement_signed = false;
-        Parser::Immediate displacement_immediate;
-
-        bool displacement_can_optimize = true;
-        bool displacement_optimized = false;
-        int64_t displacement_value = 0;
     };
 }

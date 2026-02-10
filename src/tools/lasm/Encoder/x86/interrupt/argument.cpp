@@ -26,7 +26,7 @@ x86::Argument_Interrupt_Instruction::Argument_Interrupt_Instruction(::Encoder::E
     }
 }
 
-void x86::Argument_Interrupt_Instruction::evaluate()
+void x86::Argument_Interrupt_Instruction::evaluateS()
 {
     ::Encoder::Evaluation evaluation = Evaluate(argument);
 
@@ -46,11 +46,6 @@ void x86::Argument_Interrupt_Instruction::evaluate()
 
         argument_value = static_cast<uint8_t>(result);
     }
-}
-
-bool x86::Argument_Interrupt_Instruction::optimize()
-{
-    return false;
 }
 
 void x86::Argument_Interrupt_Instruction::encodeS(std::vector<uint8_t>& buffer)

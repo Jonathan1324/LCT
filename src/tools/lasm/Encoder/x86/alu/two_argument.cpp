@@ -449,7 +449,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
     }
 }
 
-void x86::Two_Argument_ALU_Instruction::evaluate()
+void x86::Two_Argument_ALU_Instruction::evaluateS()
 {
     switch (aluType)
     {
@@ -483,7 +483,7 @@ void x86::Two_Argument_ALU_Instruction::evaluate()
     }
 }
 
-bool x86::Two_Argument_ALU_Instruction::optimize()
+bool x86::Two_Argument_ALU_Instruction::optimizeS()
 {
     return false;
 }

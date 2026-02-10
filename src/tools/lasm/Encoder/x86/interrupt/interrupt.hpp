@@ -9,9 +9,7 @@ namespace x86 {
         Argument_Interrupt_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
         ~Argument_Interrupt_Instruction() override {}
 
-        void evaluate() override;
-
-        bool optimize() override;
+        void evaluateS() override;
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 
@@ -32,9 +30,5 @@ namespace x86 {
     public:
         Simple_Interrupt_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic);
         ~Simple_Interrupt_Instruction() override {}
-
-        void evaluate() override;
-
-        bool optimize() override;
     };
 }

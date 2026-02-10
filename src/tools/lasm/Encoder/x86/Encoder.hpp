@@ -24,20 +24,30 @@ namespace x86
     public:
         virtual ~Instruction() {};
 
+        void evaluate() override final;
+        bool optimize() override final;
         std::vector<uint8_t> encode() override final;
         uint64_t size() override final;
 
     protected:
+        virtual void evaluateS() {}
+        virtual bool optimizeS() { return false; }
         virtual void encodeS(std::vector<uint8_t>& buffer) {};
         virtual uint64_t sizeS() { return 0; };
 
-        Instruction(::Encoder::Encoder& e) : ::Encoder::Encoder::Instruction(e) {}
+        void evaluateDisplacement();
+        bool optimizeDisplacement();
 
-        uint8_t opcode;
-        bool useOpcodeEscape = false;
+        Instruction(::Encoder::Encoder& e) : ::Encoder::Encoder::Instruction(e) {}
 
         bool use16BitPrefix = false;
         bool use16BitAddressPrefix = false;
+
+        enum class AddressMode {
+            Bits16,
+            Bits32,
+            Bits64
+        } addressMode;
 
         struct REX {
             bool use = false;
@@ -47,6 +57,9 @@ namespace x86
             bool x = false;
             bool b = false;
         } rex;
+
+        bool useOpcodeEscape = false;
+        uint8_t opcode;
 
         struct ModRM {
             bool use = false;
@@ -62,5 +75,21 @@ namespace x86
             uint8_t index;
             Scale scale;
         } sib;
+
+        struct Displacement {
+            bool use = false;
+            bool is_signed = false;
+            bool is_short = false;
+
+            bool can_optimize = true;
+            bool direct_addressing = false;
+
+            int64_t value;
+            Parser::Immediate immediate;
+
+            bool needsRelocation = false;
+            std::string relocationUsedSection;
+            bool relocationIsExtern;
+        } displacement;
     };
 }

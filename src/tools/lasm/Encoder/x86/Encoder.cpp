@@ -7,6 +7,8 @@
 #include "interrupt/interrupt.hpp"
 #include "stack/stack.hpp"
 
+#include <cstring>
+
 x86::Encoder::Encoder(const Context& _context, Architecture _arch, BitMode _bits, const Parser::Parser* _parser)
     : ::Encoder::Encoder(_context, _arch, _bits, _parser)
 {
@@ -105,6 +107,74 @@ std::vector<uint8_t> x86::Instruction::encode()
         else           throw Exception::InternalError("Can't use SIB without ModR/M", -1, -1);
     }
 
+    if (displacement.use)
+    {
+        ::Encoder::RelocationSize relocationSize;
+        // TODO: FIXME: Just make better
+        if (displacement.is_short)
+        {
+            buffer.push_back(static_cast<uint8_t>(displacement.value));
+            relocationSize = ::Encoder::RelocationSize::Bit8;
+        }
+        else
+        {
+            uint32_t sizeInBytes;
+
+            if (addressMode == AddressMode::Bits16)
+            {
+                relocationSize = ::Encoder::RelocationSize::Bit16;
+                sizeInBytes = 2;
+            }
+            else
+            {
+                relocationSize = ::Encoder::RelocationSize::Bit32;
+                sizeInBytes = 4;
+            }
+
+            uint64_t oldSize = buffer.size();
+            buffer.resize(oldSize + sizeInBytes);
+
+            std::memcpy(buffer.data() + oldSize, &displacement.value, sizeInBytes);
+        }
+
+        if (displacement.needsRelocation)
+        {
+            uint64_t currentOffset = 0;
+            if (use16BitPrefix) currentOffset++;
+            if (use16BitAddressPrefix) currentOffset++;
+            if (rex.use) currentOffset++;
+            if (useOpcodeEscape) currentOffset++;
+            currentOffset++; // Opcode
+            if (modrm.use) currentOffset++;
+            if (sib.use) currentOffset++;
+
+            AddRelocation(
+                currentOffset,
+                displacement.value,
+                true,
+                displacement.relocationUsedSection,
+                ::Encoder::RelocationType::Absolute,
+                relocationSize,
+                displacement.is_signed,
+                displacement.relocationIsExtern
+            );
+        }
+    }
+    else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP8)
+    {
+        buffer.push_back(static_cast<uint8_t>(0));
+    }
+    else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP32)
+    {
+        buffer.push_back(static_cast<uint8_t>(0));
+        buffer.push_back(static_cast<uint8_t>(0));
+        if (addressMode != AddressMode::Bits16)
+        {
+            buffer.push_back(static_cast<uint8_t>(0));
+            buffer.push_back(static_cast<uint8_t>(0));
+        }
+    }
+
     encodeS(buffer);
 
     return buffer;
@@ -125,7 +195,90 @@ uint64_t x86::Instruction::size()
     if (modrm.use) s++;
     if (sib.use) s++;
 
+    if (displacement.use)
+    {
+        if (displacement.is_short) s++;
+        else
+        {
+            if (addressMode == AddressMode::Bits16) s += 2;
+            else                                    s += 4;
+        }
+    }
+    else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP8)
+    {
+        s++;
+    }
+    else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP32)
+    {
+        if (addressMode == AddressMode::Bits16) s += 2;
+        else                                    s += 4;
+    }
+
     s += sizeS();
 
     return s;
+}
+
+void x86::Instruction::evaluate()
+{
+    evaluateDisplacement();
+    evaluateS();
+}
+
+bool x86::Instruction::optimize()
+{
+    bool changed = false;
+
+    if (optimizeDisplacement())
+        changed = true;
+
+    if (optimizeS())
+        changed = true;
+
+    return changed;
+}
+
+void x86::Instruction::evaluateDisplacement()
+{
+    if (displacement.use)
+    {
+        ::Encoder::Evaluation evaluation = Evaluate(displacement.immediate);
+
+        if (evaluation.useOffset)
+        {
+            displacement.needsRelocation = true;
+
+            displacement.relocationUsedSection = evaluation.usedSection;
+            displacement.relocationIsExtern = evaluation.isExtern;
+            
+            displacement.can_optimize = false;
+            displacement.value = evaluation.offset;
+        }
+        else
+        {
+            Int128 result = evaluation.result;
+
+            // TODO: Check for overflow
+
+            displacement.value = static_cast<uint64_t>(result);
+        }
+    }
+}
+
+bool x86::Instruction::optimizeDisplacement()
+{
+    if (displacement.use && displacement.can_optimize && !displacement.is_short)
+    {
+        if (displacement.value < -128 || displacement.value > 127)
+            return false;
+
+        displacement.is_short = true;
+
+        // TODO: Make better
+        modrm.mod = Mod::INDIRECT_DISP8;
+
+        return true;
+    }
+
+    return false;
 }

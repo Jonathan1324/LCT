@@ -10,9 +10,9 @@ namespace x86 {
 
         ~Mov_Instruction() override {}
 
-        void evaluate() override;
+        void evaluateS() override;
 
-        bool optimize() override;
+        bool optimizeS() override;
 
         void encodeS(std::vector<uint8_t>& buffer) override;
 

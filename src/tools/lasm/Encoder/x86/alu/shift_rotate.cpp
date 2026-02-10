@@ -216,7 +216,7 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
     }
 }
 
-void x86::Shift_Rotate_ALU_Instruction::evaluate()
+void x86::Shift_Rotate_ALU_Instruction::evaluateS()
 {
     if (usesImmediate)
     {
@@ -243,7 +243,7 @@ void x86::Shift_Rotate_ALU_Instruction::evaluate()
     }
 }
 
-bool x86::Shift_Rotate_ALU_Instruction::optimize()
+bool x86::Shift_Rotate_ALU_Instruction::optimizeS()
 {
     return false;
 }

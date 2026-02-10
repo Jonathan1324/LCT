@@ -17,13 +17,3 @@ x86::Simple_Control_Instruction::Simple_Control_Instruction(::Encoder::Encoder& 
             throw Exception::InternalError("Unknown simple control instruction", -1, -1, nullptr);
     }
 }
-
-void x86::Simple_Control_Instruction::evaluate()
-{
-
-}
-
-bool x86::Simple_Control_Instruction::optimize()
-{
-    return false;
-}

@@ -906,7 +906,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
     }
 }
 
-void x86::Mov_Instruction::evaluate()
+void x86::Mov_Instruction::evaluateS()
 {
     switch (movType)
     {
@@ -940,7 +940,7 @@ void x86::Mov_Instruction::evaluate()
     }
 }
 
-bool x86::Mov_Instruction::optimize()
+bool x86::Mov_Instruction::optimizeS()
 {
     return false;
 }

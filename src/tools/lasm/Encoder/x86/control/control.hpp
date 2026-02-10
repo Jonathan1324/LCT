@@ -9,9 +9,5 @@ namespace x86 {
         Simple_Control_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic);
 
         ~Simple_Control_Instruction() override {}
-
-        void evaluate() override;
-
-        bool optimize() override;
     };
 }

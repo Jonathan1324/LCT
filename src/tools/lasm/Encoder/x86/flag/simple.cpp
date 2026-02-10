@@ -45,13 +45,3 @@ x86::Simple_Flag_Instruction::Simple_Flag_Instruction(::Encoder::Encoder& e, Bit
             throw Exception::InternalError("Unknown simple control instruction", -1, -1, nullptr);
     }
 }
-
-void x86::Simple_Flag_Instruction::evaluate()
-{
-
-}
-
-bool x86::Simple_Flag_Instruction::optimize()
-{
-    return false;
-}

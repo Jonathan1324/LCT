@@ -451,7 +451,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
     }
 }
 
-void x86::Mul_Div_ALU_Instruction::evaluate()
+void x86::Mul_Div_ALU_Instruction::evaluateS()
 {
     switch (mulDivType)
     {
@@ -483,7 +483,7 @@ void x86::Mul_Div_ALU_Instruction::evaluate()
     }
 }
 
-bool x86::Mul_Div_ALU_Instruction::optimize()
+bool x86::Mul_Div_ALU_Instruction::optimizeS()
 {
     return false;
 }

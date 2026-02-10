@@ -60,13 +60,3 @@ x86::Simple_Interrupt_Instruction::Simple_Interrupt_Instruction(::Encoder::Encod
             throw Exception::InternalError("Unknown simple control instruction", -1, -1, nullptr);
     }
 }
-
-void x86::Simple_Interrupt_Instruction::evaluate()
-{
-
-}
-
-bool x86::Simple_Interrupt_Instruction::optimize()
-{
-    return false;
-}
