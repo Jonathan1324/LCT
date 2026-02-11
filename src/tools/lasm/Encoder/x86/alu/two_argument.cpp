@@ -58,139 +58,52 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
 
             if (otherIsImmediate)
             {
-                Parser::Instruction::Register mainReg = std::get<Parser::Instruction::Register>(mainOperand);
-
-                aluType = AluType::ALU_REG_IMM;
-
-                bool is64bit = false;
-
-                // TODO
-                switch (mainReg.reg)
-                {
-                    case AL:
-                    case CL:
-                    case DL:
-                    case BL:
-                    case AH:
-                    case CH:
-                    case DH:
-                    case BH:
-                    case SPL:
-                    case BPL:
-                    case SIL:
-                    case DIL:
-                    case R8B:
-                    case R9B:
-                    case R10B:
-                    case R11B:
-                    case R12B:
-                    case R13B:
-                    case R14B:
-                    case R15B:
-                        specific.alu_reg_imm.max = std::numeric_limits<uint8_t>::max();
-                        specific.alu_reg_imm.sizeInBits = 8;
-                        break;
-
-                    case AX:
-                    case CX:
-                    case DX:
-                    case BX:
-                    case SP:
-                    case BP:
-                    case SI:
-                    case DI:
-                    case R8W:
-                    case R9W:
-                    case R10W:
-                    case R11W:
-                    case R12W:
-                    case R13W:
-                    case R14W:
-                    case R15W:
-                        specific.alu_reg_imm.max = std::numeric_limits<uint16_t>::max();
-                        specific.alu_reg_imm.sizeInBits = 16;
-
-                        if (bits != BitMode::Bits16)
-                            use16BitPrefix = true;
-                        break;
-
-                    case EAX:
-                    case ECX:
-                    case EDX:
-                    case EBX:
-                    case ESP:
-                    case EBP:
-                    case ESI:
-                    case EDI:
-                    case R8D:
-                    case R9D:
-                    case R10D:
-                    case R11D:
-                    case R12D:
-                    case R13D:
-                    case R14D:
-                    case R15D:
-                        specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                        specific.alu_reg_imm.sizeInBits = 32;
-
-                        if (bits == BitMode::Bits16)
-                            use16BitPrefix = true;
-                        break;
-
-                    case RAX:
-                    case RCX:
-                    case RDX:
-                    case RBX:
-                    case RSP:
-                    case RBP:
-                    case RSI:
-                    case RDI:
-                    case R8:
-                    case R9:
-                    case R10:
-                    case R11:
-                    case R12:
-                    case R13:
-                    case R14:
-                    case R15:
-                        specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                        specific.alu_reg_imm.sizeInBits = 32;
-
-                        is64bit = true;
-
-                        rex.use = true;
-                        rex.w = true;
-
-                        break;
-
-                    default:
-                        throw Exception::SemanticError("instruction doesn't support this register", -1, -1);
-                }
-
                 bool accumulatorReg = false;
 
-                switch (mainReg.reg)
+                if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
                 {
-                    case AL:
-                        accumulatorReg = true;
-                        break;
-                    
-                    case AX:
-                        if (bits != BitMode::Bits16) use16BitPrefix = true;
+                    Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
+
+                    switch (reg.reg)
+                    {
+                        case AL:
+                            specific.alu_reg_imm.max = std::numeric_limits<uint8_t>::max();
+                            specific.alu_reg_imm.sizeInBits = 8;
+
+                            accumulatorReg = true;
+                            break;
                         
-                        accumulatorReg = true;
-                        break;
-                    
-                    case EAX:
-                        if (bits == BitMode::Bits16) use16BitPrefix = true;
+                        case AX:
+                            if (bits != BitMode::Bits16) use16BitPrefix = true;
 
-                        accumulatorReg = true;
-                        break;
+                            specific.alu_reg_imm.max = std::numeric_limits<uint16_t>::max();
+                            specific.alu_reg_imm.sizeInBits = 16;
+                            
+                            accumulatorReg = true;
+                            break;
+                        
+                        case EAX:
+                            if (bits == BitMode::Bits16) use16BitPrefix = true;
 
-                    case RAX:
-                        accumulatorReg = true;
-                        break;
+                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                            specific.alu_reg_imm.sizeInBits = 32;
+
+                            accumulatorReg = true;
+                            break;
+
+                        case RAX:
+                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                            specific.alu_reg_imm.sizeInBits = 32;
+
+                            rex.use = true;
+                            rex.w = true;
+
+                            accumulatorReg = true;
+                            break;
+                    }
                 }
+
+                aluType = AluType::ALU_REG_IMM;
 
                 if (accumulatorReg)
                 {
@@ -227,7 +140,56 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                 }
                 else
                 {
-                    parseRegister(mainReg, bits, false);
+                    uint64_t mainSize;
+                    if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
+                    {
+                        Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
+                        mainSize = parseRegister(reg, bits, false);
+
+                        if (!isGPR(reg.reg))
+                            throw Exception::SemanticError("Two argument ALU instruction only accepts GPRs", -1, -1);
+                    }
+                    else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
+                    {
+                        Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(mainOperand);
+                        mainSize = parseMemory(mem, bits, true);
+                    }
+
+                    switch (mainSize)
+                    {
+                        case 8:
+                            specific.alu_reg_imm.max = std::numeric_limits<uint8_t>::max();
+                            specific.alu_reg_imm.sizeInBits = 8;
+                            break;
+
+                        case 16:
+                            specific.alu_reg_imm.max = std::numeric_limits<uint16_t>::max();
+                            specific.alu_reg_imm.sizeInBits = 16;
+
+                            if (bits != BitMode::Bits16)
+                                use16BitPrefix = true;
+                            break;
+
+                        case 32:
+                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                            specific.alu_reg_imm.sizeInBits = 32;
+
+                            if (bits == BitMode::Bits16)
+                                use16BitPrefix = true;
+                            break;
+
+                        case 64:
+                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                            specific.alu_reg_imm.sizeInBits = 32;
+
+                            rex.use = true;
+                            rex.w = true;
+
+                            break;
+
+                        default:
+                            throw Exception::InternalError("Invalid bit", -1, -1);
+                    }
 
                     if (mnemonic == TEST)
                     {
@@ -278,6 +240,9 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                 {
                     Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
                     mainSize = parseRegister(reg, bits, !useRMFirst);
+
+                    if (!isGPR(reg.reg))
+                        throw Exception::SemanticError("Two argument ALU instruction only accepts GPRs", -1, -1);
                 }
                 else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
                 {
@@ -289,6 +254,9 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                 {
                     Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(otherOperand);
                     otherSize = parseRegister(reg, bits, useRMFirst);
+
+                    if (!isGPR(reg.reg))
+                        throw Exception::SemanticError("Two argument ALU instruction only accepts GPRs", -1, -1);
                 }
                 else if (std::holds_alternative<Parser::Instruction::Memory>(otherOperand))
                 {
