@@ -116,11 +116,6 @@ _start:
     mov edx, 4294967295
 
     ; MOV - 32-bit Register to Memory (32-bit addressing)
-    mov edx, [10]
-    mov [10], edx
-    mov eax, [10]
-    mov [10], eax
-    
     mov eax, [eax]
     mov ebx, [ebx + 10]
     mov ecx, [ecx + eax*2 + 100]
@@ -142,6 +137,18 @@ _start:
     mov dword [ecx + eax*2 + 100], 20000
     mov dword [bx], 8000
     mov dword [bp + 10], 12000
+
+    ; MOV - Direct Addressing
+    mov edx, [10]
+    mov [10], edx
+    mov eax, [10]
+    mov [10], eax
+    mov al, [10]
+    mov [10], al
+    mov ah, [10]
+    mov [10], ah
+    mov ax, [10]
+    mov [10], ax
 
     ; MOV - Segment Registers to GPR
     mov ax, cs

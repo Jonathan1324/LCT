@@ -637,7 +637,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                         switch (directMemorySize)
                         {
                             case 8:
-                                opcode = (accumulatorFirst ? 0xA2 : 0xA0);
+                                opcode = (accumulatorFirst ? 0xA0 : 0xA2);
                                 break;
 
                             case 16:

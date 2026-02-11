@@ -169,6 +169,22 @@ _start:
     mov qword [rbx + 10], 50000
     mov qword [rcx + rax*2 + 100], 20000
 
+    ; MOV - Direct Addressing
+    mov rdx, [10]
+    mov [10], rdx
+    mov rax, [10]
+    mov [10], rax
+    mov edx, [10]
+    mov [10], edx
+    mov eax, [10]
+    mov [10], eax
+    mov al, [10]
+    mov [10], al
+    mov ah, [10]
+    mov [10], ah
+    mov ax, [10]
+    mov [10], ax
+
     ; MOV - Segment Registers to GPR
     mov ax, cs
     mov bx, ds
