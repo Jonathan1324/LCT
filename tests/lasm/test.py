@@ -193,11 +193,11 @@ def test(dir: Path, log_dir: Path):
             for as1_out, as2_out in zip(assembler_outs[0], assembler_outs[1]):
                 equal = check_if_files_equal(as1_out, as2_out)
                 test_cmp_file_content.append([
+                    "equal" if equal else "different",
+                    ":",
                     str(as1_out.relative_to(test_build_dir)),
                     "-",
                     str(as2_out.relative_to(test_build_dir)),
-                    ":",
-                    "equal" if equal else "different"
                 ])
             write_cmp_file(test_cmp_file, test_cmp_file_content)
 
