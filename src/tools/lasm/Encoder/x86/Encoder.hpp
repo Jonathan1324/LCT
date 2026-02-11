@@ -4,6 +4,7 @@
 #include <x86/Instructions.hpp>
 #include <tuple>
 #include "x86.hpp"
+#include <IntTypesC.h>
 
 namespace x86
 {

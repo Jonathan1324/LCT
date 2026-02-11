@@ -1,9 +1,19 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <inttypes.h>
+
 #if defined(__SIZEOF_INT128__)
-    using Int128 = __int128;
-    using UInt128 = unsigned __int128;
+typedef __int128 Int128;
+typedef unsigned __int128 UInt128;
 #else
     // FIXME: get fallback
     #error "__int128 isn't supported by this compiler"
+#endif
+
+#ifdef __cplusplus
+}
 #endif

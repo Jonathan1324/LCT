@@ -1,6 +1,6 @@
 #include "Encoder.hpp"
 
-uint64_t ::x86::Instruction::parseMemory(
+uint64_t x86::Instruction::parseMemory(
     const Parser::Instruction::Memory& mem,
     BitMode bits,
     uint64_t expectedSize
@@ -422,7 +422,7 @@ uint64_t ::x86::Instruction::parseMemory(
     return memSize;
 }
 
-uint64_t ::x86::Instruction::parseRegister(
+uint64_t x86::Instruction::parseRegister(
     const Parser::Instruction::Register& reg,
     BitMode bits,
     uint64_t expectedSize,

@@ -405,9 +405,8 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
 
     Warning_Flags = [
         "-Wall", "-Wextra", "-Wpedantic", "-Wconversion", "-Wshadow",
-        "-Wformat=2", "-Wundef", "-Wunreachable-code", "-Wduplicated-cond",
-        "-Wnull-dereference", "-Wduplicated-branches",
-        "-Wlogical-op", "-Wunused-parameter"
+        "-Wformat=2", "-Wundef", "-Wunreachable-code",
+        "-Wnull-dereference", "-Wunused-parameter"
     ]
 
     Debug_Flags = [
@@ -419,11 +418,22 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
     ]
 
     Release_Flags = [
-        "-O3", "-DNDEBUG", "-fmerge-constants", "-fno-ident",
+        "-O3", "-DNDEBUG", "-fno-ident",
         "-funroll-loops", "-fstrict-aliasing", "-ffunction-sections",
         "-fdata-sections", "-fpie", "-pie",
         #TODO: "-flto"
     ]
+
+    if OS != OS.macOS:
+        Release_Flags.extend([
+            "-fmerge-constants"
+        ])
+
+        Warning_Flags.extend([
+            "-Wduplicated-branches",
+            "-Wlogical-op",
+            "-Wduplicated-cond"
+        ])
 
     Security_Flags = ["-fstack-protector-strong", "-D_FORTIFY_SOURCE=2", "-fPIC"]
     Static_Flags = ["-static", "-static-libgcc", "-static-libstdc++"]
