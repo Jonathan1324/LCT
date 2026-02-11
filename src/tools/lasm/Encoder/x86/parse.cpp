@@ -292,7 +292,7 @@ uint64_t x86::Instruction::parseMemory(
         {
             // [bx], [bp]
             if (baseReg == Registers::BX) addressing_mode = 7;  // 111b
-            else if (baseReg == Registers::BP) addressing_mode = 6;  // 110b
+            else if (baseReg == Registers::BP) addressing_mode = 6; // 110b
             else
                 throw Exception::SemanticError("Invalid 16-bit base register", -1, -1);
         }
@@ -327,7 +327,14 @@ uint64_t x86::Instruction::parseMemory(
         }
         else
         {
-            modrm.mod = Mod::INDIRECT;
+            if (addressing_mode == 6)
+            {
+                modrm.mod = Mod::INDIRECT_DISP8;
+            }
+            else
+            {
+                modrm.mod = Mod::INDIRECT;
+            }
         }
     }
     else // 32,64
