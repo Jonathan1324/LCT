@@ -42,13 +42,12 @@ namespace x86
         uint64_t parseMemory(
             const Parser::Instruction::Memory& mem,
             BitMode bits,
-            uint64_t expectedSize
+            bool expectSize
         );
 
         uint64_t parseRegister(
             const Parser::Instruction::Register& reg,
             BitMode bits,
-            uint64_t expectedSize,
             bool isReg
         );
 
@@ -85,7 +84,7 @@ namespace x86
         struct ModRM {
             bool use = false;
 
-            ::x86::Mod mod;
+            Mod mod = Mod::REGISTER;
             uint8_t reg;
             uint8_t rm;
         } modrm;

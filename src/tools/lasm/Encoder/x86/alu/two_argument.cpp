@@ -20,12 +20,61 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
             mainOperand = operands[0];
             otherOperand = operands[1];
 
+            bool useRMFirst = false;
+            bool otherIsImmediate = false;
+
             if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
             {
                 Parser::Instruction::Register mainReg = std::get<Parser::Instruction::Register>(mainOperand);
 
+                if (std::holds_alternative<Parser::Instruction::Register>(otherOperand))
+                {
+                    useRMFirst = true;
+                }
+                else if (std::holds_alternative<Parser::Instruction::Memory>(otherOperand))
+                {
+                    useRMFirst = false;
+                }
+                else if (std::holds_alternative<Parser::Immediate>(otherOperand))
+                {
+                    otherIsImmediate = true;
+                }
+            }
+            else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
+            {
+                if (std::holds_alternative<Parser::Instruction::Register>(otherOperand))
+                {
+                    useRMFirst = true;
+                }
+                else if (std::holds_alternative<Parser::Instruction::Memory>(otherOperand))
+                {
+                    throw Exception::SemanticError("Instruction can't have two memory operands", -1, -1);
+                }
+                else if (std::holds_alternative<Parser::Immediate>(otherOperand))
+                {
+                    otherIsImmediate = true;
+                }
+            }
+
+            if (otherIsImmediate)
+            {
+                Parser::Instruction::Register mainReg = std::get<Parser::Instruction::Register>(mainOperand);
+
+                aluType = AluType::ALU_REG_IMM;
+
+                bool is64bit = false;
+
+                // TODO
                 switch (mainReg.reg)
                 {
+                    case AL:
+                    case CL:
+                    case DL:
+                    case BL:
+                    case AH:
+                    case CH:
+                    case DH:
+                    case BH:
                     case SPL:
                     case BPL:
                     case SIL:
@@ -38,6 +87,18 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     case R13B:
                     case R14B:
                     case R15B:
+                        specific.alu_reg_imm.max = std::numeric_limits<uint8_t>::max();
+                        specific.alu_reg_imm.sizeInBits = 8;
+                        break;
+
+                    case AX:
+                    case CX:
+                    case DX:
+                    case BX:
+                    case SP:
+                    case BP:
+                    case SI:
+                    case DI:
                     case R8W:
                     case R9W:
                     case R10W:
@@ -46,6 +107,21 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     case R13W:
                     case R14W:
                     case R15W:
+                        specific.alu_reg_imm.max = std::numeric_limits<uint16_t>::max();
+                        specific.alu_reg_imm.sizeInBits = 16;
+
+                        if (bits != BitMode::Bits16)
+                            use16BitPrefix = true;
+                        break;
+
+                    case EAX:
+                    case ECX:
+                    case EDX:
+                    case EBX:
+                    case ESP:
+                    case EBP:
+                    case ESI:
+                    case EDI:
                     case R8D:
                     case R9D:
                     case R10D:
@@ -54,6 +130,13 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     case R13D:
                     case R14D:
                     case R15D:
+                        specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                        specific.alu_reg_imm.sizeInBits = 32;
+
+                        if (bits == BitMode::Bits16)
+                            use16BitPrefix = true;
+                        break;
+
                     case RAX:
                     case RCX:
                     case RDX:
@@ -70,374 +153,224 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     case R13:
                     case R14:
                     case R15:
-                        if (bits != BitMode::Bits64)
-                            throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
+                        specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                        specific.alu_reg_imm.sizeInBits = 32;
+
+                        is64bit = true;
+
+                        rex.use = true;
+                        rex.w = true;
+
+                        break;
+
+                    default:
+                        throw Exception::SemanticError("instruction doesn't support this register", -1, -1);
                 }
 
-                if (std::holds_alternative<Parser::Instruction::Register>(otherOperand))
+                bool accumulatorReg = false;
+
+                switch (mainReg.reg)
                 {
-                    Parser::Instruction::Register otherReg = std::get<Parser::Instruction::Register>(otherOperand);
+                    case AL:
+                        accumulatorReg = true;
+                        break;
+                    
+                    case AX:
+                        if (bits != BitMode::Bits16) use16BitPrefix = true;
+                        
+                        accumulatorReg = true;
+                        break;
+                    
+                    case EAX:
+                        if (bits == BitMode::Bits16) use16BitPrefix = true;
 
-                    switch (otherReg.reg)
-                    {
-                        case SPL:
-                        case BPL:
-                        case SIL:
-                        case DIL:
-                        case R8B:
-                        case R9B:
-                        case R10B:
-                        case R11B:
-                        case R12B:
-                        case R13B:
-                        case R14B:
-                        case R15B:
-                        case R8W:
-                        case R9W:
-                        case R10W:
-                        case R11W:
-                        case R12W:
-                        case R13W:
-                        case R14W:
-                        case R15W:
-                        case R8D:
-                        case R9D:
-                        case R10D:
-                        case R11D:
-                        case R12D:
-                        case R13D:
-                        case R14D:
-                        case R15D:
-                            if (bits != BitMode::Bits64)
-                                throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
-                    }
+                        accumulatorReg = true;
+                        break;
 
-                    aluType = AluType::ALU_REG_REG;
+                    case RAX:
+                        accumulatorReg = true;
+                        break;
+                }
 
-                    modrm.mod = ::x86::Mod::REGISTER;
-
-                    modrm.use = true;
-
-                    auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
-                    auto [otherI, otherUseREX, otherSetREX] = ::x86::getReg(otherReg.reg);
-
-                    if (mainUseREX || otherUseREX)
-                        rex.use = true;
-                    if (mainSetREX)
-                        rex.b = true;
-                    if (otherSetREX)
-                        rex.r = true;
-
-                    uint8_t mainRegSize = getRegSize(mainReg.reg, bits);
-                    uint8_t otherRegSize = getRegSize(otherReg.reg, bits);
-
-                    if (mainRegSize != otherRegSize)
-                        throw Exception::SemanticError("Can't use instruction with registers of different size", -1, -1);
-
-                    modrm.reg = otherI;
-                    modrm.rm = mainI;
-
-                    if (mainRegSize == 8)
+                if (accumulatorReg)
+                {
+                    if (specific.alu_reg_imm.sizeInBits == 8)
                     {
                         switch (mnemonic)
                         {
-                            case ADD: opcode = 0x00; break;
-                            case OR:  opcode = 0x08; break;
-                            case ADC: opcode = 0x10; break;
-                            case SBB: opcode = 0x18; break;
-                            case AND: opcode = 0x20; break;
-                            case SUB: opcode = 0x28; break;
-                            case XOR: opcode = 0x30; break;
-                            case CMP: opcode = 0x38; break;
-                            case TEST: opcode = 0x84; break;
+                            case ADD: opcode = 0x04; break;
+                            case OR:  opcode = 0x0C; break;
+                            case ADC: opcode = 0x14; break;
+                            case SBB: opcode = 0x1C; break;
+                            case AND: opcode = 0x24; break;
+                            case SUB: opcode = 0x2C; break;
+                            case XOR: opcode = 0x34; break;
+                            case CMP: opcode = 0x3C; break;
+                            case TEST: opcode = 0xA8; break;
                         }
                     }
                     else
                     {
                         switch (mnemonic)
                         {
-                            case ADD: opcode = 0x01; break;
-                            case OR:  opcode = 0x09; break;
-                            case ADC: opcode = 0x11; break;
-                            case SBB: opcode = 0x19; break;
-                            case AND: opcode = 0x21; break;
-                            case SUB: opcode = 0x29; break;
-                            case XOR: opcode = 0x31; break;
-                            case CMP: opcode = 0x39; break;
-                            case TEST: opcode = 0x85; break;
+                            case ADD: opcode = 0x05; break;
+                            case OR:  opcode = 0x0D; break;
+                            case ADC: opcode = 0x15; break;
+                            case SBB: opcode = 0x1D; break;
+                            case AND: opcode = 0x25; break;
+                            case SUB: opcode = 0x2D; break;
+                            case XOR: opcode = 0x35; break;
+                            case CMP: opcode = 0x3D; break;
+                            case TEST: opcode = 0xA9; break;
                         }
                     }
-
-                    switch (mainRegSize)
-                    {
-                        case 16:
-                            if (bits != BitMode::Bits16) use16BitPrefix = true;
-                            break;
-                        
-                        case 32:
-                            if (bits == BitMode::Bits16) use16BitPrefix = true;
-                            break;
-
-                        case 64:
-                            rex.use = true;
-                            rex.w = true;
-                            break;
-
-                        case 8:
-                            break;
-
-                        default:
-                            throw Exception::InternalError("Unknown mainRegSize", -1, -1);
-                    }
-
-                    if (rex.use && (mainReg.reg == AH || mainReg.reg == CH ||
-                                    mainReg.reg == DH || mainReg.reg == BH ||
-                                    otherReg.reg == AH || otherReg.reg == CH ||
-                                    otherReg.reg == DH || otherReg.reg == BH))
-                        throw Exception::SemanticError("Can't use high 8-bit regs using new registers", -1, -1);
                 }
-                else if (std::holds_alternative<Parser::Instruction::Memory>(otherOperand))
+                else
                 {
-                    throw Exception::InternalError("Memory not supported yet'", -1, -1);
-                    // TODO
-                }
-                else if (std::holds_alternative<Parser::Immediate>(otherOperand))
-                {
-                    aluType = AluType::ALU_REG_IMM;
+                    parseRegister(mainReg, bits, false);
 
-                    bool is64bit = false;
-
-                    // TODO
-                    switch (mainReg.reg)
+                    if (mnemonic == TEST)
                     {
-                        case AL:
-                        case CL:
-                        case DL:
-                        case BL:
-                        case AH:
-                        case CH:
-                        case DH:
-                        case BH:
-                        case SPL:
-                        case BPL:
-                        case SIL:
-                        case DIL:
-                        case R8B:
-                        case R9B:
-                        case R10B:
-                        case R11B:
-                        case R12B:
-                        case R13B:
-                        case R14B:
-                        case R15B:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint8_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 8;
-                            break;
-
-                        case AX:
-                        case CX:
-                        case DX:
-                        case BX:
-                        case SP:
-                        case BP:
-                        case SI:
-                        case DI:
-                        case R8W:
-                        case R9W:
-                        case R10W:
-                        case R11W:
-                        case R12W:
-                        case R13W:
-                        case R14W:
-                        case R15W:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint16_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 16;
-
-                            if (bits != BitMode::Bits16)
-                                use16BitPrefix = true;
-                            break;
-
-                        case EAX:
-                        case ECX:
-                        case EDX:
-                        case EBX:
-                        case ESP:
-                        case EBP:
-                        case ESI:
-                        case EDI:
-                        case R8D:
-                        case R9D:
-                        case R10D:
-                        case R11D:
-                        case R12D:
-                        case R13D:
-                        case R14D:
-                        case R15D:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 32;
-
-                            if (bits == BitMode::Bits16)
-                                use16BitPrefix = true;
-                            break;
-
-                        case RAX:
-                        case RCX:
-                        case RDX:
-                        case RBX:
-                        case RSP:
-                        case RBP:
-                        case RSI:
-                        case RDI:
-                        case R8:
-                        case R9:
-                        case R10:
-                        case R11:
-                        case R12:
-                        case R13:
-                        case R14:
-                        case R15:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 32;
-
-                            is64bit = true;
-
-                            rex.use = true;
-                            rex.w = true;
-
-                            break;
-
-                        default:
-                            throw Exception::SemanticError("instruction doesn't support this register", -1, -1);
-                    }
-
-                    bool accumulatorReg = false;
-
-                    switch (mainReg.reg)
-                    {
-                        case AL:
-                            accumulatorReg = true;
-                            break;
+                        modrm.reg = 0;
                         
-                        case AX:
-                            if (bits != BitMode::Bits16) use16BitPrefix = true;
-                            
-                            accumulatorReg = true;
-                            break;
-                        
-                        case EAX:
-                            if (bits == BitMode::Bits16) use16BitPrefix = true;
-
-                            accumulatorReg = true;
-                            break;
-
-                        case RAX:
-                            rex.use = true;
-                            rex.w = true;
-
-                            accumulatorReg = true;
-                            break;
-                    }
-
-                    if (accumulatorReg)
-                    {
                         if (specific.alu_reg_imm.sizeInBits == 8)
                         {
-                            switch (mnemonic)
-                            {
-                                case ADD: opcode = 0x04; break;
-                                case OR:  opcode = 0x0C; break;
-                                case ADC: opcode = 0x14; break;
-                                case SBB: opcode = 0x1C; break;
-                                case AND: opcode = 0x24; break;
-                                case SUB: opcode = 0x2C; break;
-                                case XOR: opcode = 0x34; break;
-                                case CMP: opcode = 0x3C; break;
-                                case TEST: opcode = 0xA8; break;
-                            }
+                            opcode = 0xF6;
                         }
                         else
                         {
-                            switch (mnemonic)
-                            {
-                                case ADD: opcode = 0x05; break;
-                                case OR:  opcode = 0x0D; break;
-                                case ADC: opcode = 0x15; break;
-                                case SBB: opcode = 0x1D; break;
-                                case AND: opcode = 0x25; break;
-                                case SUB: opcode = 0x2D; break;
-                                case XOR: opcode = 0x35; break;
-                                case CMP: opcode = 0x3D; break;
-                                case TEST: opcode = 0xA9; break;
-                            }
+                            opcode = 0xF7;
                         }
                     }
                     else
                     {
-                        auto [mainI, mainUseREX, mainSetREX] = ::x86::getReg(mainReg.reg);
-
-                        if (mainUseREX) rex.use = true;
-                        if (mainSetREX) rex.b = true;
-
-                        modrm.use = true;
-
-                        modrm.mod = Mod::REGISTER;
-                        modrm.rm = mainI;
-
-                        if (mnemonic == TEST)
+                        switch (mnemonic)
                         {
-                            modrm.reg = 0;
-                            
-                            if (specific.alu_reg_imm.sizeInBits == 8)
-                            {
-                                opcode = 0xF6;
-                            }
-                            else
-                            {
-                                opcode = 0xF7;
-                            }
+                            case ADD: modrm.reg = 0; break;
+                            case OR:  modrm.reg = 1; break;
+                            case ADC: modrm.reg = 2; break;
+                            case SBB: modrm.reg = 3; break;
+                            case AND: modrm.reg = 4; break;
+                            case SUB: modrm.reg = 5; break;
+                            case XOR: modrm.reg = 6; break;
+                            case CMP: modrm.reg = 7; break;
+                        }
+
+                        if (specific.alu_reg_imm.sizeInBits == 8)
+                        {
+                            opcode = 0x80;
                         }
                         else
                         {
-                            switch (mnemonic)
-                            {
-                                case ADD: modrm.reg = 0; break;
-                                case OR:  modrm.reg = 1; break;
-                                case ADC: modrm.reg = 2; break;
-                                case SBB: modrm.reg = 3; break;
-                                case AND: modrm.reg = 4; break;
-                                case SUB: modrm.reg = 5; break;
-                                case XOR: modrm.reg = 6; break;
-                                case CMP: modrm.reg = 7; break;
-                            }
-
-                            if (specific.alu_reg_imm.sizeInBits == 8)
-                            {
-                                opcode = 0x80;
-                            }
-                            else
-                            {
-                                opcode = 0x81;
-                            }
+                            opcode = 0x81;
                         }
                     }
                 }
             }
-            else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
+            else
             {
-                // TODO
-                throw Exception::InternalError("Memory not supported yet", -1, -1);
+                aluType = AluType::ALU_REG_REG;
+
+                uint64_t mainSize;
+                uint64_t otherSize;
+
+                if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
+                {
+                    Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
+                    mainSize = parseRegister(reg, bits, !useRMFirst);
+                }
+                else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
+                {
+                    Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(mainOperand);
+                    mainSize = parseMemory(mem, bits, false);
+                }
 
                 if (std::holds_alternative<Parser::Instruction::Register>(otherOperand))
                 {
-                    // TODO
+                    Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(otherOperand);
+                    otherSize = parseRegister(reg, bits, useRMFirst);
                 }
                 else if (std::holds_alternative<Parser::Instruction::Memory>(otherOperand))
                 {
-                    // TODO
+                    Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(otherOperand);
+                    otherSize = parseMemory(mem, bits, false);
+
+                    if (otherSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                        otherSize = mainSize;
                 }
-                else if (std::holds_alternative<Parser::Immediate>(otherOperand))
+
+                if (mainSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                    mainSize = otherSize;
+
+                if (mainSize != otherSize)
+                    throw Exception::SemanticError("Can't use instruction with registers of different size", -1, -1);
+
+                if (mainSize == 8)
                 {
-                    // TODO
+                    switch (mnemonic)
+                    {
+                        case ADD:  opcode = (useRMFirst ? 0x00 : 0x02); break;
+                        case OR:   opcode = (useRMFirst ? 0x08 : 0x0A); break;
+                        case ADC:  opcode = (useRMFirst ? 0x10 : 0x12); break;
+                        case SBB:  opcode = (useRMFirst ? 0x18 : 0x1A); break;
+                        case AND:  opcode = (useRMFirst ? 0x20 : 0x22); break;
+                        case SUB:  opcode = (useRMFirst ? 0x28 : 0x2A); break;
+                        case XOR:  opcode = (useRMFirst ? 0x30 : 0x32); break;
+                        case CMP:  opcode = (useRMFirst ? 0x38 : 0x3A); break;
+                        case TEST: opcode = 0x84; break; // commutative
+                    }
+                }
+                else
+                {
+                    switch (mnemonic)
+                    {
+                        case ADD:  opcode = (useRMFirst ? 0x01 : 0x03); break;
+                        case OR:   opcode = (useRMFirst ? 0x09 : 0x0B); break;
+                        case ADC:  opcode = (useRMFirst ? 0x11 : 0x13); break;
+                        case SBB:  opcode = (useRMFirst ? 0x19 : 0x1B); break;
+                        case AND:  opcode = (useRMFirst ? 0x21 : 0x23); break;
+                        case SUB:  opcode = (useRMFirst ? 0x29 : 0x2B); break;
+                        case XOR:  opcode = (useRMFirst ? 0x31 : 0x33); break;
+                        case CMP:  opcode = (useRMFirst ? 0x39 : 0x3B); break;
+                        case TEST: opcode = 0x85; break; // commutative
+                    }
+                }
+
+                switch (mainSize)
+                {
+                    case 16:
+                        if (bits != BitMode::Bits16) use16BitPrefix = true;
+                        break;
+                    
+                    case 32:
+                        if (bits == BitMode::Bits16) use16BitPrefix = true;
+                        break;
+
+                    case 64:
+                        rex.use = true;
+                        rex.w = true;
+                        break;
+
+                    case 8:
+                        break;
+
+                    default:
+                        throw Exception::InternalError("Unknown mainRegSize", -1, -1);
+                }
+
+                if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
+                {
+                    Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
+                    if (rex.use && (reg.reg == AH || reg.reg == CH ||
+                                    reg.reg == DH || reg.reg == BH))
+                        throw Exception::SemanticError("Can't use high 8-bit regs using new registers", -1, -1);
+                }
+                if (std::holds_alternative<Parser::Instruction::Register>(otherOperand))
+                {
+                    Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(otherOperand);
+                    if (rex.use && (reg.reg == AH || reg.reg == CH ||
+                                    reg.reg == DH || reg.reg == BH))
+                        throw Exception::SemanticError("Can't use high 8-bit regs using new registers", -1, -1);
                 }
             }
 

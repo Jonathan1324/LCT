@@ -13,17 +13,18 @@ _start:
     add ebx, esi
     add edi, ebp
     add di, si
-    add sp, 900
     add al, ah
 
     sub ah, 5
+    add sp, 9000
+
     sub bh, ch
 
     adc edx, ecx
 
     sbb eax, eax
 
-    cmp ebx, ebx
+    cmp rbx, rbx
 
     test eax, 200
     test ebx, edx
@@ -31,6 +32,8 @@ _start:
     and eax, ecx
 
     or eax, 0xffff
+
+    add rax, 10000
 
     xor edi, esi
 

@@ -23,7 +23,7 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
             if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
             {
                 Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
-                size = parseRegister(reg, bits, Parser::Instruction::Memory::NO_POINTER_SIZE, false);
+                size = parseRegister(reg, bits, false);
 
                 if (!isGPR(reg.reg))
                     throw Exception::SemanticError("Shift/Rotate ALU instruction only accepts GPRs", -1, -1);
@@ -31,7 +31,7 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
             else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
             {
                 Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(mainOperand);
-                size = parseMemory(mem, bits, Parser::Instruction::Memory::NO_POINTER_SIZE);
+                size = parseMemory(mem, bits, true);
             }
 
             if (std::holds_alternative<Parser::Instruction::Register>(countOperand))

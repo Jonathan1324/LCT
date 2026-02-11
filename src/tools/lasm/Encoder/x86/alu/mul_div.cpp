@@ -22,7 +22,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                     throw Exception::SyntaxError("First Operand of 2/3 imul has to be a register", -1, -1);
                 }
                 Parser::Instruction::Register mainReg = std::get<Parser::Instruction::Register>(mainOperand);
-                uint64_t mainSize = parseRegister(mainReg, bits, Parser::Instruction::Memory::NO_POINTER_SIZE, true);
+                uint64_t mainSize = parseRegister(mainReg, bits, true);
 
                 if (!isGPR(mainReg.reg))
                     throw Exception::SemanticError("Mul/Div ALU instruction only accepts GPRs", -1, -1);
@@ -35,7 +35,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                     if (std::holds_alternative<Parser::Instruction::Register>(secondOperand))
                     {
                         Parser::Instruction::Register secondReg = std::get<Parser::Instruction::Register>(secondOperand);
-                        secondSize = parseRegister(secondReg, bits, mainSize, false);
+                        secondSize = parseRegister(secondReg, bits, false);
 
                         if (!isGPR(secondReg.reg))
                             throw Exception::SemanticError("Mul/Div ALU instruction only accepts GPRs", -1, -1);
@@ -43,12 +43,18 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                     else if (std::holds_alternative<Parser::Instruction::Memory>(secondOperand))
                     {
                         Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(secondOperand);
-                        secondSize = parseMemory(mem, bits, mainSize);
+                        secondSize = parseMemory(mem, bits, false);
+
+                        if (secondSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                            secondSize = mainSize;
                     }
                     else
                     {
                         throw Exception::InternalError("Immediate not allowed for 2 operand imul instruction", -1, -1);
                     }
+
+                    if (secondSize != mainSize)
+                        throw Exception::SemanticError("Operand sizes don't match", -1, -1);
 
                     mulDivType = MulDivType::TwoOperands;
 
@@ -90,7 +96,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                     if (std::holds_alternative<Parser::Instruction::Register>(secondOperand))
                     {
                         Parser::Instruction::Register secondReg = std::get<Parser::Instruction::Register>(secondOperand);
-                        secondSize = parseRegister(secondReg, bits, mainSize, false);
+                        secondSize = parseRegister(secondReg, bits, false);
 
                         if (!isGPR(secondReg.reg))
                             throw Exception::SemanticError("Mul/Div ALU instruction only accepts GPRs", -1, -1);
@@ -98,12 +104,18 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                     else if (std::holds_alternative<Parser::Instruction::Memory>(secondOperand))
                     {
                         Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(secondOperand);
-                        secondSize = parseMemory(mem, bits, mainSize);
+                        secondSize = parseMemory(mem, bits, false);
+
+                        if (secondSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                            secondSize = mainSize;
                     }
                     else
                     {
                         throw Exception::InternalError("Immediate as seconds operand not allowed for 3 operand imul instruction", -1, -1);
                     }
+
+                    if (secondSize != mainSize)
+                        throw Exception::SemanticError("Operand sizes don't match", -1, -1);
 
                     mulDivType = MulDivType::ThreeOperands;
 
@@ -174,7 +186,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
             if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
             {
                 Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
-                size = parseRegister(reg, bits, Parser::Instruction::Memory::NO_POINTER_SIZE, false);
+                size = parseRegister(reg, bits, false);
 
                 if (!isGPR(reg.reg))
                     throw Exception::SemanticError("Mul/Div ALU instruction only accepts GPRs", -1, -1);
@@ -182,7 +194,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
             else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
             {
                 Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(mainOperand);
-                size = parseMemory(mem, bits, Parser::Instruction::Memory::NO_POINTER_SIZE);
+                size = parseMemory(mem, bits, true);
             }
 
             switch (size)
