@@ -277,6 +277,7 @@ uint64_t x86::Instruction::parseMemory(
         if (hasIndex && (indexReg != Registers::SI && indexReg != Registers::DI))
             throw Exception::SemanticError("Only si/di allowed as 16-bit index", -1, -1);
 
+        bool noBase = false;
         uint8_t addressing_mode;
         if (hasBase && hasIndex)
         {
@@ -306,6 +307,7 @@ uint64_t x86::Instruction::parseMemory(
         }
         else
         {
+            noBase = true;
             addressing_mode = 6;  // Direct address
         }
 
@@ -316,7 +318,7 @@ uint64_t x86::Instruction::parseMemory(
             displacement.use = true;
             displacement.immediate = mem.displacement;
 
-            if (addressing_mode == 6)  // Direct address
+            if (noBase)  // Direct address
             {
                 modrm.mod = Mod::INDIRECT;
                 displacement.can_optimize = false;
