@@ -345,6 +345,9 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                 {
                     movType = MovType::MOV_REG_IMM;
 
+                    bool isAbs = false;
+                    Parser::Instruction::Memory memAbs;
+
                     uint64_t destSize;
                     if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
                     {
@@ -354,7 +357,15 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                     else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
                     {
                         Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(destinationOperand);
-                        destSize = parseMemory(mem, bits, true);
+
+                        if (!mem.use_reg1 && !mem.use_reg2 && mem.use_displacement && bits != BitMode::Bits64)
+                        {
+                            isAbs = true;
+                            destSize = mem.pointer_size;
+                            memAbs = mem;
+                        }
+                        else
+                            destSize = parseMemory(mem, bits, false);
                     }
 
                     switch (destSize)
@@ -590,7 +601,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                     else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
                     {
                         Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(sourceOperand);
-                        srcSize = parseMemory(mem, bits, false);
+                        srcSize = parseMemory(mem, bits, false); 
 
                         if (srcSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
                             srcSize = destSize;
@@ -602,7 +613,9 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                     if (destSize != srcSize)
                         throw Exception::SemanticError("Can't use instruction with operands of different size", -1, -1);
 
-                    switch (destSize)
+                    checkSize(destSize, bits);
+
+                switch (destSize)
                     {
                         case 8:
                             opcode = (useRMFirst ? 0x88 : 0x8A);

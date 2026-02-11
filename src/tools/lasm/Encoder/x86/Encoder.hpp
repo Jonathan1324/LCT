@@ -39,6 +39,8 @@ namespace x86
         void evaluateDisplacement();
         bool optimizeDisplacement();
 
+        void checkSize(uint64_t size, BitMode bits);
+        
         uint64_t parseMemory(
             const Parser::Instruction::Memory& mem,
             BitMode bits,

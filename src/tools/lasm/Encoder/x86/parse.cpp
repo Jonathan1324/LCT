@@ -415,6 +415,8 @@ uint64_t x86::Instruction::parseMemory(
         }
     }
 
+    checkSize(memSize, bits);
+
     return memSize;
 }
 
@@ -439,6 +441,8 @@ uint64_t x86::Instruction::parseRegister(
 
     if (isReg) modrm.reg = regIndex;
     else       modrm.rm = regIndex;
+
+    checkSize(regSize, bits);
 
     return regSize;
 }

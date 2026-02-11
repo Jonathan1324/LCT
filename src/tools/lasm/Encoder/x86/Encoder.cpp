@@ -310,3 +310,10 @@ void x86::Instruction::checkReg(const Parser::Instruction::Register& reg, BitMod
             throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
     }
 }
+
+void x86::Instruction::checkSize(uint64_t size, BitMode bits)
+{
+    if (bits == BitMode::Bits64) return;
+    if (size == 64)
+        throw Exception::SyntaxError("64-bit size not supported in 16/32 bit mode", -1, -1);
+}
