@@ -113,15 +113,6 @@ std::tuple<uint8_t, bool, bool> x86::getReg(uint64_t reg)
         case DR13:   return std::make_tuple(5, false, false);
         case DR14:   return std::make_tuple(6, false, false);
         case DR15:   return std::make_tuple(7, false, false);
-
-        case TR0:    return std::make_tuple(0, false, false);
-        case TR1:    return std::make_tuple(1, false, false);
-        case TR2:    return std::make_tuple(2, false, false);
-        case TR3:    return std::make_tuple(3, false, false);
-        case TR4:    return std::make_tuple(4, false, false);
-        case TR5:    return std::make_tuple(5, false, false);
-        case TR6:    return std::make_tuple(6, false, false);
-        case TR7:    return std::make_tuple(7, false, false);
     }
     throw Exception::InternalError("Unknown register", -1, -1);
 }
@@ -193,10 +184,6 @@ uint8_t x86::getRegSize(uint64_t reg, BitMode mode)
         case DR10: case DR11:
         case DR12: case DR13:
         case DR14: case DR15:
-        case TR0: case TR1:
-        case TR2: case TR3:
-        case TR4: case TR5:
-        case TR6: case TR7:
             if (mode == BitMode::Bits64) return 64;
             else return 32;
     }
@@ -228,6 +215,19 @@ bool x86::isGPR(uint64_t reg)
         case RSP: case RBP: case RSI: case RDI:
         case R8: case R9: case R10: case R11:
         case R12: case R13: case R14: case R15:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+bool x86::isSegment(uint64_t reg)
+{
+    switch (reg)
+    {
+        case ES: case CS: case SS:
+        case DS: case FS: case GS:
             return true;
 
         default:

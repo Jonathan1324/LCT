@@ -29,7 +29,6 @@ namespace x86
         R12D, R13D, R14D, R15D,
         CR0, /*CR1,*/ CR2, CR3, CR4, CR5, CR6, CR7,
         DR0, DR1, DR2, DR3, /*DR4, DR5,*/ DR6, DR7,
-        TR0, TR1, TR2, TR3, TR4, TR5, TR6, TR7,
         ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7,
         EFLAGS,
 
@@ -127,10 +126,6 @@ namespace x86
         {"cr12", CR12}, {"cr13", CR13}, {"cr14", CR14}, {"cr15", CR15},
 
         {"rflags", RFLAGS},
-
-        // Task registers
-        {"tr0", TR0}, {"tr1", TR1}, {"tr2", TR2}, {"tr3", TR3},
-        {"tr4", TR4}, {"tr5", TR5}, {"tr6", TR6}, {"tr7", TR7},
 
         // FPU registers
         {"st0", ST0}, {"st1", ST1}, {"st2", ST2}, {"st3", ST3},

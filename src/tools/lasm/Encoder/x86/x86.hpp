@@ -60,4 +60,5 @@ namespace x86 {
     uint8_t getRegSize(uint64_t reg, BitMode mode);
 
     bool isGPR(uint64_t reg);
+    bool isSegment(uint64_t reg);
 }

@@ -16,57 +16,53 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
             destinationOperand = operands[0];
             sourceOperand = operands[1];
 
+            bool usingSpecialReg = false;
+            bool usingSegment = false;
+
             if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
             {
+                Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(destinationOperand);
+                if (!isGPR(reg.reg)) usingSpecialReg = true;
+                if (isSegment(reg.reg)) usingSegment = true;
+            }
+
+            if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
+            {
+                Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(sourceOperand);
+                if (!isGPR(reg.reg)) usingSpecialReg = true;
+                if (isSegment(reg.reg)) usingSegment = true;
+            }
+
+            if (usingSpecialReg && !usingSegment)
+            {
+                if (!std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
+                    throw Exception::SyntaxError("Can only set GPRs to crX/drX/trX", -1, -1);
+
+                if (!std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
+                    throw Exception::SyntaxError("Can only set crX/drX/trX to GPRs", -1, -1);
+
                 Parser::Instruction::Register destReg = std::get<Parser::Instruction::Register>(destinationOperand);
+                Parser::Instruction::Register srcReg = std::get<Parser::Instruction::Register>(sourceOperand);
+
+                movType = MovType::MOV_REG_REG;
+
+                bool usingSpecialRegDest = false;
+                bool usingSpecialRegSrc = false;
 
                 switch (destReg.reg)
-                {
-                    case SPL:
-                    case BPL:
-                    case SIL:
-                    case DIL:
-                    case R8B:
-                    case R9B:
-                    case R10B:
-                    case R11B:
-                    case R12B:
-                    case R13B:
-                    case R14B:
-                    case R15B:
-                    case R8W:
-                    case R9W:
-                    case R10W:
-                    case R11W:
-                    case R12W:
-                    case R13W:
-                    case R14W:
-                    case R15W:
-                    case R8D:
-                    case R9D:
-                    case R10D:
-                    case R11D:
-                    case R12D:
-                    case R13D:
-                    case R14D:
-                    case R15D:
-                    case RAX:
-                    case RCX:
-                    case RDX:
-                    case RBX:
-                    case RSP:
-                    case RBP:
-                    case RSI:
-                    case RDI:
-                    case R8:
-                    case R9:
-                    case R10:
-                    case R11:
-                    case R12:
-                    case R13:
-                    case R14:
-                    case R15:
+                    {
+                    case CR0:
+                    case CR2:
+                    case CR3:
+                    case CR4:
+                    case CR5:
+                    case CR6:
+                    case CR7:
+                        useOpcodeEscape = true;
+                        opcode = 0x22;
 
+                        usingSpecialRegDest = true;
+                        break;
                     case CR8:
                     case CR9:
                     case CR10:
@@ -75,7 +71,26 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                     case CR13:
                     case CR14:
                     case CR15:
+                        useOpcodeEscape = true;
+                        opcode = 0x22;
 
+                        rex.use = true;
+                        rex.r = true;
+
+                        usingSpecialRegDest = true;
+                        break;
+
+                    case DR0:
+                    case DR1:
+                    case DR2:
+                    case DR3:
+                    case DR6:
+                    case DR7:
+                        useOpcodeEscape = true;
+                        opcode = 0x23;
+
+                        usingSpecialRegDest = true;
+                        break;
                     case DR8:
                     case DR9:
                     case DR10:
@@ -84,319 +99,333 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                     case DR13:
                     case DR14:
                     case DR15:
-                        if (bits != BitMode::Bits64)
-                            throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
+                        useOpcodeEscape = true;
+                        opcode = 0x23;
+
+                        rex.use = true;
+                        rex.r = true;
+
+                        usingSpecialRegDest = true;
+                        break;
+                    }
+
+                switch (srcReg.reg)
+                {
+                    case CR0:
+                    case CR2:
+                    case CR3:
+                    case CR4:
+                    case CR5:
+                    case CR6:
+                    case CR7:
+                        useOpcodeEscape = true;
+                        opcode = 0x20;
+
+                        usingSpecialRegSrc = true;
+                        break;
+                    case CR8:
+                    case CR9:
+                    case CR10:
+                    case CR11:
+                    case CR12:
+                    case CR13:
+                    case CR14:
+                    case CR15:
+                        useOpcodeEscape = true;
+                        opcode = 0x20;
+
+                        rex.use = true;
+                        rex.r = true;
+
+                        usingSpecialRegSrc = true;
+                        break;
+
+                    case DR0:
+                    case DR1:
+                    case DR2:
+                    case DR3:
+                    case DR6:
+                    case DR7:
+                        useOpcodeEscape = true;
+                        opcode = 0x21;
+
+                        usingSpecialRegSrc = true;
+                        break;
+                    case DR8:
+                    case DR9:
+                    case DR10:
+                    case DR11:
+                    case DR12:
+                    case DR13:
+                    case DR14:
+                    case DR15:
+                        useOpcodeEscape = true;
+                        opcode = 0x21;
+
+                        rex.use = true;
+                        rex.r = true;
+
+                        usingSpecialRegSrc = true;
+                        break;
+                }
+
+                if (usingSpecialRegDest && usingSpecialRegSrc)
+                    throw Exception::SemanticError("Can't set special register using special register", -1, -1);
+
+                checkReg(destReg, bits);
+                checkReg(srcReg, bits);
+
+                modrm.use = true;
+
+                auto [destI, destUseREX, destSetREX] = ::x86::getReg(destReg.reg);
+                auto [srcI, srcUseREX, srcSetREX] = ::x86::getReg(srcReg.reg);
+
+                if (destUseREX || srcUseREX)
+                    rex.use = true;
+                if (destSetREX || srcSetREX)
+                    rex.b = true;
+
+                uint8_t destRegSize = getRegSize(destReg.reg, bits);
+                uint8_t srcRegSize = getRegSize(srcReg.reg, bits);
+
+                if (destRegSize != srcRegSize)
+                    throw Exception::SemanticError("Can't use 'mov' with registers of different size", -1, -1);
+
+                if (usingSpecialRegDest)
+                {
+                    modrm.reg = destI;
+                    modrm.rm = srcI;
+                }
+                else
+                {
+                    modrm.reg = srcI;
+                    modrm.rm = destI;
+                }
+            }
+            else if (usingSegment)
+            {
+                bool useRMFirst = false;
+                if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
+                {
+                    Parser::Instruction::Register destReg = std::get<Parser::Instruction::Register>(destinationOperand);
+
+                    if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
+                    {
+                        Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(sourceOperand);
+                        if (isSegment(reg.reg) && isSegment(destReg.reg))
+                            throw Exception::SyntaxError("Can't use mov with two segment registers", -1, -1);
+
+                        if (isSegment(reg.reg))
+                            useRMFirst = true;
+                        else
+                            useRMFirst = false;
+                    }
+                    else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
+                    {
+                        useRMFirst = false;
+                    }
+                    else if (std::holds_alternative<Parser::Immediate>(sourceOperand))
+                    {
+                        throw Exception::SyntaxError("Can't use immediates with mov with segment register", -1, -1);
+                    }
+                }
+                else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
+                {
+                    if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
+                    {
+                        useRMFirst = true;
+                    }
+                    else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
+                    {
+                        throw Exception::SemanticError("Instruction can't have two memory operands", -1, -1);
+                    }
+                    else if (std::holds_alternative<Parser::Immediate>(sourceOperand))
+                    {
+                        throw Exception::SyntaxError("Can't use immediates with mov with segment register", -1, -1);
+                    }
+                }
+
+                movType = MovType::MOV_REG_REG;
+
+                uint64_t destSize;
+                uint64_t srcSize;
+
+                bool oneMem = false;
+
+                if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
+                {
+                    Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(destinationOperand);
+                    destSize = parseRegister(reg, bits, !useRMFirst);
+                }
+                else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
+                {
+                    Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(destinationOperand);
+                    destSize = parseMemory(mem, bits, false);
+
+                    oneMem = true;
                 }
 
                 if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
                 {
-                    Parser::Instruction::Register srcReg = std::get<Parser::Instruction::Register>(sourceOperand);
+                    Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(sourceOperand);
+                    srcSize = parseRegister(reg, bits, useRMFirst);
+                }
+                else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
+                {
+                    Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(sourceOperand);
+                    srcSize = parseMemory(mem, bits, false);
 
-                    switch (srcReg.reg)
+                    oneMem = true;
+
+                    if (srcSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                        srcSize = destSize;
+                }
+
+                if (destSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                    destSize = srcSize;
+
+                if (oneMem && destSize != srcSize)
+                    throw Exception::SyntaxError("Can only use memory operand of size 16 with mov with segment registers", -1, -1);
+
+                opcode = (useRMFirst ? 0x8C : 0x8E);
+
+                switch (destSize)
+                {
+                    case 16:
+                        if (!oneMem && useRMFirst && bits != BitMode::Bits16) use16BitPrefix = true;
+                        break;
+
+                    case 32: case 64:
+                        break;
+
+                    default:
+                        throw Exception::InternalError("Invalid operand size", -1, -1);
+                }
+            }
+            else
+            {
+                bool useRMFirst = false;
+                bool otherIsImmediate = false;
+                bool oneMem = false;
+
+                if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
+                {
+                    if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
                     {
-                        case SPL:
-                        case BPL:
-                        case SIL:
-                        case DIL:
-                        case R8B:
-                        case R9B:
-                        case R10B:
-                        case R11B:
-                        case R12B:
-                        case R13B:
-                        case R14B:
-                        case R15B:
-                        case R8W:
-                        case R9W:
-                        case R10W:
-                        case R11W:
-                        case R12W:
-                        case R13W:
-                        case R14W:
-                        case R15W:
-                        case R8D:
-                        case R9D:
-                        case R10D:
-                        case R11D:
-                        case R12D:
-                        case R13D:
-                        case R14D:
-                        case R15D:
+                        useRMFirst = true;
+                    }
+                    else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
+                    {
+                        useRMFirst = false;
+                        oneMem = true;
+                    }
+                    else if (std::holds_alternative<Parser::Immediate>(sourceOperand))
+                    {
+                        otherIsImmediate = true;
+                    }
+                }
+                else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
+                {
+                    oneMem = true;
+                    if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
+                    {
+                        useRMFirst = true;
+                    }
+                    else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
+                    {
+                        throw Exception::SemanticError("Instruction can't have two memory operands", -1, -1);
+                    }
+                    else if (std::holds_alternative<Parser::Immediate>(sourceOperand))
+                    {
+                        otherIsImmediate = true;
+                    }
+                }
 
-                        case CR8:
-                        case CR9:
-                        case CR10:
-                        case CR11:
-                        case CR12:
-                        case CR13:
-                        case CR14:
-                        case CR15:
+                if (otherIsImmediate)
+                {
+                    movType = MovType::MOV_REG_IMM;
 
-                        case DR8:
-                        case DR9:
-                        case DR10:
-                        case DR11:
-                        case DR12:
-                        case DR13:
-                        case DR14:
-                        case DR15:
-                            if (bits != BitMode::Bits64)
-                                throw Exception::SyntaxError("register only supported in 64-bit mode", -1, -1);
+                    uint64_t destSize;
+                    if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
+                    {
+                        Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(destinationOperand);
+                        destSize = getRegSize(reg.reg, bits);
+                    }
+                    else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
+                    {
+                        Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(destinationOperand);
+                        destSize = parseMemory(mem, bits, true);
                     }
 
-                    movType = MovType::MOV_REG_REG;
-
-                    modrm.mod = ::x86::Mod::REGISTER;
-
-                    modrm.use = true;
-
-                    // FIXME: not only for non special regs
-                    auto [destI, destUseREX, destSetREX] = ::x86::getReg(destReg.reg);
-                    auto [srcI, srcUseREX, srcSetREX] = ::x86::getReg(srcReg.reg);
-
-                    if (destUseREX || srcUseREX)
-                        rex.use = true;
-                    if (destSetREX)
-                        rex.b = true;
-                    if (srcSetREX)
-                        rex.r = true;
-
-                    uint8_t destRegSize = getRegSize(destReg.reg, bits);
-                    uint8_t srcRegSize = getRegSize(srcReg.reg, bits);
-
-                    if (destRegSize != srcRegSize)
-                        throw Exception::SemanticError("Can't use 'mov' with registers of different size", -1, -1);
-
-                    bool usingSpecialRegDest = false;
-                    bool usingSpecialRegSrc = false;
-
-                    switch (destReg.reg)
+                    switch (destSize)
                     {
-                        case ES:
-                        case CS:
-                        case SS:
-                        case DS:
-                        case FS:
-                        case GS:
-                            opcode = 0x8E;
+                        case 8:
+                            specific.mov_reg_imm.max = std::numeric_limits<uint8_t>::max();
+                            specific.mov_reg_imm.sizeInBits = 8;
 
-                            modrm.reg = destI;
-                            modrm.rm = srcI;
-
-                            usingSpecialRegDest = true;
+                            is_8_bit = true;
                             break;
 
-                        case CR0:
-                        case CR2:
-                        case CR3:
-                        case CR4:
-                        case CR5:
-                        case CR6:
-                        case CR7:
-                            useOpcodeEscape = true;
-                            opcode = 0x22;
+                        case 16:
+                            specific.mov_reg_imm.max = std::numeric_limits<uint16_t>::max();
+                            specific.mov_reg_imm.sizeInBits = 16;
 
-                            modrm.reg = destI;
-                            modrm.rm = srcI;
-
-                            usingSpecialRegDest = true;
+                            if (bits != BitMode::Bits16)
+                                use16BitPrefix = true;
                             break;
-                        case CR8:
-                        case CR9:
-                        case CR10:
-                        case CR11:
-                        case CR12:
-                        case CR13:
-                        case CR14:
-                        case CR15:
-                            useOpcodeEscape = true;
-                            opcode = 0x22;
+
+                        case 32:
+                            specific.mov_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                            specific.mov_reg_imm.sizeInBits = 32;
+
+                            if (bits == BitMode::Bits16)
+                                use16BitPrefix = true;
+                            break;
+
+                        case 64:
+                            if (oneMem)
+                            {
+                                specific.mov_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                                specific.mov_reg_imm.sizeInBits = 32;
+                            }
+                            else
+                            {
+                                specific.mov_reg_imm.max = std::numeric_limits<uint64_t>::max();
+                                specific.mov_reg_imm.sizeInBits = 64;
+                            }
 
                             rex.use = true;
-                            rex.r = true;
+                            rex.w = true;
 
-                            modrm.reg = destI;
-                            modrm.rm = srcI;
+                            if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
+                            {
+                                Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(destinationOperand);
+                                can_optimize = true;
+                                optimize_reg = reg;
 
-                            usingSpecialRegDest = true;
+                                auto [_, n, _] = getReg(reg.reg);
+                                needs_rex = n;
+                            }
+
                             break;
 
-                        case DR0:
-                        case DR1:
-                        case DR2:
-                        case DR3:
-                        case DR6:
-                        case DR7:
-                            useOpcodeEscape = true;
-                            opcode = 0x23;
-
-                            modrm.reg = destI;
-                            modrm.rm = srcI;
-
-                            usingSpecialRegDest = true;
-                            break;
-                        case DR8:
-                        case DR9:
-                        case DR10:
-                        case DR11:
-                        case DR12:
-                        case DR13:
-                        case DR14:
-                        case DR15:
-                            useOpcodeEscape = true;
-                            opcode = 0x23;
-
-                            rex.use = true;
-                            rex.r = true;
-
-                            modrm.reg = destI;
-                            modrm.rm = srcI;
-
-                            usingSpecialRegDest = true;
-                            break;
-
-                        case TR0:
-                        case TR1:
-                        case TR2:
-                        case TR3:
-                        case TR4:
-                        case TR5:
-                        case TR6:
-                        case TR7:
-                            useOpcodeEscape = true;
-                            opcode = 0x26;
-
-                            modrm.reg = destI;
-                            modrm.rm = srcI;
-
-                            usingSpecialRegDest = true;
-                            break;
+                        default:
+                            throw Exception::InternalError("Invalid bits", -1, -1);
                     }
 
-                    switch (destReg.reg)
+                    if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
                     {
-                        case ES:
-                        case CS:
-                        case SS:
-                        case DS:
-                        case FS:
-                        case GS:
-                            opcode = 0x8C;
-
-                            modrm.reg = srcI;
-                            modrm.rm = destI;
-
-                            usingSpecialRegSrc = true;
-                            break;
-
-                        case CR0:
-                        case CR2:
-                        case CR3:
-                        case CR4:
-                        case CR5:
-                        case CR6:
-                        case CR7:
-                            useOpcodeEscape = true;
-                            opcode = 0x20;
-
-                            modrm.reg = srcI;
-                            modrm.rm = destI;
-
-                            usingSpecialRegSrc = true;
-                            break;
-                        case CR8:
-                        case CR9:
-                        case CR10:
-                        case CR11:
-                        case CR12:
-                        case CR13:
-                        case CR14:
-                        case CR15:
-                            useOpcodeEscape = true;
-                            opcode = 0x20;
-
-                            rex.use = true;
-                            rex.r = true;
-
-                            modrm.reg = srcI;
-                            modrm.rm = destI;
-
-                            usingSpecialRegSrc = true;
-                            break;
-
-                        case DR0:
-                        case DR1:
-                        case DR2:
-                        case DR3:
-                        case DR6:
-                        case DR7:
-                            useOpcodeEscape = true;
-                            opcode = 0x21;
-
-                            modrm.reg = srcI;
-                            modrm.rm = destI;
-
-                            usingSpecialRegSrc = true;
-                            break;
-                        case DR8:
-                        case DR9:
-                        case DR10:
-                        case DR11:
-                        case DR12:
-                        case DR13:
-                        case DR14:
-                        case DR15:
-                            useOpcodeEscape = true;
-                            opcode = 0x21;
-
-                            rex.use = true;
-                            rex.r = true;
-
-                            modrm.reg = srcI;
-                            modrm.rm = destI;
-
-                            usingSpecialRegSrc = true;
-                            break;
-
-                        case TR0:
-                        case TR1:
-                        case TR2:
-                        case TR3:
-                        case TR4:
-                        case TR5:
-                        case TR6:
-                        case TR7:
-                            useOpcodeEscape = true;
-                            opcode = 0x24;
-
-                            modrm.reg = srcI;
-                            modrm.rm = destI;
-
-                            usingSpecialRegSrc = true;
-                            break;
-                    }
-
-                    if (usingSpecialRegDest || usingSpecialRegSrc)
-                        throw Exception::SemanticError("Can't set special register using special register", -1, -1);
-
-                    const bool usingSpecialReg = usingSpecialRegDest || usingSpecialRegSrc;
-
-                    if (!usingSpecialReg)
-                    {
-                        switch (destReg.reg)
+                        Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(destinationOperand);
+                        
+                        switch (reg.reg)
                         {
-                            case AL:
-                            case CL:
-                            case DL:
-                            case BL:
-                            case AH:
-                            case CH:
-                            case DH:
-                            case BH:
                             case SPL:
                             case BPL:
                             case SIL:
                             case DIL:
+                                rex.use = true;
+                                break;
+
                             case R8B:
                             case R9B:
                             case R10B:
@@ -405,20 +434,6 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             case R13B:
                             case R14B:
                             case R15B:
-                                opcode = 0x88; // mov r/m8, r8
-
-                                modrm.reg = srcI;
-                                modrm.rm = destI;
-                                break;
-
-                            case AX:
-                            case CX:
-                            case DX:
-                            case BX:
-                            case SP:
-                            case BP:
-                            case SI:
-                            case DI:
                             case R8W:
                             case R9W:
                             case R10W:
@@ -427,22 +442,6 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             case R13W:
                             case R14W:
                             case R15W:
-                                if (bits != BitMode::Bits16)
-                                    use16BitPrefix = true;
-                                opcode = 0x89; // mov r/m16, r16
-
-                                modrm.reg = srcI;
-                                modrm.rm = destI;
-                                break;
-
-                            case EAX:
-                            case ECX:
-                            case EDX:
-                            case EBX:
-                            case ESP:
-                            case EBP:
-                            case ESI:
-                            case EDI:
                             case R8D:
                             case R9D:
                             case R10D:
@@ -451,12 +450,21 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             case R13D:
                             case R14D:
                             case R15D:
-                                if (bits == BitMode::Bits16)
-                                    use16BitPrefix = true;
-                                opcode = 0x89; // mov r/m32, r32
+                                rex.use = true;
+                                rex.b = true;
+                                break;
 
-                                modrm.reg = srcI;
-                                modrm.rm = destI;
+                            case R8:
+                            case R9:
+                            case R10:
+                            case R11:
+                            case R12:
+                            case R13:
+                            case R14:
+                            case R15:
+                                rex.use = true;
+                                rex.b = true;
+                                rex.w = true;
                                 break;
 
                             case RAX:
@@ -467,434 +475,174 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                             case RBP:
                             case RSI:
                             case RDI:
-                            case R8:
-                            case R9:
-                            case R10:
-                            case R11:
-                            case R12:
-                            case R13:
-                            case R14:
-                            case R15:
-                                opcode = 0x89; // mov r/m64, r64
-
                                 rex.use = true;
                                 rex.w = true;
-
-                                modrm.reg = srcI;
-                                modrm.rm = destI;
                                 break;
+                        }
+
+                        switch (reg.reg)
+                        {
+                            case AL:   opcode = 0xB0; break;
+                            case CL:   opcode = 0xB1; break;
+                            case DL:   opcode = 0xB2; break;
+                            case BL:   opcode = 0xB3; break;
+                            case AH:   opcode = 0xB4; break;
+                            case CH:   opcode = 0xB5; break;
+                            case DH:   opcode = 0xB6; break;
+                            case BH:   opcode = 0xB7; break;
+                            case SPL:  opcode = 0xB4; break;
+                            case BPL:  opcode = 0xB5; break;
+                            case SIL:  opcode = 0xB6; break;
+                            case DIL:  opcode = 0xB7; break;
+                            case R8B:  opcode = 0xB0; break;
+                            case R9B:  opcode = 0xB1; break;
+                            case R10B: opcode = 0xB2; break;
+                            case R11B: opcode = 0xB3; break;
+                            case R12B: opcode = 0xB4; break;
+                            case R13B: opcode = 0xB5; break;
+                            case R14B: opcode = 0xB6; break;
+                            case R15B: opcode = 0xB7; break;
+
+                            case AX:   opcode = 0xB8; break;
+                            case CX:   opcode = 0xB9; break;
+                            case DX:   opcode = 0xBA; break;
+                            case BX:   opcode = 0xBB; break;
+                            case SP:   opcode = 0xBC; break;
+                            case BP:   opcode = 0xBD; break;
+                            case SI:   opcode = 0xBE; break;
+                            case DI:   opcode = 0xBF; break;
+                            case R8W:  opcode = 0xB8; break;
+                            case R9W:  opcode = 0xB9; break;
+                            case R10W: opcode = 0xBA; break;
+                            case R11W: opcode = 0xBB; break;
+                            case R12W: opcode = 0xBC; break;
+                            case R13W: opcode = 0xBD; break;
+                            case R14W: opcode = 0xBE; break;
+                            case R15W: opcode = 0xBF; break;
+
+                            case EAX:  opcode = 0xB8; break;
+                            case ECX:  opcode = 0xB9; break;
+                            case EDX:  opcode = 0xBA; break;
+                            case EBX:  opcode = 0xBB; break;
+                            case ESP:  opcode = 0xBC; break;
+                            case EBP:  opcode = 0xBD; break;
+                            case ESI:  opcode = 0xBE; break;
+                            case EDI:  opcode = 0xBF; break;
+                            case R8D:  opcode = 0xB8; break;
+                            case R9D:  opcode = 0xB9; break;
+                            case R10D: opcode = 0xBA; break;
+                            case R11D: opcode = 0xBB; break;
+                            case R12D: opcode = 0xBC; break;
+                            case R13D: opcode = 0xBD; break;
+                            case R14D: opcode = 0xBE; break;
+                            case R15D: opcode = 0xBF; break;
+
+                            case RAX:  opcode = 0xB8; break;
+                            case RCX:  opcode = 0xB9; break;
+                            case RDX:  opcode = 0xBA; break;
+                            case RBX:  opcode = 0xBB; break;
+                            case RSP:  opcode = 0xBC; break;
+                            case RBP:  opcode = 0xBD; break;
+                            case RSI:  opcode = 0xBE; break;
+                            case RDI:  opcode = 0xBF; break;
+                            case R8:   opcode = 0xB8; break;
+                            case R9:   opcode = 0xB9; break;
+                            case R10:  opcode = 0xBA; break;
+                            case R11:  opcode = 0xBB; break;
+                            case R12:  opcode = 0xBC; break;
+                            case R13:  opcode = 0xBD; break;
+                            case R14:  opcode = 0xBE; break;
+                            case R15:  opcode = 0xBF; break;
 
                             default:
-                                throw Exception::SemanticError("instruction doesn't support this register", -1, -1);
+                                throw Exception::InternalError("Unknown register", -1, -1);
                         }
                     }
-
-                    if (rex.use && (destReg.reg == AH || destReg.reg == CH ||
-                                    destReg.reg == DH || destReg.reg == BH ||
-                                    srcReg.reg == AH || srcReg.reg == CH ||
-                                    srcReg.reg == DH || srcReg.reg == BH))
-                        throw Exception::SemanticError("Can't use high 8-bit regs using new registers", -1, -1);
-                }
-                else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
-                {
-                    throw Exception::InternalError("Memory not supported yet with 'mov'", -1, -1);
-                    // TODO
-                }
-                else if (std::holds_alternative<Parser::Immediate>(sourceOperand))
-                {
-                    movType = MovType::MOV_REG_IMM;
-
-                    // TODO
-                    switch (destReg.reg)
+                    else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
                     {
-                        case AL:
-                        case CL:
-                        case DL:
-                        case BL:
-                        case AH:
-                        case CH:
-                        case DH:
-                        case BH:
-                        case SPL:
-                        case BPL:
-                        case SIL:
-                        case DIL:
-                        case R8B:
-                        case R9B:
-                        case R10B:
-                        case R11B:
-                        case R12B:
-                        case R13B:
-                        case R14B:
-                        case R15B:
-                            specific.mov_reg_imm.max = std::numeric_limits<uint8_t>::max();
-                            specific.mov_reg_imm.sizeInBits = 8;
-                            break;
+                        if (is_8_bit) opcode = 0xC6;
+                        else          opcode = 0xC7;
+                    }
+                }
+                else
+                {
+                    movType = MovType::MOV_REG_REG;
 
-                        case AX:
-                        case CX:
-                        case DX:
-                        case BX:
-                        case SP:
-                        case BP:
-                        case SI:
-                        case DI:
-                        case R8W:
-                        case R9W:
-                        case R10W:
-                        case R11W:
-                        case R12W:
-                        case R13W:
-                        case R14W:
-                        case R15W:
-                            specific.mov_reg_imm.max = std::numeric_limits<uint16_t>::max();
-                            specific.mov_reg_imm.sizeInBits = 16;
+                    uint64_t destSize;
+                    uint64_t srcSize;
 
-                            if (bits != BitMode::Bits16)
-                                use16BitPrefix = true;
-                            break;
-
-                        case EAX:
-                        case ECX:
-                        case EDX:
-                        case EBX:
-                        case ESP:
-                        case EBP:
-                        case ESI:
-                        case EDI:
-                        case R8D:
-                        case R9D:
-                        case R10D:
-                        case R11D:
-                        case R12D:
-                        case R13D:
-                        case R14D:
-                        case R15D:
-                            specific.mov_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                            specific.mov_reg_imm.sizeInBits = 32;
-
-                            if (bits == BitMode::Bits16)
-                                use16BitPrefix = true;
-                            break;
-
-                        case RAX:
-                        case RCX:
-                        case RDX:
-                        case RBX:
-                        case RSP:
-                        case RBP:
-                        case RSI:
-                        case RDI:
-                        case R8:
-                        case R9:
-                        case R10:
-                        case R11:
-                        case R12:
-                        case R13:
-                        case R14:
-                        case R15:
-                            specific.mov_reg_imm.max = std::numeric_limits<uint64_t>::max();
-                            specific.mov_reg_imm.sizeInBits = 64;
-                            break;
-
-                        default:
-                            throw Exception::SemanticError("instruction doesn't support this register", -1, -1);
+                    if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
+                    {
+                        Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(destinationOperand);
+                        destSize = parseRegister(reg, bits, !useRMFirst);
+                    }
+                    else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
+                    {
+                        Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(destinationOperand);
+                        destSize = parseMemory(mem, bits, false);
                     }
 
-                    switch (destReg.reg)
+                    if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
                     {
-                        case SPL:
-                        case BPL:
-                        case SIL:
-                        case DIL:
-                            rex.use = true;
+                        Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(sourceOperand);
+                        srcSize = parseRegister(reg, bits, useRMFirst);
+                    }
+                    else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
+                    {
+                        Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(sourceOperand);
+                        srcSize = parseMemory(mem, bits, false);
+
+                        if (srcSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                            srcSize = destSize;
+                    }
+
+                    if (destSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                        destSize = srcSize;
+
+                    if (destSize != srcSize)
+                        throw Exception::SemanticError("Can't use instruction with operands of different size", -1, -1);
+
+                    switch (destSize)
+                    {
+                        case 8:
+                            opcode = (useRMFirst ? 0x88 : 0x8A);
                             break;
 
-                        case R8B:
-                        case R9B:
-                        case R10B:
-                        case R11B:
-                        case R12B:
-                        case R13B:
-                        case R14B:
-                        case R15B:
-                        case R8W:
-                        case R9W:
-                        case R10W:
-                        case R11W:
-                        case R12W:
-                        case R13W:
-                        case R14W:
-                        case R15W:
-                        case R8D:
-                        case R9D:
-                        case R10D:
-                        case R11D:
-                        case R12D:
-                        case R13D:
-                        case R14D:
-                        case R15D:
-                            rex.use = true;
-                            rex.b = true;
+                        case 16:
+                            if (bits != BitMode::Bits16) use16BitPrefix = true;
+                            opcode = (useRMFirst ? 0x89 : 0x8B);
                             break;
 
-                        case R8:
-                        case R9:
-                        case R10:
-                        case R11:
-                        case R12:
-                        case R13:
-                        case R14:
-                        case R15:
+                        case 32:
+                            if (bits == BitMode::Bits16) use16BitPrefix = true;
+                            opcode = (useRMFirst ? 0x89 : 0x8B);
+                            break;
+
+                        case 64:
+                            opcode = (useRMFirst ? 0x89 : 0x8B);
+
                             rex.use = true;
-                            rex.b = true;
                             rex.w = true;
                             break;
 
-                        case RAX:
-                        case RCX:
-                        case RDX:
-                        case RBX:
-                        case RSP:
-                        case RBP:
-                        case RSI:
-                        case RDI:
-                            rex.use = true;
-                            rex.w = true;
-                            break;
-                    }
-
-                    switch (destReg.reg)
-                    {
-                        case AL:
-                            opcode = 0xB0;
-                            break;
-                        case CL:
-                            opcode = 0xB1;
-                            break;
-                        case DL:
-                            opcode = 0xB2;
-                            break;
-                        case BL:
-                            opcode = 0xB3;
-                            break;
-                        case AH:
-                            opcode = 0xB4;
-                            break;
-                        case CH:
-                            opcode = 0xB5;
-                            break;
-                        case DH:
-                            opcode = 0xB6;
-                            break;
-                        case BH:
-                            opcode = 0xB7;
-                            break;
-                        case SPL:
-                            opcode = 0xB4;
-                            break;
-                        case BPL:
-                            opcode = 0xB5;
-                            break;
-                        case SIL:
-                            opcode = 0xB6;
-                            break;
-                        case DIL:
-                            opcode = 0xB7;
-                            break;
-                        case R8B:
-                            opcode = 0xB0;
-                            break;
-                        case R9B:
-                            opcode = 0xB1;
-                            break;
-                        case R10B:
-                            opcode = 0xB2;
-                            break;
-                        case R11B:
-                            opcode = 0xB3;
-                            break;
-                        case R12B:
-                            opcode = 0xB4;
-                            break;
-                        case R13B:
-                            opcode = 0xB5;
-                            break;
-                        case R14B:
-                            opcode = 0xB6;
-                            break;
-                        case R15B:
-                            opcode = 0xB7;
-                            break;
-
-                        case AX:
-                            opcode = 0xB8;
-                            break;
-                        case CX:
-                            opcode = 0xB9;
-                            break;
-                        case DX:
-                            opcode = 0xBA;
-                            break;
-                        case BX:
-                            opcode = 0xBB;
-                            break;
-                        case SP:
-                            opcode = 0xBC;
-                            break;
-                        case BP:
-                            opcode = 0xBD;
-                            break;
-                        case SI:
-                            opcode = 0xBE;
-                            break;
-                        case DI:
-                            opcode = 0xBF;
-                            break;
-                        case R8W:
-                            opcode = 0xB8;
-                            break;
-                        case R9W:
-                            opcode = 0xB9;
-                            break;
-                        case R10W:
-                            opcode = 0xBA;
-                            break;
-                        case R11W:
-                            opcode = 0xBB;
-                            break;
-                        case R12W:
-                            opcode = 0xBC;
-                            break;
-                        case R13W:
-                            opcode = 0xBD;
-                            break;
-                        case R14W:
-                            opcode = 0xBE;
-                            break;
-                        case R15W:
-                            opcode = 0xBF;
-                            break;
-
-                        case EAX:
-                            opcode = 0xB8;
-                            break;
-                        case ECX:
-                            opcode = 0xB9;
-                            break;
-                        case EDX:
-                            opcode = 0xBA;
-                            break;
-                        case EBX:
-                            opcode = 0xBB;
-                            break;
-                        case ESP:
-                            opcode = 0xBC;
-                            break;
-                        case EBP:
-                            opcode = 0xBD;
-                            break;
-                        case ESI:
-                            opcode = 0xBE;
-                            break;
-                        case EDI:
-                            opcode = 0xBF;
-                            break;
-                        case R8D:
-                            opcode = 0xB8;
-                            break;
-                        case R9D:
-                            opcode = 0xB9;
-                            break;
-                        case R10D:
-                            opcode = 0xBA;
-                            break;
-                        case R11D:
-                            opcode = 0xBB;
-                            break;
-                        case R12D:
-                            opcode = 0xBC;
-                            break;
-                        case R13D:
-                            opcode = 0xBD;
-                            break;
-                        case R14D:
-                            opcode = 0xBE;
-                            break;
-                        case R15D:
-                            opcode = 0xBF;
-                            break;
-
-                        case RAX:
-                            opcode = 0xB8;
-                            break;
-                        case RCX:
-                            opcode = 0xB9;
-                            break;
-                        case RDX:
-                            opcode = 0xBA;
-                            break;
-                        case RBX:
-                            opcode = 0xBB;
-                            break;
-                        case RSP:
-                            opcode = 0xBC;
-                            break;
-                        case RBP:
-                            opcode = 0xBD;
-                            break;
-                        case RSI:
-                            opcode = 0xBE;
-                            break;
-                        case RDI:
-                            opcode = 0xBF;
-                            break;
-                        case R8:
-                            opcode = 0xB8;
-                            break;
-                        case R9:
-                            opcode = 0xB9;
-                            break;
-                        case R10:
-                            opcode = 0xBA;
-                            break;
-                        case R11:
-                            opcode = 0xBB;
-                            break;
-                        case R12:
-                            opcode = 0xBC;
-                            break;
-                        case R13:
-                            opcode = 0xBD;
-                            break;
-                        case R14:
-                            opcode = 0xBE;
-                            break;
-                        case R15:
-                            opcode = 0xBF;
-                            break;
-
                         default:
-                            throw Exception::InternalError("Unknown register", -1, -1);
+                            throw Exception::InternalError("Invalid operand size", -1, -1);
                     }
-                }
-            }
-            else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
-            {
-                // TODO
-                throw Exception::InternalError("Memory not supported yet with 'mov'", -1, -1);
 
-                if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
-                {
-                    // TODO
-                }
-                else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
-                {
-                    // TODO
-                }
-                else if (std::holds_alternative<Parser::Immediate>(sourceOperand))
-                {
-                    // TODO
+                    if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
+                    {
+                        Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(destinationOperand);
+                        if (rex.use && (reg.reg == AH || reg.reg == CH ||
+                                        reg.reg == DH || reg.reg == BH))
+                            throw Exception::SemanticError("Can't use high 8-bit regs using new registers", -1, -1);
+                    }
+                    if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
+                    {
+                        Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(sourceOperand);
+                        if (rex.use && (reg.reg == AH || reg.reg == CH ||
+                                        reg.reg == DH || reg.reg == BH))
+                            throw Exception::SemanticError("Can't use high 8-bit regs using new registers", -1, -1);
+                    }
                 }
             }
 
@@ -930,7 +678,7 @@ void x86::Mov_Instruction::evaluateS()
                 Int128 result = evaluation.result;
 
                 // FIXME
-                if (result > specific.mov_reg_imm.max) throw Exception::SemanticError("Operand too large for instruction", -1, -1);
+                //if (result > specific.mov_reg_imm.max) throw Exception::SemanticError("Operand too large for instruction", -1, -1);
 
                 specific.mov_reg_imm.value = static_cast<uint64_t>(result);
             }
@@ -942,6 +690,41 @@ void x86::Mov_Instruction::evaluateS()
 
 bool x86::Mov_Instruction::optimizeS()
 {
+    if (can_optimize && movType == MovType::MOV_REG_IMM)
+    {
+        int64_t value = static_cast<int64_t>(specific.mov_reg_imm.value);
+        if (value <= static_cast<int64_t>(static_cast<uint64_t>(std::numeric_limits<uint32_t>().max())))
+        {
+            if (value >= 0)
+            {
+                if (!needs_rex) rex.use = false;
+                rex.w = false;
+
+                specific.mov_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                specific.mov_reg_imm.sizeInBits = 32;
+                
+                can_optimize = false;
+                return true;
+            }
+            else if (value >= static_cast<int64_t>(static_cast<uint64_t>(std::numeric_limits<int32_t>().min())))
+            {
+                specific.mov_reg_imm.max = std::numeric_limits<uint32_t>::max();
+                specific.mov_reg_imm.sizeInBits = 32;
+
+                if (is_8_bit) opcode = 0xC6;
+                else          opcode = 0xC7;
+
+                modrm.use = true;
+                modrm.mod = Mod::REGISTER;
+                modrm.reg = 0;
+                modrm.rm = getRegIndex(optimize_reg);
+                
+                can_optimize = false;
+                return true;
+            }
+        }
+    }
+
     return false;
 }
 

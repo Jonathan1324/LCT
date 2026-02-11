@@ -188,7 +188,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                             break;
 
                         default:
-                            throw Exception::InternalError("Invalid bit", -1, -1);
+                            throw Exception::InternalError("Invalid bits", -1, -1);
                     }
 
                     if (mnemonic == TEST)
@@ -271,7 +271,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     mainSize = otherSize;
 
                 if (mainSize != otherSize)
-                    throw Exception::SemanticError("Can't use instruction with registers of different size", -1, -1);
+                    throw Exception::SemanticError("Can't use instruction with operands of different size", -1, -1);
 
                 if (mainSize == 8)
                 {
@@ -323,7 +323,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                         break;
 
                     default:
-                        throw Exception::InternalError("Unknown mainRegSize", -1, -1);
+                        throw Exception::InternalError("Invalid operand size", -1, -1);
                 }
 
                 if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))

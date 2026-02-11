@@ -31,6 +31,11 @@ namespace x86 {
             MOV_REG_IMM,
         } movType;
 
+        bool can_optimize = false;
+        bool needs_rex = false;
+        bool is_8_bit = false;
+        Parser::Instruction::Register optimize_reg;
+
         union 
         {
             struct {
