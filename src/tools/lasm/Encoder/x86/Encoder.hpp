@@ -87,8 +87,8 @@ namespace x86
             bool use = false;
 
             Mod mod = Mod::REGISTER;
-            uint8_t reg;
-            uint8_t rm;
+            uint8_t reg = 0;
+            uint8_t rm = 0;
         } modrm;
 
         struct SIB {

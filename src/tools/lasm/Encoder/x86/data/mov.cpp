@@ -345,9 +345,6 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                 {
                     movType = MovType::MOV_REG_IMM;
 
-                    bool isAbs = false;
-                    Parser::Instruction::Memory memAbs;
-
                     uint64_t destSize;
                     if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
                     {
@@ -357,15 +354,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                     else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
                     {
                         Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(destinationOperand);
-
-                        if (!mem.use_reg1 && !mem.use_reg2 && mem.use_displacement && bits != BitMode::Bits64)
-                        {
-                            isAbs = true;
-                            destSize = mem.pointer_size;
-                            memAbs = mem;
-                        }
-                        else
-                            destSize = parseMemory(mem, bits, false);
+                        destSize = parseMemory(mem, bits, false);
                     }
 
                     switch (destSize)
@@ -582,64 +571,162 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                     uint64_t destSize;
                     uint64_t srcSize;
 
+                    bool hasDirectMem = false;
+                    bool hasAccumulator = false;
+                    bool accumulatorFirst = false;
+
+                    uint64_t accumulatorSize;
+                    uint64_t directMemorySize;
+                    Parser::Immediate directMemoryImmediate;
+
                     if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
                     {
                         Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(destinationOperand);
-                        destSize = parseRegister(reg, bits, !useRMFirst);
+                        if (reg.reg == Registers::AL || reg.reg == Registers::AX || reg.reg == Registers::EAX || reg.reg == Registers::RAX)
+                        {
+                            hasAccumulator = true;
+                            accumulatorSize = getRegSize(reg.reg, bits);
+                            accumulatorFirst = true;
+                        }
                     }
                     else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
                     {
                         Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(destinationOperand);
-                        destSize = parseMemory(mem, bits, false);
+                        if (!mem.use_reg1 && !mem.use_reg2 && mem.use_displacement)
+                        {
+                            hasDirectMem = true;
+                            directMemoryImmediate = mem.displacement;
+                            directMemorySize = mem.pointer_size;
+                        }
                     }
 
                     if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
                     {
                         Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(sourceOperand);
-                        srcSize = parseRegister(reg, bits, useRMFirst);
+                        if (reg.reg == Registers::AL || reg.reg == Registers::AX || reg.reg == Registers::EAX || reg.reg == Registers::RAX)
+                        {
+                            hasAccumulator = true;
+                            accumulatorSize = getRegSize(reg.reg, bits);
+                        }
                     }
                     else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
                     {
                         Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(sourceOperand);
-                        srcSize = parseMemory(mem, bits, false); 
-
-                        if (srcSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
-                            srcSize = destSize;
+                        if (!mem.use_reg1 && !mem.use_reg2 && mem.use_displacement)
+                        {
+                            hasDirectMem = true;
+                            directMemoryImmediate = mem.displacement;
+                            directMemorySize = mem.pointer_size;
+                        }
                     }
 
-                    if (destSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
-                        destSize = srcSize;
-
-                    if (destSize != srcSize)
-                        throw Exception::SemanticError("Can't use instruction with operands of different size", -1, -1);
-
-                    checkSize(destSize, bits);
-
-                switch (destSize)
+                    if (hasAccumulator && hasDirectMem && bits != BitMode::Bits64)
                     {
-                        case 8:
-                            opcode = (useRMFirst ? 0x88 : 0x8A);
-                            break;
+                        if (directMemorySize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                            directMemorySize = accumulatorSize;
 
-                        case 16:
-                            if (bits != BitMode::Bits16) use16BitPrefix = true;
-                            opcode = (useRMFirst ? 0x89 : 0x8B);
-                            break;
+                        if (directMemorySize != accumulatorSize)
+                            throw Exception::SyntaxError("Operands of mov instruction need to have the same size", -1, -1);
 
-                        case 32:
-                            if (bits == BitMode::Bits16) use16BitPrefix = true;
-                            opcode = (useRMFirst ? 0x89 : 0x8B);
-                            break;
+                        checkSize(directMemorySize, bits);
 
-                        case 64:
-                            opcode = (useRMFirst ? 0x89 : 0x8B);
+                        if (bits == BitMode::Bits16)      addressMode = AddressMode::Bits16;
+                        else if (bits == BitMode::Bits32) addressMode = AddressMode::Bits32;
+                        else                              addressMode = AddressMode::Bits64;
 
-                            rex.use = true;
-                            rex.w = true;
-                            break;
+                        switch (directMemorySize)
+                        {
+                            case 8:
+                                opcode = (accumulatorFirst ? 0xA2 : 0xA0);
+                                break;
 
-                        default:
-                            throw Exception::InternalError("Invalid operand size", -1, -1);
+                            case 16:
+                                if (bits != BitMode::Bits16) use16BitPrefix = true;
+                                opcode = (useRMFirst ? 0xA3 : 0xA1);
+                                break;
+
+                            case 32:
+                                if (bits == BitMode::Bits16) use16BitPrefix = true;
+                                opcode = (useRMFirst ? 0xA3 : 0xA1);
+                                break;
+
+                            case 64:
+                                opcode = (useRMFirst ? 0xA3 : 0xA1);
+
+                                rex.use = true;
+                                rex.w = true;
+                                break;
+
+                            default:
+                                throw Exception::InternalError("Invalid operand size", -1, -1);
+                        }
+
+                        displacement.use = true;
+                        displacement.immediate = directMemoryImmediate;
+
+                        displacement.can_optimize = false;
+                    }
+                    else
+                    {
+                        if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
+                        {
+                            Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(destinationOperand);
+                            destSize = parseRegister(reg, bits, !useRMFirst);
+                        }
+                        else if (std::holds_alternative<Parser::Instruction::Memory>(destinationOperand))
+                        {
+                            Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(destinationOperand);
+                            destSize = parseMemory(mem, bits, false);
+                        }
+
+                        if (std::holds_alternative<Parser::Instruction::Register>(sourceOperand))
+                        {
+                            Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(sourceOperand);
+                            srcSize = parseRegister(reg, bits, useRMFirst);
+                        }
+                        else if (std::holds_alternative<Parser::Instruction::Memory>(sourceOperand))
+                        {
+                            Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(sourceOperand);
+                            srcSize = parseMemory(mem, bits, false); 
+
+                            if (srcSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                                srcSize = destSize;
+                        }
+
+                        if (destSize == Parser::Instruction::Memory::NO_POINTER_SIZE)
+                            destSize = srcSize;
+
+                        if (destSize != srcSize)
+                            throw Exception::SemanticError("Can't use instruction with operands of different size", -1, -1);
+
+                        checkSize(destSize, bits);
+
+                        switch (destSize)
+                        {
+                            case 8:
+                                opcode = (useRMFirst ? 0x88 : 0x8A);
+                                break;
+
+                            case 16:
+                                if (bits != BitMode::Bits16) use16BitPrefix = true;
+                                opcode = (useRMFirst ? 0x89 : 0x8B);
+                                break;
+
+                            case 32:
+                                if (bits == BitMode::Bits16) use16BitPrefix = true;
+                                opcode = (useRMFirst ? 0x89 : 0x8B);
+                                break;
+
+                            case 64:
+                                opcode = (useRMFirst ? 0x89 : 0x8B);
+
+                                rex.use = true;
+                                rex.w = true;
+                                break;
+
+                            default:
+                                throw Exception::InternalError("Invalid operand size", -1, -1);
+                        }
                     }
 
                     if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))

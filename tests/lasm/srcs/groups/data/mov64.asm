@@ -1,5 +1,5 @@
 ; FORMATS: BIN,ELF
-; BITS: 16,32,64
+; BITS: 64
 ; EXPECT: SUCCESS
 
 [bits 64]
@@ -113,6 +113,11 @@ _start:
     mov r10d, 75000
 
     ; MOV - 32-bit Register to Memory
+    mov edx, [10]
+    mov [10], edx
+    mov eax, [10]
+    mov [10], eax
+
     mov eax, [rax]
     mov ebx, [rbx + 10]
     mov ecx, [rcx + rax*2 + 100]

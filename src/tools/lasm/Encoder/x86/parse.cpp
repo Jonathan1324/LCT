@@ -242,7 +242,7 @@ uint64_t x86::Instruction::parseMemory(
     }
     if (hasIndex)
     {
-        if (!isGPR(!indexReg))
+        if (!isGPR(indexReg))
             throw Exception::SyntaxError("Only GPRs are allowed as memory operands", -1, -1);
 
         if (addressMode == AddressMode::Bits16)
@@ -323,6 +323,10 @@ uint64_t x86::Instruction::parseMemory(
                 modrm.mod = Mod::INDIRECT;
                 displacement.can_optimize = false;
                 displacement.direct_addressing = true;
+            }
+            else if (!hasBase && hasIndex)
+            {
+                modrm.mod = Mod::INDIRECT_DISP8;
             }
             else
                 modrm.mod = Mod::INDIRECT_DISP32;
