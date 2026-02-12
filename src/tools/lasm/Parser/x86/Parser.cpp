@@ -14,7 +14,7 @@ x86::Parser::Parser(const Context& _context, Architecture _arch, BitMode _bits)
 
 }
 
-Parser::ImmediateOperand getOperand(const Token::Token& token)
+Parser::ImmediateOperand getOperand(const Token::Token& token, const std::string& lastMainLabel)
 {
     if (token.type == Token::Type::Operator || token.type == Token::Type::Bracket)
     {
@@ -44,7 +44,12 @@ Parser::ImmediateOperand getOperand(const Token::Token& token)
     else
     {
         Parser::String str;
-        str.value = token.value;
+
+        if (token.value.size() > 0 && token.value[0] == '.')
+            str.value = lastMainLabel + token.value;
+        else
+            str.value = token.value;
+
         return str;
     }
 }
@@ -53,6 +58,9 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 {
     std::vector<Token::Token> filteredTokens;
     Token::Type before = Token::Type::_EOF;
+
+    std::string lastMainLabel = "";
+
     for (size_t i = 0; i < tokens.size(); i++)
     {
         const Token::Token& token = tokens[i];
@@ -200,7 +208,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     while (i < filteredTokens.size() &&
                            !(filteredTokens[i].type == Token::Type::Comma || filteredTokens[i].type == Token::Type::EOL))
                     {
-                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
                         if (std::holds_alternative<::Parser::CurrentPosition>(op) && !constant.hasPos)
                             constant.hasPos = true;
                         constant.value.operands.push_back(op);
@@ -240,7 +248,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                  || filteredTokens[i].type == Token::Type::Character
                  || filteredTokens[i].type == Token::Type::Bracket)
                 {
-                    ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                    ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
                     repetition.count.operands.push_back(op);
                 }
                 else
@@ -327,7 +335,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     || filteredTokens[i].type == Token::Type::Character
                     || filteredTokens[i].type == Token::Type::Bracket)
                     {
-                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
                         align.align.operands.push_back(op);
                     }
                     else
@@ -366,7 +374,13 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
          || (filteredTokens[i + 1].type == Token::Type::Token && std::find(dataDefinitions.begin(), dataDefinitions.end(), toLower(filteredTokens[i + 1].value)) != dataDefinitions.end())))
         {
             ::Parser::Label label;
-            label.name = token.value;
+            if (token.value.size() > 0 && token.value[0] == '.')
+                label.name = lastMainLabel + token.value;
+            else
+            {
+                lastMainLabel = token.value;
+                label.name = token.value;
+            }
             label.lineNumber = token.line;
             label.column = token.column;
             label.isExtern = false;
@@ -428,7 +442,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     while (i < filteredTokens.size() &&
                            !(filteredTokens[i].type == Token::Type::Comma || filteredTokens[i].type == Token::Type::EOL))
                     {
-                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
                         val.operands.push_back(op);
                         i++;
                     }
@@ -544,7 +558,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     ::Parser::Immediate imm;
                     while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
                     {
-                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
                         imm.operands.push_back(op);
                         i++;
                     }
@@ -693,7 +707,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
                         while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
                         {
-                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
                             imm.operands.push_back(op);
                             i++;
                         }
@@ -817,7 +831,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
                         while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
                         {
-                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
                             imm.operands.push_back(op);
                             i++;
                         }
@@ -972,7 +986,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
                         while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
                         {
-                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
                             imm.operands.push_back(op);
                             i++;
                         }
@@ -1123,7 +1137,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                             ::Parser::Immediate imm;
                             while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
                             {
-                                ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                                ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
                                 imm.operands.push_back(op);
                                 i++;
                             }
@@ -1214,7 +1228,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
                         while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
                         {
-                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
                             imm.operands.push_back(op);
                             i++;
                         }
