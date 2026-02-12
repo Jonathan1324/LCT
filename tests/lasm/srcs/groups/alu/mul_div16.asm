@@ -55,9 +55,9 @@ _start:
     imul di, [bx + si]
     imul ax, [bp]
 
-    imul di, ax, 1222
+    imul di, ax, 128
     imul eax, edi, 74567
-    imul cx, [edi + esi], 853
-    imul eax, [1000], 1342
-    imul di, [bx + si], 1222
-    imul ax, [bp], 853
+    imul cx, [edi + esi], -9
+    imul eax, [1000], -1342
+    imul di, [bx + si], 6
+    imul ax, [bp], 1

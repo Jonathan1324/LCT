@@ -120,6 +120,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                     mulDivType = MulDivType::ThreeOperands;
 
                     opcode = 0x69;
+                    canOptimize = true;
 
                     if (mainSize != secondSize)
                         throw Exception::SemanticError("Can't use instruction with registers of different size", -1, -1);
@@ -272,6 +273,25 @@ void x86::Mul_Div_ALU_Instruction::evaluateS()
 
 bool x86::Mul_Div_ALU_Instruction::optimizeS()
 {
+    if (canOptimize)
+    {
+        int32_t value = static_cast<int32_t>(static_cast<uint32_t>(threeOperandsSpecific.value));
+        if (
+            value <= static_cast<int64_t>(std::numeric_limits<int8_t>::max()) &&
+            value >= static_cast<int64_t>(std::numeric_limits<int8_t>::min())
+        )
+        {
+            canOptimize = false;
+
+            opcode = 0x6B;
+
+            threeOperandsSpecific.max = std::numeric_limits<uint8_t>::max();
+            threeOperandsSpecific.sizeInBits = 8;
+
+            return true;
+        }
+    }
+
     return false;
 }
 

@@ -6,6 +6,7 @@
 x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
     : ::x86::Instruction(e)
 {
+    bitmode = bits;
     switch (mnemonic)
     {
         case Instructions::ADD: case Instructions::ADC:
@@ -58,8 +59,6 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
 
             if (otherIsImmediate)
             {
-                bool accumulatorReg = false;
-
                 if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
                 {
                     Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
@@ -124,6 +123,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     }
                     else
                     {
+                        if (mnemonic != TEST) canOptimize = true;
                         switch (mnemonic)
                         {
                             case ADD: opcode = 0x05; break;
@@ -193,8 +193,6 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
 
                     if (mnemonic == TEST)
                     {
-                        modrm.reg = 0;
-                        
                         if (specific.alu_reg_imm.sizeInBits == 8)
                         {
                             opcode = 0xF6;
@@ -206,6 +204,16 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     }
                     else
                     {
+                        if (specific.alu_reg_imm.sizeInBits == 8)
+                        {
+                            opcode = 0x80;
+                        }
+                        else
+                        {
+                            canOptimize = true;
+                            opcode = 0x81;
+                        }
+
                         switch (mnemonic)
                         {
                             case ADD: modrm.reg = 0; break;
@@ -216,15 +224,6 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                             case SUB: modrm.reg = 5; break;
                             case XOR: modrm.reg = 6; break;
                             case CMP: modrm.reg = 7; break;
-                        }
-
-                        if (specific.alu_reg_imm.sizeInBits == 8)
-                        {
-                            opcode = 0x80;
-                        }
-                        else
-                        {
-                            opcode = 0x81;
                         }
                     }
                 }
@@ -374,7 +373,7 @@ void x86::Two_Argument_ALU_Instruction::evaluateS()
                 Int128 result = evaluation.result;
 
                 // FIXME
-                if (result > specific.alu_reg_imm.max) throw Exception::SemanticError("Operand too large for instruction", -1, -1);
+                //if (result > specific.alu_reg_imm.max) throw Exception::SemanticError("Operand too large for instruction", -1, -1);
 
                 specific.alu_reg_imm.value = static_cast<uint64_t>(result);
             }
@@ -386,6 +385,43 @@ void x86::Two_Argument_ALU_Instruction::evaluateS()
 
 bool x86::Two_Argument_ALU_Instruction::optimizeS()
 {
+    if (canOptimize)
+    {
+        int32_t value = static_cast<int32_t>(static_cast<uint32_t>(specific.alu_reg_imm.value));
+        if (
+            value <= static_cast<int64_t>(std::numeric_limits<int8_t>::max()) &&
+            value >= static_cast<int64_t>(std::numeric_limits<int8_t>::min())
+        )
+        {
+            canOptimize = false;
+
+            opcode = 0x83;
+
+            specific.alu_reg_imm.max = std::numeric_limits<uint8_t>::max();
+            specific.alu_reg_imm.sizeInBits = 8;
+
+            if (accumulatorReg)
+            {
+                uint64_t mainSize;
+                if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
+                {
+                    Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
+                    mainSize = parseRegister(reg, bitmode, false);
+
+                    if (!isGPR(reg.reg))
+                        throw Exception::SemanticError("Two argument ALU instruction only accepts GPRs", -1, -1);
+                }
+                else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
+                {
+                    Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(mainOperand);
+                    mainSize = parseMemory(mem, bitmode, true);
+                }
+            }
+
+            return true;
+        }
+    }
+
     return false;
 }
 

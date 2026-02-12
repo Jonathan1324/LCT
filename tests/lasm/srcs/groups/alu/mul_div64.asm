@@ -51,9 +51,9 @@ _start:
     imul eax, [1000]
     imul r15, [eax]
 
-    imul di, ax, 1222
-    imul eax, edi, 74567
-    imul rax, rbx, 21345
-    imul cx, [r15 + r14], 853
-    imul eax, [1000], 1342
-    imul r15, [eax], 1245
+    imul di, ax, -157
+    imul eax, edi, -9
+    imul rax, rbx, 1222
+    imul cx, [r15 + r14], 4
+    imul eax, [1000], 6
+    imul r15, [eax], 1

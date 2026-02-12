@@ -26,13 +26,13 @@ _start:
     add ax, [eax]
     add ax, 1000
     add [eax], ax
-    add word [eax], 5000
+    add word [eax], 50
     add cx, [edx + eax*2 + 100]
     add [edx + 2000], cx
     add word [ebp + esi*4 + 3000], 2000
     add ax, [bx]
     add cx, [bp + si]
-    add word [bx + di], 1000
+    add word [bx + di], -10
 
     ; ADD - 32-bit
     add eax, ebx
@@ -314,7 +314,7 @@ _start:
     ; TEST - 16-bit
     test ax, bx
     test ax, [eax]
-    test ax, 7000
+    test ax, -7000
     test [eax], ax
     test word [eax], 5000
     test cx, [edx + ebx*4 + 2000]
@@ -326,11 +326,11 @@ _start:
     ; TEST - 32-bit
     test eax, ebx
     test eax, [eax]
-    test eax, 70000
+    test eax, 120
     test [eax], eax
-    test dword [eax], 50000
+    test dword [eax], -80
     test ecx, [edx + ebx*4 + 2000]
     test dword [edx + 1500], ecx
     test eax, [bx]
     test ecx, [bp + di]
-    test dword [bx + si], 25000
+    test dword [bx + si], 2

@@ -19,16 +19,13 @@ namespace x86 {
 
         uint64_t sizeS() override;
 
-        // TODO:
-        //   Register <-> Immediate:
-        //     16, 32, 64 bit:
-        //       currently using 0x81 (full immediate)
-        //       optimizable to 0x83 (8-bit immediate, sign-extended)
-        //       implement
-
     private:
         Parser::Instruction::Operand mainOperand;
         Parser::Instruction::Operand otherOperand;
+
+        BitMode bitmode;
+        bool canOptimize = false;
+        bool accumulatorReg = false;
 
         enum class AluType {
             ALU_REG_REG,
@@ -65,19 +62,14 @@ namespace x86 {
 
         uint64_t sizeS() override;
 
-        // TODO:
-        //   Register, Register/Memory, Immediate:
-        //     16, 32, 64 bit:
-        //       currently using 0x69 (full immediate)
-        //       optimizable to 0x68 (8-bit immediate, sign-extended)
-        //       implement
-
     private:
         Parser::Instruction::Operand mainOperand;
         
         // Only when Two/ThreeOperands
         Parser::Instruction::Operand secondOperand;
         Parser::Immediate thirdOperand;
+
+        bool canOptimize = false;
 
         struct {
             uint64_t max;

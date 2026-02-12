@@ -23,30 +23,30 @@ _start:
     add ax, [rax]
     add ax, 1000
     add [rax], ax
-    add word [rax], 5000
+    add word [rax], 50
     add cx, [rdx + rax*2 + 100]
     add [rdx + 2000], cx
-    add word [rbp + rsi*4 + 3000], 2000
+    add word [rbp + rsi*4 + 3000], -10
 
     ; ADD - 32-bit
     add eax, ebx
     add eax, [rax]
-    add eax, 10000
+    add eax, -10000
     add [rax], eax
-    add dword [rax], 50000
+    add dword [rax], 2
     add ecx, [rdx + rax*2 + 100]
     add [rdx + 2000], ecx
-    add dword [rbp + rsi*4 + 3000], 20000
+    add dword [rbp + rsi*4 + 3000], -77
 
     ; ADD - 64-bit
     add rax, rbx
     add rax, [rax]
-    add rax, 10000
+    add rax, -10000
     add [rax], rax
-    add qword [rax], 50000
+    add qword [rax], 2
     add rcx, [rdx + rax*2 + 100]
     add [rdx + 2000], rcx
-    add qword [rbp + rsi*4 + 3000], 20000
+    add qword [rbp + rsi*4 + 3000], -77
 
     ; ADC - 8-bit
     adc al, bl
@@ -305,33 +305,33 @@ _start:
     test al, [rax]
     test al, 22
     test [rax], al
-    test byte [rax], 130
+    test byte [rax], -1
     test ah, [ecx + eax*2 + 1000]
     test byte [ecx + 500], ah
 
     ; TEST - 16-bit
     test ax, bx
     test ax, [rax]
-    test ax, 7000
+    test ax, -7
     test [rax], ax
-    test word [rax], 5000
+    test word [rax], -8
     test cx, [rdx + rbx*4 + 2000]
     test word [rdx + 1500], cx
 
     ; TEST - 32-bit
     test eax, ebx
     test eax, [rax]
-    test eax, 70000
+    test eax, 5
     test [rax], eax
-    test dword [rax], 50000
+    test dword [rax], 128
     test ecx, [rdx + rbx*4 + 2000]
     test dword [rdx + 1500], ecx
 
     ; TEST - 64-bit
     test rax, rbx
     test rax, [rax]
-    test rax, 70000
+    test rax, 127
     test [rax], rax
-    test qword [rax], 50000
+    test qword [rax], -94
     test rcx, [rdx + rbx*4 + 2000]
     test qword [rdx + 1500], rcx
