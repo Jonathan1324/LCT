@@ -1,7 +1,7 @@
 #include "interrupt.hpp"
 
 x86::Argument_Interrupt_Instruction::Argument_Interrupt_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e)
+    : ::x86::Instruction(e, bits)
 {
     switch (mnemonic)
     {

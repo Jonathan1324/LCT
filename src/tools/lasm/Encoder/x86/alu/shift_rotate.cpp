@@ -4,7 +4,7 @@
 #include <cstring>
 
 x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e)
+    : ::x86::Instruction(e, bits)
 {
     switch (mnemonic)
     {
@@ -126,7 +126,7 @@ void x86::Shift_Rotate_ALU_Instruction::evaluateS()
 
 bool x86::Shift_Rotate_ALU_Instruction::optimizeS()
 {
-    if (canOptimize)
+    if (canOptimize && !usedReloc)
     {
         if (count == 1)
         {

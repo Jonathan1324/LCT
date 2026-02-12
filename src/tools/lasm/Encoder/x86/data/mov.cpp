@@ -4,7 +4,7 @@
 #include <cstring>
 
 x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e)
+    : ::x86::Instruction(e, bits)
 {
     switch (mnemonic)
     {

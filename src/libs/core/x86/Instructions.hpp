@@ -22,6 +22,7 @@ namespace x86
         LAHF, SAHF,
 
         // STACK
+        PUSH, POP,
         PUSHA, POPA,
         PUSHAD, POPAD,
         PUSHF, POPF,

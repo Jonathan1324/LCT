@@ -55,6 +55,9 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
         case Instructions::PUSHFQ: case Instructions::POPFQ:
             return new x86::Simple_Stack_Instruction(*this, instruction.bits, instruction.mnemonic);
 
+        case Instructions::PUSH: case Instructions::POP:
+            return new x86::Normal_Stack_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+
         // DATA
         case Instructions::MOV:
             return new x86::Mov_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
@@ -81,6 +84,11 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
     }
 
     return nullptr;
+}
+
+x86::Instruction::Instruction(::Encoder::Encoder& e, BitMode bits) : ::Encoder::Encoder::Instruction(e)
+{
+    bitmode = bits;
 }
 
 std::vector<uint8_t> x86::Instruction::encode()

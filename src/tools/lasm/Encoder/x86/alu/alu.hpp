@@ -8,7 +8,6 @@ namespace x86 {
     {
     public:
         Two_Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
-
         ~Two_Argument_ALU_Instruction() override {}
 
         void evaluateS() override;
@@ -23,7 +22,6 @@ namespace x86 {
         Parser::Instruction::Operand mainOperand;
         Parser::Instruction::Operand otherOperand;
 
-        BitMode bitmode;
         bool canOptimize = false;
         bool accumulatorReg = false;
 
@@ -95,6 +93,7 @@ namespace x86 {
         Shift_Rotate_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
         ~Shift_Rotate_ALU_Instruction() override {}
 
+    protected:
         void evaluateS() override;
 
         bool optimizeS() override;

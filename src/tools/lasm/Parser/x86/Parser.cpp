@@ -613,6 +613,8 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
         // STACK
         static const std::unordered_map<std::string_view, uint64_t> stackInstructions = {
+            {"push", Instructions::PUSH},
+            {"pop", Instructions::POP},
             {"pusha", ::x86::Instructions::PUSHA},
             {"popa", ::x86::Instructions::POPA},
             {"pushad", ::x86::Instructions::PUSHAD},
@@ -643,6 +645,61 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                 case ::x86::Instructions::PUSHFQ:
                 case ::x86::Instructions::POPFQ:
                     break;
+
+                case Instructions::PUSH: case Instructions::POP:
+                {
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value);
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value);
+
+                    if (regIt != ::x86::registers.end()
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+                    }
+                    else
+                    {
+                        // TODO: immediate?
+                        ::Parser::Immediate imm;
+
+                        while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                        {
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                            imm.operands.push_back(op);
+                            i++;
+                        }
+                        instruction.operands.push_back(imm);
+                    }
+                } break;
                 
                 default:
                     throw Exception::InternalError("Unknown stack instruction", token.line, token.column);

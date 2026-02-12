@@ -60,7 +60,9 @@ namespace x86
 
         void checkReg(const Parser::Instruction::Register& reg, BitMode bits);
 
-        Instruction(::Encoder::Encoder& e) : ::Encoder::Encoder::Instruction(e) {}
+        Instruction(::Encoder::Encoder& e, BitMode bits);
+
+        BitMode bitmode;
 
         bool use16BitPrefix = false;
         bool use16BitAddressPrefix = false;

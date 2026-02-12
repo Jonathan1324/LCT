@@ -1,7 +1,7 @@
 #include "flag.hpp"
 
 x86::Simple_Flag_Instruction::Simple_Flag_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic)
-    : ::x86::Instruction(e)
+    : ::x86::Instruction(e, bits)
 {
     switch (mnemonic)
     {

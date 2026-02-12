@@ -4,7 +4,7 @@
 #include <cstring>
 
 x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e)
+    : ::x86::Instruction(e, bits)
 {
     bitmode = bits;
     switch (mnemonic)
@@ -385,7 +385,7 @@ void x86::Two_Argument_ALU_Instruction::evaluateS()
 
 bool x86::Two_Argument_ALU_Instruction::optimizeS()
 {
-    if (canOptimize)
+    if (canOptimize && !usedReloc)
     {
         int32_t value = static_cast<int32_t>(static_cast<uint32_t>(specific.alu_reg_imm.value));
         if (
