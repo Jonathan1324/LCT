@@ -1,5 +1,5 @@
 ; FORMATS: BIN,ELF
-; BITS: 16,32,64
+; BITS: 32
 ; EXPECT: SUCCESS
 
 [bits 32]
