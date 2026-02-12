@@ -18,9 +18,6 @@ namespace x86 {
 
         uint64_t sizeS() override;
 
-        // TODO:
-        //   Optimize
-
     private:
         Parser::Instruction::Operand destinationOperand;
         Parser::Instruction::Operand sourceOperand;
