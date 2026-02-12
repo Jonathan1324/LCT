@@ -18,12 +18,12 @@ _start:
     shl dword [rax], cl
     shl qword [rax], cl
     
-    shl al, 2
+    shl al, 1
     shl ax, 2
     shl eax, 3
     shl rax, 4
     
-    shl byte [rax], 2
+    shl byte [rax], 1
     shl word [rax], 2
     shl dword [rax], 3
     shl qword [rax], 4
@@ -40,10 +40,10 @@ _start:
     
     shr al, 2
     shr ax, 2
-    shr eax, 3
+    shr ebx, 1
     shr rax, 4
     
-    shr byte [rax], 2
+    shr byte [rbp - 8], 1
     shr word [rax], 2
     shr dword [rax], 3
     shr qword [rax], 4
@@ -58,15 +58,15 @@ _start:
     sal dword [rax], cl
     sal qword [rax], cl
     
-    sal al, 2
+    sal al, 1
     sal ax, 2
     sal eax, 3
     sal rax, 4
 
-    sal byte [rax], 2
+    sal byte [rax], 4
     sal word [rax], 2
     sal dword [rax], 3
-    sal qword [rax], 4
+    sal qword [rax], 1
     
     sar al, cl
     sar ax, cl
@@ -78,12 +78,12 @@ _start:
     sar dword [rax], cl
     sar qword [rax], cl
     
-    sar al, 2
+    sar al, 1
     sar ax, 2
     sar eax, 3
     sar rax, 4
     
-    sar byte [rax], 2
+    sar byte [rax], 1
     sar word [rax], 2
     sar dword [rax], 3
     sar qword [rax], 4
@@ -98,13 +98,13 @@ _start:
     rol dword [rax], cl
     rol qword [rax], cl
     
-    rol al, 2
+    rol al, 1
     rol ax, 2
     rol eax, 3
     rol rax, 4
     
     rol byte [rax], 2
-    rol word [rax], 2
+    rol word [rax], 1
     rol dword [rax], 3
     rol qword [rax], 4
     
@@ -118,15 +118,15 @@ _start:
     ror dword [rax], cl
     ror qword [rax], cl
     
-    ror al, 2
-    ror ax, 2
-    ror eax, 3
-    ror rax, 4
+    ror al, 3
+    ror ax, 4
+    ror eax, 1
+    ror rax, 2
     
-    ror byte [rax], 2
+    ror byte [rax], 7
     ror word [rax], 2
     ror dword [rax], 3
-    ror qword [rax], 4
+    ror qword [rax], 16
     
     rcl al, cl
     rcl ax, cl
@@ -138,12 +138,12 @@ _start:
     rcl dword [rax], cl
     rcl qword [rax], cl
     
-    rcl al, 2
+    rcl al, 1
     rcl ax, 2
     rcl eax, 3
-    rcl rax, 4
+    rcl rax, 1
     
-    rcl byte [rax], 2
+    rcl byte [rax], 1
     rcl word [rax], 2
     rcl dword [rax], 3
     rcl qword [rax], 4
@@ -158,12 +158,12 @@ _start:
     rcr dword [rax], cl
     rcr qword [rax], cl
     
-    rcr al, 2
+    rcr al, 1
     rcr ax, 2
     rcr eax, 3
     rcr rax, 4
     
     rcr byte [rax], 2
-    rcr word [rax], 2
+    rcr word [rax], 1
     rcr dword [rax], 3
     rcr qword [rax], 4

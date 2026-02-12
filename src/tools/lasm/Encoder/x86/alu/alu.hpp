@@ -103,16 +103,13 @@ namespace x86 {
 
         uint64_t sizeS() override;
 
-        // TODO:
-        //   Register, Register/Memory, Immediate:
-        //     16, 32, 64 bit:
-        //       currently using 0xD2/D3 (with immediate)
-        //       should use shift by 1 opcode when count = 1
-
     private:
         bool usedReloc = false;
         std::string relocUsedSection;
         bool relocIsExtern;
+
+        bool canOptimize = false;
+        bool is8Bit = false;
 
         bool usesImmediate = false;
         uint8_t count;

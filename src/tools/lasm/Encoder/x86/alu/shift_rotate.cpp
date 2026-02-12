@@ -34,6 +34,8 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
                 size = parseMemory(mem, bits, true);
             }
 
+            if (size == 8) is8Bit = true;
+
             if (std::holds_alternative<Parser::Instruction::Register>(countOperand))
             {
                 Parser::Instruction::Register countReg = std::get<Parser::Instruction::Register>(countOperand);
@@ -42,12 +44,13 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
                     throw Exception::InternalError("2 operand of Shift/Rotate ALU instruction needs to be CL", -1, -1);
 
                 if (size == 8) opcode = 0xD2;
-                else                  opcode = 0xD3;
+                else           opcode = 0xD3;
             }
             else if (std::holds_alternative<Parser::Immediate>(countOperand))
             {
                 usesImmediate = true;
 
+                canOptimize = true;
                 if (size == 8) opcode = 0xC0;
                 else           opcode = 0xC1;
             }
@@ -66,6 +69,9 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
 
             switch (size)
             {
+                case 8:
+                    break;
+
                 case 16:
                     if (bits != BitMode::Bits16) use16BitPrefix = true;
                     break;
@@ -77,9 +83,6 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
                 case 64:
                     rex.use = true;
                     rex.w = true;
-                    break;
-
-                case 8:
                     break;
 
                 default:
@@ -123,6 +126,19 @@ void x86::Shift_Rotate_ALU_Instruction::evaluateS()
 
 bool x86::Shift_Rotate_ALU_Instruction::optimizeS()
 {
+    if (canOptimize)
+    {
+        if (count == 1)
+        {
+            canOptimize = false;
+
+            usesImmediate = false;
+
+            if (is8Bit) opcode = 0xD0;
+            else        opcode = 0xD1;
+        }
+    }
+
     return false;
 }
 
