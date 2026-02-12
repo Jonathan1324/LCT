@@ -403,7 +403,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                                 can_optimize = true;
                                 optimize_reg = reg;
 
-                                auto [_, n, _] = getReg(reg.reg);
+                                auto [ignore1, n, ignore2] = getReg(reg.reg);
                                 needs_rex = n;
                             }
 
