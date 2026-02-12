@@ -1,26 +1,19 @@
-find "tests/lasm/build/x86/lasm" -type f -name "*.o" | while read -r file; do
-    prefix="tests/lasm/build/x86/lasm"
-    parent_dir_all="$(dirname "$file")"
-    parent_dir=$(echo "$parent_dir_all" | sed "s|^$prefix||")
-    log_file="logs/lasm/x86/objdump-lasm/$parent_dir/$(basename "$file")-objdump.txt"
-    mkdir -p "$(dirname "$log_file")"
-    objdump --all-headers "$file" > "$log_file" 2>&1
-done
+#!/bin/sh
 
-find "tests/lasm/build/nasm/lasm" -type f -name "*.o" | while read -r file; do
-    prefix="tests/lasm/build/nasm/lasm"
-    parent_dir_all="$(dirname "$file")"
-    parent_dir=$(echo "$parent_dir_all" | sed "s|^$prefix||")
-    log_file="logs/lasm/nasm/objdump-lasm/$parent_dir/$(basename "$file")-objdump.txt"
-    mkdir -p "$(dirname "$log_file")"
-    objdump --all-headers "$file" > "$log_file" 2>&1
-done
+BASE_BUILD="tests/lasm/build"
+BASE_LOG="logs/lasm"
 
-find "tests/lasm/build/nasm/nasm" -type f -name "*.o" | while read -r file; do
-    prefix="tests/lasm/build/nasm/nasm"
-    parent_dir_all="$(dirname "$file")"
-    parent_dir=$(echo "$parent_dir_all" | sed "s|^$prefix||")
-    log_file="logs/lasm/nasm/objdump-nasm/$parent_dir/$(basename "$file")-objdump.txt"
-    mkdir -p "$(dirname "$log_file")"
-    objdump --all-headers "$file" > "$log_file" 2>&1
+find "$BASE_BUILD" -type f -name "*.o" | while read -r file; do
+    rel_path="${file#$BASE_BUILD/}"
+    arch="$(echo "$rel_path" | cut -d'/' -f1)"
+    tool="$(echo "$rel_path" | cut -d'/' -f2)"
+    subdir="$(dirname "$rel_path" | cut -d'/' -f3-)"
+
+    log_dir="$BASE_LOG/$arch/objdump-$tool"
+    if [ -n "$subdir" ]; then
+        log_dir="$log_dir/$subdir"
+    fi
+
+    mkdir -p "$log_dir"
+    objdump --all-headers "$file" > "$log_dir/$(basename "$file")-objdump.txt" 2>&1
 done
