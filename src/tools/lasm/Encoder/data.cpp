@@ -31,7 +31,6 @@ void Encoder::Data::Data_Instruction::evaluate()
     {
         Evaluation evaluation = Evaluate(value);
 
-        offset += valueSize;
         if (evaluation.useOffset)
         {
             for (size_t i = 0; i < valueSize; i++)
@@ -67,6 +66,8 @@ void Encoder::Data::Data_Instruction::evaluate()
                 buffer.push_back(byte);
             }
         }
+
+        offset += valueSize;
     }
 }
 

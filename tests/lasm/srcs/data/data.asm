@@ -2,8 +2,11 @@
 ; BITS: 16,32,64
 ; EXPECT: SUCCESS
 
-section .data
+section .text
     global _start
 
 _start:
-    mov eax, 0
+    db 0, 1, 2
+    dw 0, 1, 2
+    dd 0, 1, 2
+    dq 0, 1, 2
