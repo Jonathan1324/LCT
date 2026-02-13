@@ -203,6 +203,8 @@ void x86::JMP_Instruction::evaluateS()
     }
 }
 
+// TODO: Labels and Sections
+
 bool x86::JMP_Instruction::optimizeS()
 {
     if (canOptimize && !usedReloc)
