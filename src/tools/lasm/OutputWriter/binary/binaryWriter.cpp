@@ -143,6 +143,8 @@ void Binary::Writer::Write()
     // TODO
     for (const Encoder::Section& section : sections)
     {
+        if (section.buffer.empty()) continue;
+
         if (section.align == 0)
             throw Exception::InternalError("Alignment not set for section '" + section.name + "'", -1, -1);
 

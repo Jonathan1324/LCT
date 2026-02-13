@@ -97,7 +97,7 @@ namespace x86
             bool use = false;
 
             uint8_t index;
-            Scale scale;
+            Scale scale = Scale::x1;
         } sib;
 
         struct Displacement {

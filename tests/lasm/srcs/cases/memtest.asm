@@ -4,11 +4,6 @@
 
 [bits 64]
 
-section .data
-    msg db "Memory value: 0", 10, 0
-
-    num db 0
-
 section .text
     global _start
 
@@ -29,3 +24,8 @@ _start:
     mov rax, 60
     xor rdi, rdi
     syscall
+
+section .data
+    msg db "Memory value: 0", 10, 0
+
+    num db 0

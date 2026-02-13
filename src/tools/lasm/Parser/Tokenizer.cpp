@@ -21,12 +21,28 @@ void Token::Tokenizer::tokenize(std::istream* input)
     size_t lineNumber = 0;
     size_t lineIncrease = 1;
 
+    // TODO: Make dynamic
+    const char commentStart = ';';
+
     while (std::getline(*input, line))
     {
         lineNumber += lineIncrease;
         size_t pos = 0;
         size_t length = line.size();
+
         std::string trimmed = trim(line);
+
+        if (!trimmed.empty() && trimmed[0] == commentStart)
+        {
+            continue;
+        }
+
+        size_t commentPos = line.find(';');
+        if (commentPos != std::string::npos)
+        {
+            line = line.substr(0, commentPos);
+            length = line.size();
+        }
 
         if (trimmed.find("%line") == 0)
         {

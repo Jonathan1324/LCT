@@ -22,13 +22,6 @@ Parser::ImmediateOperand getOperand(const Token::Token& token, const std::string
         op.op = token.value;
         return op;
     }
-    else if (std::isdigit(static_cast<unsigned char>(token.value[0])) != 0)
-    {
-        Parser::Integer integer;
-        // TODO: currently only integer
-        integer.value = evalInteger(token.value, 8, token.line, token.column);
-        return integer;
-    }
     else if (token.type == Token::Type::Character)
     {
         Parser::Integer integer;
@@ -40,6 +33,13 @@ Parser::ImmediateOperand getOperand(const Token::Token& token, const std::string
         Parser::CurrentPosition curPos;
         curPos.sectionPos = (token.value == "$") ? false : true;
         return curPos;
+    }
+    else if (std::isdigit(static_cast<unsigned char>(token.value[0])) != 0)
+    {
+        Parser::Integer integer;
+        // TODO: currently only integer
+        integer.value = evalInteger(token.value, 8, token.line, token.column);
+        return integer;
     }
     else
     {
@@ -67,15 +67,6 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
         if (token.type == Token::Type::EOL && before == Token::Type::EOL)
             continue;
-        
-        if (token.type == Token::Type::Punctuation && token.value.at(0) == ';')
-        {
-            while (i < tokens.size() && tokens[i].type != Token::Type::EOL && tokens[i].type != Token::Type::_EOF)
-                i++;
-            if (i < tokens.size())
-                filteredTokens.push_back(tokens[i]);
-            continue;
-        }
 
         before = token.type;
         filteredTokens.push_back(token);
@@ -167,11 +158,9 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
         "section", "segment", "bits", "org", "align"
     };
 
-    ::Parser::Section text;
-    text.name = ".text";
-    sections.push_back(text);
+    ::Parser::Section implicitSection;
 
-    ::Parser::Section* currentSection = &sections.at(0);
+    ::Parser::Section* currentSection = &implicitSection;
     BitMode currentBitMode = bits;
 
     for (size_t i = 0; i < filteredTokens.size(); i++)
@@ -1293,9 +1282,27 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
         context.warningManager->add(Warning::GeneralWarning("Unhandled token: " + token.what(&context)));
     }
 
-    // TODO: probably better way to handle this
-    if (sections.at(0).entries.empty())
+    if (!implicitSection.entries.empty())
     {
-        sections.erase(sections.begin());
+        ::Parser::Section* textSection = nullptr;
+
+        for (auto& section : sections)
+        {
+            if (section.name == ".text")
+            {
+                textSection = &section;
+                break;
+            }
+        }
+
+        if (textSection)
+        {
+            textSection->entries.insert(textSection->entries.begin(), implicitSection.entries.begin(), implicitSection.entries.end());
+        }
+        else
+        {
+            implicitSection.name = ".text";
+            sections.insert(sections.begin(), implicitSection);
+        }
     }
 }

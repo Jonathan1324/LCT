@@ -790,7 +790,7 @@ void x86::Mov_Instruction::evaluateS()
 
 bool x86::Mov_Instruction::optimizeS()
 {
-    if (can_optimize && movType == MovType::MOV_REG_IMM)
+    if (can_optimize && movType == MovType::MOV_REG_IMM && !usedReloc)
     {
         int64_t value = static_cast<int64_t>(specific.mov_reg_imm.value);
         if (value <= static_cast<int64_t>(static_cast<uint64_t>(std::numeric_limits<uint32_t>().max())))
