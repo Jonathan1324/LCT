@@ -164,6 +164,8 @@ namespace Encoder
 
         void GenerateCode();
 
+        Instruction* GetDataDefinition(const Parser::DataDefinition& dataDefinition);
+
         virtual Instruction* GetInstruction(const Parser::Instruction::Instruction& instruction) = 0;
 
         virtual std::vector<uint8_t> EncodePadding(size_t length) = 0;

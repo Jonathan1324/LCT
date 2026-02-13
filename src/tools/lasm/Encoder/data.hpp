@@ -13,11 +13,8 @@ namespace Encoder
             ~Data_Instruction() override {}
 
             void evaluate() override;
-
-            bool optimize() override {return false;} // TODO
-
+            bool optimize() override { return false; }
             std::vector<uint8_t> encode() override;
-
             uint64_t size() override;
 
         private:
@@ -36,6 +33,22 @@ namespace Encoder
             };
 
             std::vector<RelocInfo> relocs;
+        };
+
+        class ReservedData_Instruction : public Encoder::Instruction
+        {
+        public:
+            ReservedData_Instruction(Encoder& e, const Parser::DataDefinition& dataDefinition);
+            ~ReservedData_Instruction() override {}
+
+            void evaluate() override {}
+            bool optimize() override { return false; }
+            std::vector<uint8_t> encode() override;
+            uint64_t size() override;
+
+        private:
+            uint64_t bufferSize;
+            std::vector<uint8_t> buffer;
         };
     }
 }

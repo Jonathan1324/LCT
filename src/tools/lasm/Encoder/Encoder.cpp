@@ -70,8 +70,7 @@ void Encoder::Encoder::Initialize()
             {
                 const Parser::DataDefinition& dataDefinition = std::get<Parser::DataDefinition>(entry);
 
-                Data::Data_Instruction* data_instr = new Data::Data_Instruction(*this, dataDefinition);
-                Instruction* instr = static_cast<Instruction*>(data_instr);
+                Instruction* instr = GetDataDefinition(dataDefinition);
                 if (instr) {
                     sec.instructions.push_back(instr);
                 } else
@@ -311,6 +310,18 @@ void Encoder::Encoder::GenerateCode()
                 throw Exception::InternalError("Couldn't find logic for Encoder::SectionEntry", -1, -1);
             }
         }
+    }
+}
+
+Encoder::Encoder::Instruction* Encoder::Encoder::GetDataDefinition(const Parser::DataDefinition& dataDefinition)
+{
+    if (dataDefinition.reserved)
+    {
+        return new Data::ReservedData_Instruction(*this, dataDefinition);
+    }
+    else
+    {
+        return new Data::Data_Instruction(*this, dataDefinition);
     }
 }
 

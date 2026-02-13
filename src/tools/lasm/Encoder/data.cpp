@@ -3,22 +3,14 @@
 Encoder::Data::Data_Instruction::Data_Instruction(Encoder& e, const Parser::DataDefinition& dataDefinition)
     : Encoder::Instruction(e)
 {
-    if (dataDefinition.reserved)
-    {
-        // TODO
-        throw Exception::InternalError("Reserved data encoding is not implemented yet :(", dataDefinition.lineNumber, dataDefinition.column);
-    }
-    else
-    {
-        valueSize = dataDefinition.size;
-        values = dataDefinition.values;
-        bufferSize = valueSize * values.size();
+    valueSize = dataDefinition.size;
+    values = dataDefinition.values;
+    bufferSize = valueSize * values.size();
 
-        for (const Parser::Immediate& value : values)
-        {
-            if (value.operands.empty())
-                throw Exception::SemanticError("Data definition cannot be empty", dataDefinition.lineNumber, dataDefinition.column);
-        }
+    for (const Parser::Immediate& value : values)
+    {
+        if (value.operands.empty())
+            throw Exception::SemanticError("Data definition cannot be empty", dataDefinition.lineNumber, dataDefinition.column);
     }
 }
 
@@ -91,6 +83,40 @@ std::vector<uint8_t> Encoder::Data::Data_Instruction::encode()
 }
 
 uint64_t Encoder::Data::Data_Instruction::size()
+{
+    return bufferSize;
+}
+
+
+Encoder::Data::ReservedData_Instruction::ReservedData_Instruction(Encoder& e, const Parser::DataDefinition& dataDefinition)
+    : Encoder::Instruction(e)
+{
+    if (dataDefinition.values.size() != 1 )
+        throw Exception::SyntaxError("Can only use resX with one argument", -1, -1);
+
+    const Parser::Immediate& value = dataDefinition.values[0];
+
+    buffer.clear();
+
+    Evaluation evaluation = Evaluate(value);
+
+    if (evaluation.useOffset)
+        throw Exception::SemanticError("Can't use relocations for resX", -1, -1);
+
+    bufferSize = dataDefinition.size * evaluation.result;
+
+    for (uint64_t i = 0; i < bufferSize; i++)
+    {
+        buffer.push_back(static_cast<uint8_t>(0));
+    }
+}
+
+std::vector<uint8_t> Encoder::Data::ReservedData_Instruction::encode()
+{
+    return buffer;
+}
+
+uint64_t Encoder::Data::ReservedData_Instruction::size()
 {
     return bufferSize;
 }
