@@ -130,20 +130,7 @@ x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                     break;
             }
 
-            {
-                Parser::Immediate fImmediate = std::get<Parser::Immediate>(operand);
-
-                Parser::Operator op;
-                op.op = "-";
-
-                Parser::CurrentPosition curPos;
-                curPos.sectionPos = false;
-
-                fImmediate.operands.push_back(std::move(op));
-                fImmediate.operands.push_back(std::move(curPos));
-
-                immediate = std::move(fImmediate);
-            }
+            immediate = std::get<Parser::Immediate>(operand);
 
             switch (mnemonic)
             {
