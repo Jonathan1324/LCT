@@ -27,10 +27,20 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
         Int128 res1 = ShuntingYard::evaluate(tokens.tokens, off1);
         Int128 res2 = ShuntingYard::evaluate(tokens.tokens, off2);
 
+        if (ripRelative)
+        {
+            uint64_t ripBase1 = bytesWritten + ripExtra;
+            uint64_t ripBase2 = bytesWritten + ripExtra;
+            
+            res1 = res1 - static_cast<Int128>(ripBase1);
+            res2 = res2 - static_cast<Int128>(ripBase2);
+        }
+
         Evaluation evaluation;
         evaluation.result = res1;
         evaluation.usedSection = tokens.usedSection;
         evaluation.isExtern = tokens.isExtern;
+
         if (res1 == res2)
         {
             evaluation.useOffset = false;
