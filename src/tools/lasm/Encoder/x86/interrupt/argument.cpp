@@ -28,7 +28,7 @@ x86::Argument_Interrupt_Instruction::Argument_Interrupt_Instruction(::Encoder::E
 
 void x86::Argument_Interrupt_Instruction::evaluateS()
 {
-    ::Encoder::Evaluation evaluation = Evaluate(argument);
+    ::Encoder::Evaluation evaluation = Evaluate(argument, false, 0);
 
     if (evaluation.useOffset)
     {

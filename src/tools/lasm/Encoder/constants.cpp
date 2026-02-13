@@ -76,7 +76,7 @@ bool Encoder::Encoder::resolveConstantWithoutPos(Constant& c, std::unordered_set
         }
     }
 
-    Evaluation evaluated = Evaluate(c.expression, 0, 0, &c.section);
+    Evaluation evaluated = Evaluate(c.expression, 0, 0, &c.section, false, 0);
     if (evaluated.relocationPossible) c.relocationPossible = true;
     if (evaluated.relocationPossible && evaluated.useOffset)
     {
@@ -121,7 +121,7 @@ bool Encoder::Encoder::resolveConstantWithPos(Constant& c, std::unordered_set<st
             throw Exception::InternalError("Couldn't resolve constant '" + dep + "'", -1, -1);
     }
 
-    Evaluation evaluated = Evaluate(c.expression, c.bytesWritten, c.offset, &c.section);
+    Evaluation evaluated = Evaluate(c.expression, c.bytesWritten, c.offset, &c.section, false, 0);
     if (evaluated.relocationPossible) c.relocationPossible = true;
     if (evaluated.relocationPossible && evaluated.useOffset)
     {

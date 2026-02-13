@@ -108,9 +108,10 @@ namespace Encoder
             inline BitMode getBitMode() { return enc.bits; }
 
             inline ::Encoder::Evaluation Evaluate(
-                const Parser::Immediate& immediate
+                const Parser::Immediate& immediate,
+                bool ripRelative, uint64_t ripExtra
             )
-            { return enc.Evaluate(immediate, enc.bytesWritten, enc.sectionOffset, enc.currentSection); }
+            { return enc.Evaluate(immediate, enc.bytesWritten, enc.sectionOffset, enc.currentSection, ripRelative, ripExtra); }
 
             void AddRelocation(
                 uint64_t extra_offset, uint64_t addend,
@@ -170,7 +171,7 @@ namespace Encoder
 
         virtual std::vector<uint8_t> EncodePadding(size_t length) = 0;
 
-        Evaluation Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, const std::string* curSection);
+        Evaluation Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, const std::string* curSection, bool ripRelative, uint64_t ripExtra);
 
         void resolveConstants(bool withPos);
         bool Resolvable(const Parser::Immediate& immediate);

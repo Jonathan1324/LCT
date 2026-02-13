@@ -136,7 +136,7 @@ void x86::Normal_Stack_Instruction::evaluateS()
 {
     if (useImmediate)
     {
-        ::Encoder::Evaluation evaluation = Evaluate(immediate);
+        ::Encoder::Evaluation evaluation = Evaluate(immediate, false, 0);
 
         if (evaluation.useOffset)
         {

@@ -764,7 +764,7 @@ void x86::Mov_Instruction::evaluateS()
         {
             Parser::Immediate srcImm = std::get<Parser::Immediate>(sourceOperand);
 
-            ::Encoder::Evaluation evaluation = Evaluate(srcImm);
+            ::Encoder::Evaluation evaluation = Evaluate(srcImm, false, 0);
 
             if (evaluation.useOffset)
             {

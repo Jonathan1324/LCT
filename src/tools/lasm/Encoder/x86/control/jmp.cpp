@@ -169,7 +169,7 @@ void x86::JMP_Instruction::evaluateS()
 {
     if (useImmediate)
     {
-        ::Encoder::Evaluation evaluation = Evaluate(immediate);
+        ::Encoder::Evaluation evaluation = Evaluate(immediate, true, instrSize);
 
         if (evaluation.useOffset)
         {
@@ -185,7 +185,7 @@ void x86::JMP_Instruction::evaluateS()
             // FIXME
             //if (result > max) throw Exception::SemanticError("Operand too large for instruction", -1, -1);
 
-            value = static_cast<uint64_t>(result) - instrSize;
+            value = static_cast<uint64_t>(result);
         }
     }
 }

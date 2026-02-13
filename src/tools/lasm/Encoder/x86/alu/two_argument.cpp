@@ -359,7 +359,7 @@ void x86::Two_Argument_ALU_Instruction::evaluateS()
         {
             Parser::Immediate imm = std::get<Parser::Immediate>(otherOperand);
 
-            ::Encoder::Evaluation evaluation = Evaluate(imm);
+            ::Encoder::Evaluation evaluation = Evaluate(imm, false, 0);
 
             if (evaluation.useOffset)
             {

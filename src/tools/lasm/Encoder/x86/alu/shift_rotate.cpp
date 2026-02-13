@@ -103,7 +103,7 @@ void x86::Shift_Rotate_ALU_Instruction::evaluateS()
     {
         Parser::Immediate imm = std::get<Parser::Immediate>(countOperand);
 
-        ::Encoder::Evaluation evaluation = Evaluate(imm);
+        ::Encoder::Evaluation evaluation = Evaluate(imm, false, 0);
 
         if (evaluation.useOffset)
         {

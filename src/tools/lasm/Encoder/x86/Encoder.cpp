@@ -260,9 +260,11 @@ bool x86::Instruction::optimize()
 
 void x86::Instruction::evaluateDisplacement()
 {
+    // TODO: RIP-Relative
+
     if (displacement.use)
     {
-        ::Encoder::Evaluation evaluation = Evaluate(displacement.immediate);
+        ::Encoder::Evaluation evaluation = Evaluate(displacement.immediate, false, 0);
 
         if (evaluation.useOffset)
         {

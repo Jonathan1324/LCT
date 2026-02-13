@@ -2,8 +2,10 @@
 
 #include "ShuntingYard.hpp"
 
-Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, const std::string* curSection)
+Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, const std::string* curSection, bool ripRelative, uint64_t ripExtra)
 {
+    // TODO: ripRelative and ripExtra
+
     // substitute position with two different values:
     // if both are equal:                               position doesn't matter
     // if both are equal when subtracting position:     can be written using offset + position (relocation)

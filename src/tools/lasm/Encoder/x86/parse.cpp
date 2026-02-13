@@ -5,6 +5,8 @@ uint64_t x86::Instruction::parseMemory(
     BitMode bits,
     bool expectSize
 ) {
+    // TODO: RIP-Relative
+
     modrm.use = true;
     modrm.mod = Mod::INDIRECT;
 
@@ -67,8 +69,8 @@ uint64_t x86::Instruction::parseMemory(
     // FIXME: Fix
     if (mem.use_reg1 && mem.use_reg2)
     {
-        ::Encoder::Evaluation reg1_evaluation = Evaluate(mem.scale1);
-        ::Encoder::Evaluation reg2_evaluation = Evaluate(mem.scale2);
+        ::Encoder::Evaluation reg1_evaluation = Evaluate(mem.scale1, false, 0);
+        ::Encoder::Evaluation reg2_evaluation = Evaluate(mem.scale2, false, 0);
 
         if (reg1_evaluation.useOffset || reg2_evaluation.useOffset)
             throw Exception::SemanticError("Scale must be a constant", -1, -1); // TODO
@@ -150,7 +152,7 @@ uint64_t x86::Instruction::parseMemory(
             usedScale = &mem.scale2;
         }
 
-        ::Encoder::Evaluation evaluation = Evaluate(*usedScale);
+        ::Encoder::Evaluation evaluation = Evaluate(*usedScale, false, 0);
 
         if (evaluation.useOffset)
             throw Exception::SemanticError("Scale must be a constant", -1, -1); // TODO

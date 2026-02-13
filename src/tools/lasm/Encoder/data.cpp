@@ -30,7 +30,7 @@ void Encoder::Data::Data_Instruction::evaluate()
     uint64_t offset = 0;
     for (const Parser::Immediate& value : values)
     {
-        Evaluation evaluation = Evaluate(value);
+        Evaluation evaluation = Evaluate(value, false, 0);
 
         if (evaluation.useOffset)
         {
@@ -107,7 +107,7 @@ Encoder::Data::ReservedData_Instruction::ReservedData_Instruction(Encoder& e, co
 
     buffer.clear();
 
-    Evaluation evaluation = Evaluate(value);
+    Evaluation evaluation = Evaluate(value, false, 0);
 
     if (evaluation.useOffset)
         throw Exception::SemanticError("Can't use relocations for resX", -1, -1);

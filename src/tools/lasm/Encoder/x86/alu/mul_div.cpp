@@ -247,7 +247,7 @@ void x86::Mul_Div_ALU_Instruction::evaluateS()
 
         case MulDivType::ThreeOperands:
         {
-            ::Encoder::Evaluation evaluation = Evaluate(thirdOperand);
+            ::Encoder::Evaluation evaluation = Evaluate(thirdOperand, false, 0);
 
             if (evaluation.useOffset)
             {
