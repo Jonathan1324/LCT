@@ -498,7 +498,28 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
         // CONTROL
         static const std::unordered_map<std::string_view, uint64_t> controlInstructions = {
             {"nop", ::x86::Instructions::NOP},
-            {"hlt", ::x86::Instructions::HLT}
+            {"hlt", ::x86::Instructions::HLT},
+
+            {"jmp", Instructions::JMP},
+
+            {"je", Instructions::JE}, {"jz", Instructions::JE},
+            {"jne", Instructions::JNE}, {"jnz", Instructions::JNE},
+
+            {"jg", Instructions::JG}, {"jnle", Instructions::JG},
+            {"jge", Instructions::JGE}, {"jnl", Instructions::JGE},
+            {"jl", Instructions::JL}, {"jnge", Instructions::JL},
+            {"jle", Instructions::JLE}, {"jng", Instructions::JLE},
+
+            {"ja", Instructions::JA}, {"jnbe", Instructions::JA},
+            {"jae", Instructions::JAE}, {"jnb", Instructions::JAE},
+            {"jb", Instructions::JB}, {"jnae", Instructions::JB},
+            {"jbe", Instructions::JBE}, {"jna", Instructions::JBE},
+
+            {"jo", Instructions::JO}, {"jno", Instructions::JNO},
+            {"js", Instructions::JS}, {"jns", Instructions::JNS},
+            {"jp", Instructions::JP}, {"jpe", Instructions::JP},
+            {"jnp", Instructions::JNP}, {"jpo", Instructions::JNP},
+            {"jc", Instructions::JC}, {"jnc", Instructions::JNC}
         };
 
         auto it = controlInstructions.find(lowerVal);
@@ -511,6 +532,71 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                 case ::x86::Instructions::NOP:
                 case ::x86::Instructions::HLT:
                     break;
+
+                // TODO: jmp short/near/far
+
+                case Instructions::JMP:
+                {
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value);
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value);
+
+                    if (regIt != ::x86::registers.end()
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+                    }
+                } break;
+
+                case Instructions::JE: case Instructions::JNE:
+                case Instructions::JG: case Instructions::JGE:
+                case Instructions::JL: case Instructions::JLE:
+                case Instructions::JA: case Instructions::JAE:
+                case Instructions::JB: case Instructions::JBE:
+                case Instructions::JO: case Instructions::JNO:
+                case Instructions::JS: case Instructions::JNS:
+                case Instructions::JP: case Instructions::JNP:
+                case Instructions::JC: case Instructions::JNC:
+                {
+                    // TODO: immediate?
+                    ::Parser::Immediate imm;
+                    while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                    {
+                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
+                        imm.operands.push_back(op);
+                        i++;
+                    }
+                    instruction.operands.push_back(imm);
+                } break;
 
                 default:
                     throw Exception::InternalError("Unknown control instruction", token.line, token.column);

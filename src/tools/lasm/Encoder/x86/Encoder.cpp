@@ -30,6 +30,18 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
         case Instructions::HLT:
             return new x86::Simple_Control_Instruction(*this, instruction.bits, instruction.mnemonic);
 
+        case Instructions::JMP:
+        case Instructions::JE: case Instructions::JNE:
+        case Instructions::JG: case Instructions::JGE:
+        case Instructions::JL: case Instructions::JLE:
+        case Instructions::JA: case Instructions::JAE:
+        case Instructions::JB: case Instructions::JBE:
+        case Instructions::JO: case Instructions::JNO:
+        case Instructions::JS: case Instructions::JNS:
+        case Instructions::JP: case Instructions::JNP:
+        case Instructions::JC: case Instructions::JNC:
+            return new x86::JMP_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+
         // INTERRUPT
         case Instructions::INT:
             return new x86::Argument_Interrupt_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);

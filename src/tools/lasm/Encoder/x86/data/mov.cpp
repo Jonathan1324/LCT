@@ -11,7 +11,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
         case Instructions::MOV:
         {
             if (operands.size() != 2)
-                throw Exception::InternalError("Wrong argument count for 'mov'", -1, -1, nullptr);
+                throw Exception::InternalError("Wrong argument count for 'mov'", -1, -1);
 
             destinationOperand = operands[0];
             sourceOperand = operands[1];

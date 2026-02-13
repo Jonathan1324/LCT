@@ -42,9 +42,11 @@ namespace x86
         NOT, NEG, INC, DEC,
 
         // CONTROL FLOW
-        // TODO
-        JMP, JE, JNE, JG, JGE, JL, JLE,
+        JMP, JE, JNE,
+        JG, JGE, JL, JLE,
         JA, JAE, JB, JBE,
+        JO, JNO, JS, JNS, JP, JNP, JC, JNC,
+        // TODO
         CALL, RET
     };
 }

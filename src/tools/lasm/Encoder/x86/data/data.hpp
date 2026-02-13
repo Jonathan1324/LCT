@@ -7,7 +7,6 @@ namespace x86 {
     {
     public:
         Mov_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands);
-
         ~Mov_Instruction() override {}
 
         void evaluateS() override;
