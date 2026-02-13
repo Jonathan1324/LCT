@@ -7,6 +7,15 @@ Encoder::Data::Data_Instruction::Data_Instruction(Encoder& e, const Parser::Data
     values = dataDefinition.values;
     bufferSize = valueSize * values.size();
 
+    switch (valueSize)
+    {
+        case 1: case 2: case 4: case 8:
+            break;
+
+        default:
+            throw Exception::SyntaxError("Only initialized data with a length of 1, 2, 4 or 8 bytes can be used.", -1, -1);
+    }
+
     for (const Parser::Immediate& value : values)
     {
         if (value.operands.empty())
