@@ -2,6 +2,7 @@
 #include <limits>
 #include <memory>
 #include <cstring>
+#include <algorithm>
 
 Binary::Writer::Writer(const Context &_context, Architecture _arch, BitMode _bits, Format _format, std::ostream *_file, const Parser::Parser *_parser, const Encoder::Encoder *_encoder)
     : ::Output::Writer::Writer(_context, _arch, _bits, _format, _file, _parser, _encoder)
@@ -11,6 +12,12 @@ Binary::Writer::Writer(const Context &_context, Architecture _arch, BitMode _bit
 void Binary::Writer::Write()
 {
     std::vector<Encoder::Section> sections = encoder->getSections();
+
+    auto itText = std::find_if(sections.begin(), sections.end(),
+                           [](const Encoder::Section &s){ return s.name == ".text"; });
+    if (itText != sections.end() && itText != sections.begin()) {
+        std::rotate(sections.begin(), itText, itText + 1);
+    }
 
     std::vector<Encoder::Section> uninitialized;
 

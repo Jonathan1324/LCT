@@ -4,21 +4,29 @@
 
 [bits 64]
 
+section .data
+    msg db "Memory value: 0", 10, 0
+
+section .bss
+    num db 0
+
 section .text
     global _start
 
 _start:
-    div byte [rax * 2 + _start]
-    div word [rbp]
-    div dword [rax + 10]
-    div qword [esp - 12]
+    mov byte [num], 42
 
-    idiv byte [rax * 2 + _start]
-    idiv word [rbp]
-    idiv dword [eax + 10]
-    idiv qword [rbp + rbp + rbp + rax + rbp + 16]
+    mov al, [num]
+    add al, '0'            ; This doesn't work yet
 
-    imul byte [rax * 3 + _start]
-    imul word [rcx + rsp]
-    imul dword [eax + 15]
-    imul qword [rbp + rbp + 16]
+    mov [msg+14], al       ; This doesn't work yet
+
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, msg           ; This doesn't work yet
+    mov rdx, 16
+    syscall
+
+    mov rax, 60
+    xor rdi, rdi
+    syscall
