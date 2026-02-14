@@ -18,8 +18,8 @@ mkdir -p "$OUT_DIR"
 
 if command -v hyperfine >/dev/null 2>&1; then
     hyperfine --warmup 5 --prepare "rm -f $OUT_FILE_LASM; rm -rf $OUT_FILE_NASM" \
-        "dist/bin/lasm $SRC_PATH -o $OUT_FILE_NASM --format bin --arch x86" \
-        "nasm $SRC_PATH -o $OUT_FILE_LASM -fbin"
+        "dist/bin/lasm $SRC_PATH -o $OUT_FILE_NASM --format elf --arch x86 --bits 64" \
+        "nasm $SRC_PATH -o $OUT_FILE_LASM -felf64"
 else
     echo "Hyperfine not found, using 'time' as fallback:"
     echo "LASM:"
