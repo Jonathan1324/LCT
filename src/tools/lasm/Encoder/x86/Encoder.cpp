@@ -1,5 +1,6 @@
 #include "Encoder.hpp"
 
+#include "ascii/ascii.hpp"
 #include "alu/alu.hpp"
 #include "control/control.hpp"
 #include "data/data.hpp"
@@ -25,6 +26,11 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
 {
     switch (instruction.mnemonic)
     {
+        // ASCII
+        case Instructions::AAA: case Instructions::AAD:
+        case Instructions::AAM: case Instructions::AAS:
+            return new x86::ASCII_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+
         // CONTROL
         case Instructions::NOP:
         case Instructions::HLT:

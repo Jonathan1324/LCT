@@ -6,6 +6,9 @@ namespace x86
 {
     enum Instructions : uint64_t
     {
+        // ASCII
+        AAA, AAD, AAM, AAS,
+
         // CONTROL
         NOP,
         HLT,
@@ -46,6 +49,6 @@ namespace x86
         SHL, SHR, SAL, SAR,
         ROL, ROR, RCL, RCR,
 
-        NOT, NEG, INC, DEC
+        NOT, NEG, INC, DEC,
     };
 }

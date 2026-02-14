@@ -495,6 +495,55 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
         // Instructions
 
+        // ASCII
+        static const std::unordered_map<std::string_view, uint64_t> asciiInstruction = {
+            {"aaa", ::x86::Instructions::AAA},
+            {"aad", ::x86::Instructions::AAD},
+            {"aam", ::x86::Instructions::AAM},
+            {"aas", ::x86::Instructions::AAS}
+        };
+
+        auto it = asciiInstruction.find(lowerVal);
+        if (it != asciiInstruction.end())
+        {
+            ::Parser::Instruction::Instruction instruction(it->second, currentBitMode, token.line, token.column);
+            i++;
+            switch (instruction.mnemonic)
+            {
+                case Instructions::AAA: case Instructions::AAS:
+                    break;
+
+                case Instructions::AAD: case Instructions::AAM:
+                {
+                    ::Parser::Immediate imm;
+                    if (filteredTokens[i].type != Token::Type::EOL)
+                    {
+                        while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                        {
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
+                            imm.operands.push_back(op);
+                            i++;
+                        }
+                    }
+                    else
+                    {
+                        ::Parser::Integer integer;
+                        integer.value = 0x0A;
+                        imm.operands.push_back(integer);
+                    }
+                    instruction.operands.push_back(imm);
+                } break;
+
+                default:
+                    throw Exception::InternalError("Unknown flag instruction", token.line, token.column);
+            }
+            if (i >= filteredTokens.size() || filteredTokens[i].type != Token::Type::EOL)
+                throw Exception::SyntaxError("Expected end of line after second argument for '" + lowerVal + "'", token.line, token.column);
+            
+            currentSection->entries.push_back(instruction);
+            continue;
+        }
+
         // CONTROL
         static const std::unordered_map<std::string_view, uint64_t> controlInstructions = {
             {"nop", ::x86::Instructions::NOP},
@@ -524,7 +573,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
             {"ret", Instructions::RET}, {"call", Instructions::CALL}
         };
 
-        auto it = controlInstructions.find(lowerVal);
+        it = controlInstructions.find(lowerVal);
         if (it != controlInstructions.end())
         {
             ::Parser::Instruction::Instruction instruction(it->second, currentBitMode, token.line, token.column);

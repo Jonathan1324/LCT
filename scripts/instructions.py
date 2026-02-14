@@ -1,18 +1,32 @@
 instructions = [
-#    {
-#        "mnemonic": "AAA",
-#        "name": "ASCII Adjust After Addition",
-#        "description": "Adjusts AL after adding two ASCII digits to form a valid BCD result.",
-#        "asm": ["aaa"],
-#        "hex": ["37"]
-#    },
-#    {
-#        "mnemonic": "AAD",
-#        "name": "ASCII Adjust AX Before Division",
-#        "description": "Adjusts AX by converting two unpacked BCD digits in AH and AL into a binary number in AL, clearing AH before a division.",
-#        "asm": ["aad", "aad <imm8>"],
-#        "hex": ["D5 0A", "D5 <imm8>"]
-#    }
+    {
+        "mnemonic": "AAA",
+        "name": "ASCII Adjust After Addition",
+        "description": "Adjusts AL after adding two ASCII digits to form a valid BCD result.",
+        "asm": ["aaa"],
+        "hex": ["37"]
+    },
+    {
+        "mnemonic": "AAD",
+        "name": "ASCII Adjust AX Before Division",
+        "description": "Adjusts AX by converting two unpacked BCD digits in AH and AL into a binary number in AL, clearing AH before a division.",
+        "asm": ["aad", "aad <imm8>"],
+        "hex": ["D5 0A", "D5 <imm8>"]
+    },
+    {
+        "mnemonic": "AAM",
+        "name": "ASCII Adjust AX After Multiply",
+        "description": "Adjusts AX after multiplying two unpacked BCD digits to form unpacked BCD digits in AH and AL.",
+        "asm": ["aam", "aam <imm8>"],
+        "hex": ["D4 0A", "D4 <imm8>"]
+    },
+    {
+        "mnemonic": "AAS",
+        "name": "ASCII Adjust AL After Subtraction",
+        "description": "Adjusts AL after subtracting two ASCII digits to form a valid BCD result.",
+        "asm": ["aas"],
+        "hex": ["3F"]
+    }
 ]
 
 def generate_markdown(instructions):
