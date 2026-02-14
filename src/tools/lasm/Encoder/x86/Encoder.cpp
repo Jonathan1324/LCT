@@ -42,6 +42,12 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
         case Instructions::JC: case Instructions::JNC:
             return new x86::JMP_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
 
+        case Instructions::CALL:
+            return new x86::CALL_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+
+        case Instructions::RET:
+            return new x86::RET_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+
         // INTERRUPT
         case Instructions::INT:
             return new x86::Argument_Interrupt_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);

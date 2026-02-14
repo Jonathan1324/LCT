@@ -519,7 +519,9 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
             {"js", Instructions::JS}, {"jns", Instructions::JNS},
             {"jp", Instructions::JP}, {"jpe", Instructions::JP},
             {"jnp", Instructions::JNP}, {"jpo", Instructions::JNP},
-            {"jc", Instructions::JC}, {"jnc", Instructions::JNC}
+            {"jc", Instructions::JC}, {"jnc", Instructions::JNC},
+
+            {"ret", Instructions::RET}, {"call", Instructions::CALL}
         };
 
         auto it = controlInstructions.find(lowerVal);
@@ -534,8 +536,9 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     break;
 
                 // TODO: jmp short/near/far
+                // TODO: call far
 
-                case Instructions::JMP:
+                case Instructions::JMP: case Instructions::CALL:
                 {
                     const Token::Token& operand1 = filteredTokens[i];
                     auto regIt = ::x86::registers.find(operand1.value);
@@ -602,6 +605,22 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                         i++;
                     }
                     instruction.operands.push_back(imm);
+                } break;
+
+                case Instructions::RET:
+                {
+                    // TODO: immediate?
+                    if (filteredTokens[i].type != Token::Type::EOL)
+                    {
+                        ::Parser::Immediate imm;
+                        while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                        {
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel);
+                            imm.operands.push_back(op);
+                            i++;
+                        }
+                        instruction.operands.push_back(imm);
+                    }
                 } break;
 
                 default:

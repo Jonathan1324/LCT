@@ -29,17 +29,17 @@ _start:
     jmp sp
 
     ; JMP - 32-bit Memory (32-bit addressing)
-    jmp [eax]
-    jmp [ebx + 10]
-    jmp [ecx + eax*2 + 100]
-    jmp [edx + ebx*4 - 5]
-    jmp [esi + edi*8 + 1000]
+    jmp word [eax]
+    jmp dword [ebx + 10]
+    jmp word [ecx + eax*2 + 100]
+    jmp dword [edx + ebx*4 - 5]
+    jmp word [esi + edi*8 + 1000]
 
     ; JMP - 32-bit Memory (16-bit addressing)
-    jmp [bx]
-    jmp [bp + 10]
-    jmp [bx + si + 100]
-    jmp [bx + di - 5]
+    jmp word [bx]
+    jmp dword [bp + 10]
+    jmp word [bx + si + 100]
+    jmp dword [bx + di - 5]
 
     ; JMP - 16-bit Memory (32-bit addressing)
     jmp [eax]

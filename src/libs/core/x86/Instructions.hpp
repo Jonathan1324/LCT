@@ -10,6 +10,13 @@ namespace x86
         NOP,
         HLT,
 
+        JMP, JE, JNE,
+        JG, JGE, JL, JLE,
+        JA, JAE, JB, JBE,
+        JO, JNO, JS, JNS, JP, JNP, JC, JNC,
+
+        CALL, RET,
+
         // INTERRUPT
         INT, IRET, IRETQ, IRETD,
         SYSCALL, SYSRET,
@@ -39,14 +46,6 @@ namespace x86
         SHL, SHR, SAL, SAR,
         ROL, ROR, RCL, RCR,
 
-        NOT, NEG, INC, DEC,
-
-        // CONTROL FLOW
-        JMP, JE, JNE,
-        JG, JGE, JL, JLE,
-        JA, JAE, JB, JBE,
-        JO, JNO, JS, JNS, JP, JNP, JC, JNC,
-        // TODO
-        CALL, RET
+        NOT, NEG, INC, DEC
     };
 }
