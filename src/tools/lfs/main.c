@@ -9,6 +9,7 @@
 #include "mbr/mbr.h"
 #include <version.h>
 #include "args.h"
+#include "partition/table.h"
 
 #include "native/directory.h"
 
@@ -192,7 +193,8 @@ int main(int argc, const char* argv[])
         fseek(image_file, 0, SEEK_SET);
     }
 
-    Disk* disk = Disk_CreateFromFile(image_file, image_size);
+    // TODO
+    Disk* disk = Disk_CreateFromFile(image_file, image_size, DISKFORMAT_RAW);
     if (!disk) {
         fputs("Couldn't open disk\n", stderr);
         fclose(image_file);
@@ -256,21 +258,23 @@ int main(int argc, const char* argv[])
     Partition* partition = NULL;
 
     if (p_name) {
-        MBR_Disk* mbr = MBR_OpenDisk(disk);
-        if (!mbr) {
-            fputs("Couldn't open mbr\n", stderr);
+        // TODO
+        PartitionTable* pt = PartitionTable_Open(disk, PARTITIONTABLE_MBR);
+        if (!pt) {
+            fputs("Couldn't open partition table\n", stderr);
             Disk_Close(disk);
             return 1;
         }
         // FIXME
         if (command != COMMAND_CREATE) {
-            partition = MBR_GetPartitionRaw(mbr, partition_number - 1, args.flag_read_only);
+            partition = PartitionTable_GetPartition(pt, partition_number - 1, args.flag_read_only);
         } else {
-            Partition* tmp = MBR_GetPartitionRaw(mbr, partition_number - 1, args.flag_read_only);
+            Partition* tmp = PartitionTable_GetPartition(pt, partition_number - 1, args.flag_read_only);
             if (tmp) {
                 fputs("Partition already exists\n", stderr);
-                Partition_Close(partition);
-                MBR_CloseDisk(mbr);
+                Partition_Close(tmp);
+                PartitionTable_Close(pt);
+                Disk_Close(disk);
                 return 1;
             }
 
@@ -281,32 +285,34 @@ int main(int argc, const char* argv[])
             if (start_of_search < 512) start_of_search = 512;
 
             if (!args.size) {
-                uint64_t free_start = MBR_GetEndOfUsedRegion(mbr, start_of_search);
+                uint64_t free_start = PartitionTable_GetEndOfUsedRegion(pt, start_of_search);
                 uint64_t free_end = disk->size;
                 args.size = free_end - free_start;
             }
 
-            uint64_t start = MBR_GetNextFreeRegion(mbr, start_of_search, args.size);
+            uint64_t start = PartitionTable_GetNextFreeRegion(pt, start_of_search, args.size);
             
             if (start + args.size > disk->size) {
                 fputs("Not enough space\n", stderr);
                 Partition_Close(partition);
-                MBR_CloseDisk(mbr);
+                PartitionTable_Close(pt);
+                Disk_Close(disk);
                 return 1;
             }
 
-            int result = MBR_SetPartitionRaw(mbr, partition_number - 1, start, args.size, p_type, bootable);
+            int result = PartitionTable_SetPartition(pt, partition_number - 1, start, args.size, p_type, bootable);
             if (result != 0) {
                 fputs("Couldn't create partition\n", stderr);
                 Partition_Close(partition);
-                MBR_CloseDisk(mbr);
+                PartitionTable_Close(pt);
+                Disk_Close(disk);
                 return 1;
             }
 
-            partition = MBR_GetPartitionRaw(mbr, partition_number - 1, args.flag_read_only);
+            partition = PartitionTable_GetPartition(pt, partition_number - 1, args.flag_read_only);
         }
 
-        MBR_Close(mbr, 0);
+        PartitionTable_Close(pt);
         
         is_fs_image = 1;
     } else {
@@ -396,7 +402,7 @@ int main(int argc, const char* argv[])
             const char* volume_name = "NO NAME";
             uint32_t volume_id = 0x12345678;
 
-            uint32_t bytes_per_sector = 512;
+            uint32_t bytes_per_sector = disk->sectorSize;
             uint32_t sectors_per_cluster = fat_version == FAT_VERSION_16 ? 4 : 1;
             uint16_t reserved_sectors;
             switch (fat_version) {
@@ -428,7 +434,8 @@ int main(int argc, const char* argv[])
                                             drive_number, media_descriptor, hidden_sectors);
 
             if (p_name && !args.flag_dont_update_partition_entry) {
-                MBR_Disk* mbr = MBR_OpenDisk(disk);
+                // TODO
+                PartitionTable* pt = PartitionTable_Open(disk, PARTITIONTABLE_MBR);
 
                 uint8_t p_type;
                 switch (fs_type) { // TODO
@@ -437,12 +444,12 @@ int main(int argc, const char* argv[])
                     case FILESYSTEM_FAT32: p_type = MBR_TYPE_FAT32_LBA; break;
                 }
 
-                int result = MBR_SetPartitionRaw(mbr, partition_number - 1, partition->offset, partition->size, p_type, bootable);
+                int result = PartitionTable_SetPartition(pt, partition_number - 1, partition->offset, partition->size, p_type, bootable);
                 if (result != 0) {
                     fputs("Warning: Couldn't update partition entry\n", stderr);
                 }
 
-                MBR_Close(mbr, 0);
+                PartitionTable_Close(pt);
             }
         } else {
             fat_fs = FAT_OpenFilesystem(partition, fat_version, args.flag_read_only);
@@ -574,19 +581,19 @@ int main(int argc, const char* argv[])
             fclose(bootcode_f);
         }
 
-        MBR_Disk* mbr = NULL;
+        PartitionTable* pt = NULL;
         if (command != COMMAND_CREATE && command != COMMAND_FORMAT) {
-            mbr = MBR_OpenDisk(disk);
+            pt = PartitionTable_Open(disk, PARTITIONTABLE_MBR); // TODO
         } else {
-            if (args.size < 512) {
-                fputs("MBR needs at least 512 byte to even get it's initial structure\n", stderr);
+            if (disk->size < 512) {
+                fputs("Disk needs at least 512 byte to even get it's initial structure\n", stderr);
                 Disk_Close(disk);
                 return 1;
-            }
-            mbr = MBR_CreateDisk(disk, args.flag_fast, (args.boot_file ? bootsector_buffer : NULL), args.flag_force_bootsector);
+            } // TODO
+            pt = PartitionTable_Create(disk, PARTITIONTABLE_MBR, args.flag_fast, (args.boot_file ? bootsector_buffer : NULL), args.flag_force_bootsector);
         }
-        if (!mbr) {
-            fputs("Couldn't open mbr\n", stderr);
+        if (!pt) {
+            fputs("Couldn't open partition table\n", stderr);
             Disk_Close(disk);
             return 1;
         }
@@ -600,7 +607,8 @@ int main(int argc, const char* argv[])
             case COMMAND_REMOVE: {
                 if (argc < 4) {
                     print_help(argv[0], stderr);
-                    MBR_CloseDisk(mbr);
+                    PartitionTable_Close(pt);
+                    Disk_Close(disk);
                     return 1;
                 }
                 const char* num_str = argv[3];
@@ -608,23 +616,25 @@ int main(int argc, const char* argv[])
                 uint64_t p_num = (uint64_t)strtoull(num_str, NULL, 10);
                 if (p_num == 0 || p_num > 4) {
                     fprintf(stderr, "Invalid partition %" PRIu64 "\n", p_num);
-                    MBR_CloseDisk(mbr);
+                    PartitionTable_Close(pt);
+                    Disk_Close(disk);
                     return 1;
                 }
 
                 if (!args.flag_fast) {
-                    int result = MBR_ClearPartition(mbr, (uint8_t)(p_num - 1));
+                    int result = PartitionTable_ClearPartition(pt, (uint8_t)(p_num - 1));
                     if (result != 0) {
                         // TODO
                     }
                 }
 
-                int result = MBR_DeletePartition(mbr, (uint8_t)(p_num - 1));
+                int result = PartitionTable_DeletePartition(pt, (uint8_t)(p_num - 1));
                 if (result == 2) {
                     fprintf(stderr, "Partition %" PRIu64 " doesn't exist\n", p_num);
                 } else if (result != 0) {
                     fprintf(stderr, "Couldn't delete partition %" PRIu64 "\n", p_num);
-                    MBR_CloseDisk(mbr);
+                    PartitionTable_Close(pt);
+                    Disk_Close(disk);
                     return 1;
                 }
 
@@ -632,7 +642,7 @@ int main(int argc, const char* argv[])
             }
 
             case COMMAND_INFO: case COMMAND_LIST: {
-                MBR_PrintAll(mbr, image_str);
+                PartitionTable_PrintAll(pt, image_str);
                 break;
             }
 
@@ -647,7 +657,8 @@ int main(int argc, const char* argv[])
             }
         }
 
-        MBR_CloseDisk(mbr);
+        PartitionTable_Close(pt);
+        Disk_Close(disk);
         return 0;
     }
 }
