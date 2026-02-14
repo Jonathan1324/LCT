@@ -54,7 +54,8 @@ namespace Encoder
 
     enum class RelocationType
     {
-        Absolute
+        Absolute,
+        PC_Relative
     };
 
     enum class RelocationSize

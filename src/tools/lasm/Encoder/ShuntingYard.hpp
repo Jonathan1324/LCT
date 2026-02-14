@@ -25,6 +25,7 @@ namespace ShuntingYard
         std::vector<Token> tokens;
         bool relocationPossible;
         std::string usedSection;
+        bool useSection = false;
         bool isExtern = false;
     };
 

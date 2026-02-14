@@ -134,7 +134,7 @@ x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
 
             switch (mnemonic)
             {
-                case JMP: opcode = 0xE9;
+                case JMP: opcode = 0xE9; break;
 
                 case JE: useOpcodeEscape = true; opcode = 0x84; break;
                 case JNE: useOpcodeEscape = true; opcode = 0x85; break;
@@ -213,7 +213,7 @@ bool x86::JMP_Instruction::optimizeS()
 
             switch (mnemonicI)
             {
-                case JMP: opcode = 0xEB;
+                case JMP: opcode = 0xEB; break;
 
                 case JE: opcode = 0x74; break;
                 case JNE: opcode = 0x75; break;
@@ -282,10 +282,10 @@ void x86::JMP_Instruction::encodeS(std::vector<uint8_t>& buffer)
 
             AddRelocation(
                 currentOffset,
-                value,
+                value - (instrSize - currentOffset),
                 true,
                 relocUsedSection,
-                ::Encoder::RelocationType::Absolute,
+                ::Encoder::RelocationType::PC_Relative,
                 relocSize,
                 false, // TODO: Check if signed
                 relocIsExtern

@@ -217,6 +217,7 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
     }
 
     output.tokens = outputQueue;
+    output.useSection = useSection;
     if (useSection)
         output.usedSection = *usedSection;
     else

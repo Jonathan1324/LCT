@@ -457,6 +457,26 @@ void ELF::Writer::Write()
                         default:
                             throw Exception::InternalError("Unknown relocation size", -1, -1);
                     }
+
+                case Encoder::RelocationType::PC_Relative:
+                    switch (size)
+                    {
+                        case Encoder::RelocationSize::Bit8:
+                            return RelocationType32::R386_PC8;
+
+                        case Encoder::RelocationSize::Bit16:
+                            return RelocationType32::R386_PC16;
+
+                        case Encoder::RelocationSize::Bit32:
+                            return RelocationType32::R386_PC32;
+
+                        case Encoder::RelocationSize::Bit64: // TODO
+                            return RelocationType32::R386_PC32;
+
+                        default:
+                            throw Exception::InternalError("Unknown relocation size", -1, -1);
+                    }
+
                 default: throw Exception::InternalError("Unknown relocation type", -1, -1);
             }
             return RelocationType32::R386_None;
@@ -483,6 +503,26 @@ void ELF::Writer::Write()
                         
                         default: throw Exception::InternalError("Unknown relocation size", -1, -1);
                     }
+
+                case Encoder::RelocationType::PC_Relative:
+                    switch (size)
+                    {
+                        case Encoder::RelocationSize::Bit8:
+                            return RelocationType64::RX64_PC8;
+
+                        case Encoder::RelocationSize::Bit16:
+                            return RelocationType64::RX64_PC16;
+
+                        case Encoder::RelocationSize::Bit32:
+                            return RelocationType64::RX64_PC32;
+
+                        case Encoder::RelocationSize::Bit64: // TODO
+                            return RelocationType64::RX64_PC32;
+
+                        default:
+                            throw Exception::InternalError("Unknown relocation size", -1, -1);
+                    }
+
                 default: throw Exception::InternalError("Unknown relocation type", -1, -1);
             }
             return RelocationType64::RX64_None;

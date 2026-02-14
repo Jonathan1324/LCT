@@ -72,10 +72,84 @@ void Binary::Writer::Write()
         const uint64_t& sectionOffset = it->second;
         const int64_t value = sectionOffset + relocation.addend;
 
+        auto itRelocationSection = sectionOffsets.find(relocation.section);
+        if (itRelocationSection == sectionOffsets.end()) 
+            throw Exception::InternalError("Relocation section offset not found", -1, -1);
+        const uint64_t relocationSectionOffset = itRelocationSection->second;
+
         const uint64_t& offset = relocation.offsetInSection;
         
         switch (relocation.type)
         {
+            case Encoder::RelocationType::PC_Relative:
+            {
+                const int64_t P = static_cast<int64_t>(relocationSectionOffset + offset);
+                const int64_t patchedValue = value - P;
+
+                switch (relocation.size)
+                {
+                    case Encoder::RelocationSize::Bit8:
+                    {
+                        if (patchedValue < std::numeric_limits<int8_t>::min() ||
+                            patchedValue > std::numeric_limits<int8_t>::max())
+                            throw Exception::OverflowError("Relocation would overflow", -1, -1);
+
+                        const int8_t val = static_cast<int8_t>(patchedValue);
+                        std::memcpy(sectionBuffer->data() + offset, &val, sizeof(uint8_t));
+                        break;
+                    }
+                    case Encoder::RelocationSize::Bit16:
+                    {
+                        if (patchedValue < std::numeric_limits<int16_t>::min() ||
+                            patchedValue > std::numeric_limits<int16_t>::max())
+                            throw Exception::OverflowError("Relocation would overflow", -1, -1);
+
+                        const int16_t val = static_cast<int16_t>(patchedValue);
+                        std::memcpy(sectionBuffer->data() + offset, &val, sizeof(uint16_t));
+                        break;
+                    }
+                    case Encoder::RelocationSize::Bit24:
+                    {
+                        constexpr int32_t min24 = -(1 << 23);
+                        constexpr int32_t max24 =  (1 << 23) - 1;
+
+                        if (patchedValue < min24 || patchedValue > max24)
+                            throw Exception::OverflowError("Relocation would overflow (24-bit)", -1, -1);
+
+                        int32_t val = static_cast<int32_t>(patchedValue);
+
+                        uint8_t bytes[3];
+                        bytes[0] = static_cast<uint8_t>(val & 0xFF);
+                        bytes[1] = static_cast<uint8_t>((val >> 8) & 0xFF);
+                        bytes[2] = static_cast<uint8_t>((val >> 16) & 0xFF);
+
+                        std::memcpy(sectionBuffer->data() + offset, bytes, 3);
+                        break;
+                    }
+                    case Encoder::RelocationSize::Bit32:
+                    {
+                        if (patchedValue < std::numeric_limits<int32_t>::min() ||
+                            patchedValue > std::numeric_limits<int32_t>::max())
+                            throw Exception::OverflowError("Relocation would overflow (32-bit)", -1, -1);
+
+                        const int32_t val = static_cast<int32_t>(patchedValue);
+                        std::memcpy(sectionBuffer->data() + offset, &val, sizeof(uint32_t));
+                        break;
+                    }
+                    case Encoder::RelocationSize::Bit64:
+                    {
+                        if (patchedValue < std::numeric_limits<int64_t>::min() ||
+                            patchedValue > std::numeric_limits<int64_t>::max())
+                            throw Exception::OverflowError("Relocation would overflow (64-bit)", -1, -1);
+
+                        const int64_t val = static_cast<int64_t>(patchedValue);
+                        std::memcpy(sectionBuffer->data() + offset, &val, sizeof(uint64_t));
+                        break;
+                    }
+                }
+                break;
+            }
+
             case Encoder::RelocationType::Absolute:
             {
                 switch (relocation.size)

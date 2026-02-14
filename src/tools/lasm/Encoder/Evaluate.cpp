@@ -27,40 +27,65 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
         Int128 res1 = ShuntingYard::evaluate(tokens.tokens, off1);
         Int128 res2 = ShuntingYard::evaluate(tokens.tokens, off2);
 
-        if (ripRelative)
-        {
-            uint64_t ripBase1 = bytesWritten + ripExtra;
-            uint64_t ripBase2 = bytesWritten + ripExtra;
-            
-            res1 = res1 - static_cast<Int128>(ripBase1);
-            res2 = res2 - static_cast<Int128>(ripBase2);
-        }
-
         Evaluation evaluation;
-        evaluation.result = res1;
         evaluation.usedSection = tokens.usedSection;
         evaluation.isExtern = tokens.isExtern;
 
-        if (res1 == res2)
+        if (ripRelative)
         {
-            evaluation.useOffset = false;
-            evaluation.relocationPossible = true;
-            evaluation.offset = 0;
-        }
-        else if ((res1 - off1) == (res2 - off2))
-        {
-            evaluation.useOffset = true;
-            evaluation.relocationPossible = true;
-            evaluation.offset = res1 - off1;
+            uint64_t ripBase1 = bytesWritten + ripExtra;
+            uint64_t ripBase2 = bytesWritten + ripExtra + (off2 - off1);
+            
+            res1 = res1 - static_cast<Int128>(ripBase1);
+            res2 = res2 - static_cast<Int128>(ripBase2);
+
+            evaluation.result = res1;
+
+            if (res1 == res2 && tokens.useSection && currentSection->compare(evaluation.usedSection) == 0)
+            {
+                evaluation.useOffset = false;
+                evaluation.relocationPossible = true;
+                evaluation.offset = 0;
+            }
+            else if (!tokens.useSection)
+            {
+                evaluation.useOffset = false;
+                evaluation.relocationPossible = true;
+
+                evaluation.result = res1 + ripBase1 - sectionOffset - ripExtra;
+            }
+            else // TODO: Check
+            {
+                evaluation.useOffset = true;
+                evaluation.relocationPossible = true;
+                evaluation.offset = 0;
+            }
         }
         else
         {
-            evaluation.useOffset = false;
-            evaluation.relocationPossible = false;
-            evaluation.offset = 0;
+            evaluation.result = res1;
+
+            if (res1 == res2)
+            {
+                evaluation.useOffset = false;
+                evaluation.relocationPossible = true;
+                evaluation.offset = 0;
+            }
+            else if ((res1 - off1) == (res2 - off2))
+            {
+                evaluation.useOffset = true;
+                evaluation.relocationPossible = true;
+                evaluation.offset = res1 - off1;
+            }
+            else
+            {
+                evaluation.useOffset = false;
+                evaluation.relocationPossible = false;
+                evaluation.offset = 0;
+            }
         }
 
-        if (evaluation.relocationPossible && evaluation.isExtern)
+        if (evaluation.relocationPossible && evaluation.isExtern && tokens.useSection)
         {
             if (auto it = labels.find(evaluation.usedSection); it != labels.end())
             {

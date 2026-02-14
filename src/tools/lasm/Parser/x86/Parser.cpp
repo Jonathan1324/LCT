@@ -549,6 +549,8 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                         reg.reg = regIt->second;
                         instruction.operands.push_back(reg);
                         i++;
+
+                        break;
                     }
                     else if (ptrsizeIt != pointer_sizes.end()
                              || (operand1.type == Token::Type::Bracket && operand1.value == "[")
@@ -574,8 +576,12 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                         instruction.operands.push_back(mem);
 
                         i++; // ']'
+
+                        break;
                     }
-                } break;
+
+                    // Fallthrough
+                }
 
                 case Instructions::JE: case Instructions::JNE:
                 case Instructions::JG: case Instructions::JGE:
@@ -602,7 +608,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     throw Exception::InternalError("Unknown control instruction", token.line, token.column);
             }
             if (i >= filteredTokens.size() || filteredTokens[i].type != Token::Type::EOL)
-                throw Exception::SyntaxError("Expected end of line after second argument for '" + lowerVal + "'", token.line, token.column);
+                throw Exception::SyntaxError("Expected end of line after argument for '" + lowerVal + "'", token.line, token.column);
             
             currentSection->entries.push_back(instruction);
             continue;

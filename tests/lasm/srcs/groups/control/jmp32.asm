@@ -1,43 +1,55 @@
 ; FORMATS: BIN,ELF
-; BITS: 64
+; BITS: 32
 ; EXPECT: SUCCESS
 
-[bits 64]
+[bits 32]
 
 section .text
     global _start
 
 _start:
-    ; JMP - 64-bit Register
-    jmp rax
-    jmp rbx
-    jmp rcx
-    jmp rdx
-    jmp rsi
-    jmp rdi
-    jmp rbp
-    jmp rsp
-    jmp r8
-    jmp r9
-    jmp r10
-    jmp r11
-    jmp r12
-    jmp r13
-    jmp r14
-    jmp r15
+    ; JMP - 32-bit Register
+    jmp eax
+    jmp ebx
+    jmp ecx
+    jmp edx
+    jmp esi
+    jmp edi
+    jmp ebp
+    jmp esp
 
-    ; JMP - 64-bit Memory
-    jmp [rax]
-    jmp [rbx + 10]
-    jmp [rcx + rax*2 + 100]
-    jmp [rdx + rbx*4 - 5]
-    jmp [rsi + rdi*8 + 1000]
+    ; JMP - 16-bit Register
+    jmp ax
+    jmp bx
+    jmp cx
+    jmp dx
+    jmp si
+    jmp di
+    jmp bp
+    jmp sp
 
-    ; JMP - 32-bit Memory (zero-extended to 64-bit)
+    ; JMP - 32-bit Memory (32-bit addressing)
     jmp [eax]
     jmp [ebx + 10]
     jmp [ecx + eax*2 + 100]
     jmp [edx + ebx*4 - 5]
+    jmp [esi + edi*8 + 1000]
+
+    ; JMP - 32-bit Memory (16-bit addressing)
+    jmp [bx]
+    jmp [bp + 10]
+    jmp [bx + si + 100]
+    jmp [bx + di - 5]
+
+    ; JMP - 16-bit Memory (32-bit addressing)
+    jmp [eax]
+    jmp [ebx + 10]
+    jmp [ecx + eax*2 + 100]
+
+    ; JMP - 16-bit Memory (16-bit addressing)
+    jmp [bx]
+    jmp [bp + 10]
+    jmp [bx + si]
 
     ; JMP - Direct Labels (relative to next instruction)
     jmp label1
