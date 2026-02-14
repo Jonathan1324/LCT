@@ -288,11 +288,10 @@ void Encoder::Encoder::GenerateCode()
             {
                 Instruction* instruction = entry.getInstruction();
 
-                std::vector<uint8_t> encoded = instruction->encode();
                 uint64_t size = instruction->size();
 
                 if (section.isInitialized)
-                    section.buffer.insert(section.buffer.end(), encoded.begin(), encoded.end());
+                    instruction->encode(section.buffer);
                 else
                     section.reservedSize += size;
 

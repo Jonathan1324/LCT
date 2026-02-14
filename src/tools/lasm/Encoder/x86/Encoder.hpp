@@ -27,7 +27,7 @@ namespace x86
 
         void evaluate() override final;
         bool optimize() override final;
-        std::vector<uint8_t> encode() override final;
+        void encode(std::vector<uint8_t>& buffer) override final;
         uint64_t size() override final;
 
     protected:

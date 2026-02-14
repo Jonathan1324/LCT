@@ -25,7 +25,7 @@ Encoder::Data::Data_Instruction::Data_Instruction(Encoder& e, const Parser::Data
 
 void Encoder::Data::Data_Instruction::evaluate()
 {
-    buffer.clear();
+    iBuffer.clear();
 
     uint64_t offset = 0;
     for (const Parser::Immediate& value : values)
@@ -37,7 +37,7 @@ void Encoder::Data::Data_Instruction::evaluate()
             for (size_t i = 0; i < valueSize; i++)
             {
                 uint8_t byte = static_cast<uint8_t>((evaluation.offset >> (i * 8)) & 0xFF);
-                buffer.push_back(byte);
+                iBuffer.push_back(byte);
             }
 
             RelocInfo relocInfo;
@@ -64,7 +64,7 @@ void Encoder::Data::Data_Instruction::evaluate()
             for (uint64_t i = 0; i < valueSize; i++)
             {
                 uint8_t byte = static_cast<uint8_t>((evaluation.result >> (i * 8)) & 0xFF);
-                buffer.push_back(byte);
+                iBuffer.push_back(byte);
             }
         }
 
@@ -72,7 +72,7 @@ void Encoder::Data::Data_Instruction::evaluate()
     }
 }
 
-std::vector<uint8_t> Encoder::Data::Data_Instruction::encode()
+void Encoder::Data::Data_Instruction::encode(std::vector<uint8_t>& buffer)
 {
     for (const RelocInfo& relocInfo : relocs)
     {
@@ -88,7 +88,7 @@ std::vector<uint8_t> Encoder::Data::Data_Instruction::encode()
         );
     }
 
-    return buffer;
+    buffer.insert(buffer.end(), iBuffer.begin(), iBuffer.end());
 }
 
 uint64_t Encoder::Data::Data_Instruction::size()
@@ -105,7 +105,7 @@ Encoder::Data::ReservedData_Instruction::ReservedData_Instruction(Encoder& e, co
 
     const Parser::Immediate& value = dataDefinition.values[0];
 
-    buffer.clear();
+    iBuffer.clear();
 
     Evaluation evaluation = Evaluate(value, false, 0);
 
@@ -116,13 +116,13 @@ Encoder::Data::ReservedData_Instruction::ReservedData_Instruction(Encoder& e, co
 
     for (uint64_t i = 0; i < bufferSize; i++)
     {
-        buffer.push_back(static_cast<uint8_t>(0));
+        iBuffer.push_back(static_cast<uint8_t>(0));
     }
 }
 
-std::vector<uint8_t> Encoder::Data::ReservedData_Instruction::encode()
+void Encoder::Data::ReservedData_Instruction::encode(std::vector<uint8_t>& buffer)
 {
-    return buffer;
+    buffer.insert(buffer.end(), iBuffer.begin(), iBuffer.end());
 }
 
 uint64_t Encoder::Data::ReservedData_Instruction::size()

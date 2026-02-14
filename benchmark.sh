@@ -17,7 +17,7 @@ OUT_FILE_NASM="$OUT_DIR/speed_nasm.out"
 mkdir -p "$OUT_DIR"
 
 if command -v hyperfine >/dev/null 2>&1; then
-    hyperfine --warmup 5 --prepare "rm -f $OUT_FILE_LASM; rm -rf $OUT_FILE_NASM" \
+    hyperfine --shell=none --warmup 5 --prepare "rm -f $OUT_FILE_LASM; rm -rf $OUT_FILE_NASM" \
         "dist/bin/lasm $SRC_PATH -o $OUT_FILE_NASM --format elf --arch x86 --bits 64" \
         "nasm $SRC_PATH -o $OUT_FILE_LASM -felf64"
 else

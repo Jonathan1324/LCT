@@ -139,7 +139,7 @@ namespace Encoder
         public:
             virtual ~Instruction() {};
 
-            virtual std::vector<uint8_t> encode() = 0;
+            virtual void encode(std::vector<uint8_t>& buffer) = 0;
             virtual uint64_t size() = 0;
             virtual void evaluate() = 0;
             virtual bool optimize() = 0;

@@ -14,7 +14,7 @@ namespace Encoder
 
             void evaluate() override;
             bool optimize() override { return false; }
-            std::vector<uint8_t> encode() override;
+            void encode(std::vector<uint8_t>& buffer) override;
             uint64_t size() override;
 
         private:
@@ -22,7 +22,7 @@ namespace Encoder
             std::vector<Parser::Immediate> values;
 
             uint64_t bufferSize;
-            std::vector<uint8_t> buffer;
+            std::vector<uint8_t> iBuffer;
 
             struct RelocInfo {
                 uint64_t relocOffset;
@@ -43,12 +43,12 @@ namespace Encoder
 
             void evaluate() override {}
             bool optimize() override { return false; }
-            std::vector<uint8_t> encode() override;
+            void encode(std::vector<uint8_t>& buffer) override;
             uint64_t size() override;
 
         private:
             uint64_t bufferSize;
-            std::vector<uint8_t> buffer;
+            std::vector<uint8_t> iBuffer;
         };
     }
 }
