@@ -42,7 +42,7 @@ namespace x86 {
         } specific;
 
         bool usedReloc = false;
-        std::string evalUsedSection;
+        StringPool::String evalUsedSection;
         bool evalIsExtern;
     };
 
@@ -77,7 +77,7 @@ namespace x86 {
         } threeOperandsSpecific;
 
         bool usedReloc = false;
-        std::string evalUsedSection;
+        StringPool::String evalUsedSection;
         bool evalIsExtern;
 
         enum class MulDivType {
@@ -104,7 +104,7 @@ namespace x86 {
 
     private:
         bool usedReloc = false;
-        std::string relocUsedSection;
+        StringPool::String relocUsedSection;
         bool relocIsExtern;
 
         bool canOptimize = false;
@@ -125,7 +125,7 @@ namespace x86 {
 
     private:
         bool usedReloc = false;
-        std::string evalUsedSection;
+        StringPool::String evalUsedSection;
         bool evalIsExtern;
     };
 }

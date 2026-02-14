@@ -56,7 +56,7 @@ public:
 
     AddressingMode extractAddressingMode(std::shared_ptr<ExprNode> e);
 
-    Parser::Immediate convertToImmediate(std::shared_ptr<ExprNode> e);
+    Parser::Immediate convertToImmediate(std::shared_ptr<ExprNode> e, Context& context);
 
 private:
     std::vector<const Token::Token*> tokens;

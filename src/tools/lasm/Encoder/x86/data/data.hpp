@@ -43,7 +43,7 @@ namespace x86 {
         } specific;
 
         bool usedReloc = false;
-        std::string relocUsedSection;
+        StringPool::String relocUsedSection;
         bool relocIsExtern;
     };
 }

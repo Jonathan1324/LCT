@@ -32,8 +32,8 @@ namespace x86
     inline ::Parser::Instruction::Register Parser::getReg(const Token::Token& token)
     {
         ::Parser::Instruction::Register reg;
-        auto it = ::x86::registers.find(token.value);
-        if (it == ::x86::registers.end()) throw Exception::InternalError("Unknown register: " + token.value, token.line, token.column);
+        auto it = ::x86::registers.find(token.value.c_str());
+        if (it == ::x86::registers.end()) throw Exception::InternalError(std::string("Unknown register: ") + token.value.c_str(), token.line, token.column);
         reg.reg = it->second;
         return reg;
     }

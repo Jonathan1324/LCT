@@ -112,7 +112,7 @@ namespace x86
             Parser::Immediate immediate;
 
             bool needsRelocation = false;
-            std::string relocationUsedSection;
+            StringPool::String relocationUsedSection;
             bool relocationIsExtern;
         } displacement;
     };

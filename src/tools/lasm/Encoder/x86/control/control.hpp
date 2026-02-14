@@ -28,7 +28,7 @@ namespace x86 {
         Parser::Immediate immediate;
 
         bool usedReloc = false;
-        std::string relocUsedSection;
+        StringPool::String relocUsedSection;
         bool relocIsExtern;
 
         uint64_t value;
@@ -56,7 +56,7 @@ namespace x86 {
         Parser::Immediate immediate;
 
         bool usedReloc = false;
-        std::string relocUsedSection;
+        StringPool::String relocUsedSection;
         bool relocIsExtern;
 
         uint64_t value;
@@ -84,7 +84,7 @@ namespace x86 {
         Parser::Immediate immediate;
 
         bool usedReloc = false;
-        std::string relocUsedSection;
+        StringPool::String relocUsedSection;
         bool relocIsExtern;
 
         uint64_t value;

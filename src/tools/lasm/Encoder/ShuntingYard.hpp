@@ -12,19 +12,19 @@ namespace ShuntingYard
         Type type;
 
         Int128 number;
-        std::string op;
+        StringPool::String op;
         uint64_t offset;
         bool negative = false;
 
         Token(Int128 n) : type(Type::Number), number(n) {}
-        Token(const std::string& o) : type(Type::Operator), op(o) {}
+        Token(const StringPool::String& o) : type(Type::Operator), op(o) {}
         Token() {}
     };
 
     struct PreparedTokens {
         std::vector<Token> tokens;
         bool relocationPossible;
-        std::string usedSection;
+        StringPool::String usedSection;
         bool useSection = false;
         bool isExtern = false;
     };
@@ -35,7 +35,7 @@ namespace ShuntingYard
         const std::unordered_map<std::string, Encoder::Constant>& constants,
         uint64_t bytesWritten,
         uint64_t sectionOffset,
-        const std::string* currentSection
+        StringPool::String currentSection
     );
 
     Int128 evaluate(const std::vector<Token>& tokens, uint64_t offset);

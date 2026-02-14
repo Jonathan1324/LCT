@@ -17,7 +17,7 @@ namespace x86 {
 
     private:
         bool usedReloc = false;
-        std::string relocUsedSection;
+        StringPool::String relocUsedSection;
         bool relocIsExtern;
 
         bool canOptimize = false;

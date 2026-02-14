@@ -27,7 +27,7 @@ namespace Encoder
             struct RelocInfo {
                 uint64_t relocOffset;
                 int64_t offset;
-                std::string usedSection;
+                StringPool::String usedSection;
                 bool isExtern;
                 ::Encoder::RelocationSize size;
             };

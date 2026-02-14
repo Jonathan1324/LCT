@@ -17,9 +17,9 @@ static int64_t sign_extend(uint64_t val, size_t size_bytes)
     }
 }
 
-uint64_t evalInteger(std::string str, size_t size, int lineNumber, int column)
+uint64_t evalInteger(StringPool::String str, size_t size, int lineNumber, int column)
 {
-    std::string& value = str;
+    std::string value = str.c_str();
 
     int base = 10;
 

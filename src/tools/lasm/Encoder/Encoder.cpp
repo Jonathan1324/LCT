@@ -38,13 +38,13 @@ void Encoder::Encoder::Initialize()
     bytesWritten = 0;
     for (const auto& section : parsedSections)
     {
-        sectionStarts[section.name] = bytesWritten;
-        currentSection = &section.name;
+        sectionStarts[section.name.c_str()] = bytesWritten;
+        currentSection = section.name;
         sectionOffset = 0;
 
         Section sec;
         sec.name = section.name;
-        sec.isInitialized = !(section.name.compare(".bss") == 0);
+        sec.isInitialized = !(section.name == ".bss");
         sec.align = section.align;
 
         for (size_t i = 0; i < section.entries.size(); i++)
@@ -91,13 +91,13 @@ void Encoder::Encoder::Initialize()
                 lbl.isGlobal = label.isGlobal;
                 lbl.isExtern = label.isExtern;
 
-                if (labels.find(lbl.name) == labels.end())
+                if (labels.find(lbl.name.c_str()) == labels.end())
                 {
-                    labels[lbl.name] = lbl;
-                    symbols.push_back(&labels[lbl.name]);
+                    labels[lbl.name.c_str()] = lbl;
+                    symbols.push_back(&labels[lbl.name.c_str()]);
                 }
                 else
-                    throw Exception::SemanticError("Label '" + lbl.name + "' already defined", label.lineNumber, label.column);
+                    throw Exception::SemanticError(std::string("Label '") + lbl.name.c_str() + "' already defined", label.lineNumber, label.column);
 
                 SectionEntry::Label sectionEntryLabel(lbl.name);
                 sec.instructions.push_back(sectionEntryLabel);
@@ -114,13 +114,13 @@ void Encoder::Encoder::Initialize()
                 c.hasPos = constant.hasPos ? HasPos::TRUE : HasPos::UNKNOWN;
                 c.isGlobal = constant.isGlobal;
 
-                if (constants.find(constant.name) == constants.end())
+                if (constants.find(constant.name.c_str()) == constants.end())
                 {
-                    constants[constant.name] = c;
-                    symbols.push_back(&constants[constant.name]);
+                    constants[constant.name.c_str()] = c;
+                    symbols.push_back(&constants[constant.name.c_str()]);
                 }
                 else
-                    throw Exception::SemanticError("Constant '" + constant.name + "' already defined", constant.lineNumber, constant.column);
+                    throw Exception::SemanticError(std::string("Constant '") + constant.name.c_str() + "' already defined", constant.lineNumber, constant.column);
 
                 SectionEntry::Constant sectionEntryConstant(constant.name);
                 sec.instructions.push_back(sectionEntryConstant);
@@ -146,7 +146,7 @@ void Encoder::Encoder::EvaluationPhase()
     bytesWritten = 0;
     for (auto& section : sections)
     {
-        currentSection = &section.name;
+        currentSection = section.name;
         sectionOffset = 0;
 
         for (const SectionEntry& entry : section.instructions)
@@ -178,8 +178,8 @@ void Encoder::Encoder::CalculationPhase()
     bytesWritten = 0;
     for (auto& section : sections)
     {
-        sectionStarts[section.name] = bytesWritten;
-        currentSection = &section.name;
+        sectionStarts[section.name.c_str()] = bytesWritten;
+        currentSection = section.name;
         sectionOffset = 0;
 
         for (const SectionEntry& entry : section.instructions)
@@ -197,7 +197,7 @@ void Encoder::Encoder::CalculationPhase()
             {
                 const SectionEntry::Label& label = entry.getLabel();
 
-                auto it = labels.find(label.name);
+                auto it = labels.find(label.name.c_str());
                 if (it != labels.end())
                 {
                     Label& lbl = it->second;
@@ -205,23 +205,23 @@ void Encoder::Encoder::CalculationPhase()
                     lbl.resolved = true;
                 }
                 else
-                    throw Exception::InternalError("Label '" + label.name + "' isn't found in labels", -1, -1);
+                    throw Exception::InternalError(std::string("Label '") + label.name.c_str() + "' isn't found in labels", -1, -1);
             }
             else if (entry.isConstant())
             {
                 const SectionEntry::Constant& constant = entry.getConstant();
 
-                auto it = constants.find(constant.name);
+                auto it = constants.find(constant.name.c_str());
                 if (it != constants.end())
                 {
                     Constant& c = it->second;
                     c.offset = sectionOffset;
                     c.bytesWritten = bytesWritten;
 
-                    constants[constant.name] = c;
+                    constants[constant.name.c_str()] = c;
                 }
                 else
-                    throw Exception::InternalError("Constant '" + constant.name + "' isn't found in constants", -1, -1);
+                    throw Exception::InternalError(std::string("Constant '") + constant.name.c_str() + "' isn't found in constants", -1, -1);
             }
             else
             {
@@ -240,8 +240,8 @@ bool Encoder::Encoder::OptimizationPhase()
     bytesWritten = 0;
     for (auto& section : sections)
     {
-        sectionStarts[section.name] = bytesWritten;
-        currentSection = &section.name;
+        sectionStarts[section.name.c_str()] = bytesWritten;
+        currentSection = section.name;
         sectionOffset = 0;
 
         for (const SectionEntry& entry : section.instructions)
@@ -279,7 +279,7 @@ void Encoder::Encoder::GenerateCode()
     bytesWritten = 0;
     for (auto& section : sections)
     {
-        currentSection = &section.name;
+        currentSection = section.name;
         sectionOffset = 0;
 
         for (const SectionEntry& entry : section.instructions)

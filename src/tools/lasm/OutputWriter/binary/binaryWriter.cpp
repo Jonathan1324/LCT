@@ -28,14 +28,14 @@ void Binary::Writer::Write()
     for (Encoder::Section& section : sections)
     {
         if (section.align == 0)
-            throw Exception::InternalError("Alignment not set for section '" + section.name + "'", -1, -1);
+            throw Exception::InternalError(std::string("Alignment not set for section '") + section.name.c_str() + "'", -1, -1);
 
         uint64_t align = section.align;
         if (align < 4) align = 4; // TODO: minimal alignment of 4, check if useful
 
         off = (off + align - 1) / align * align;
 
-        sectionBuffers[section.name] = &section.buffer;
+        sectionBuffers[section.name.c_str()] = &section.buffer;
 
         if (!section.isInitialized)
         {
@@ -43,7 +43,7 @@ void Binary::Writer::Write()
             continue;
         }
         
-        sectionOffsets[section.name] = off;
+        sectionOffsets[section.name.c_str()] = off;
 
         off += static_cast<uint64_t>(section.size());
     }
@@ -54,7 +54,7 @@ void Binary::Writer::Write()
 
         off = (off + align - 1) / align * align;
 
-        sectionOffsets[section.name] = off;
+        sectionOffsets[section.name.c_str()] = off;
 
         off += static_cast<uint64_t>(section.size());
     }
@@ -63,16 +63,16 @@ void Binary::Writer::Write()
     {
         if (relocation.isExtern) throw Exception::SemanticError("Can't use external labels with binary output", -1, -1);
 
-        auto itBuf = sectionBuffers.find(relocation.section);
+        auto itBuf = sectionBuffers.find(relocation.section.c_str());
         if (itBuf == sectionBuffers.end()) throw Exception::InternalError("Section wasn't found", -1, -1);
         std::vector<uint8_t>* sectionBuffer = itBuf->second;
 
-        auto it = sectionOffsets.find(relocation.usedSection);
+        auto it = sectionOffsets.find(relocation.usedSection.c_str());
         if (it == sectionOffsets.end()) throw Exception::InternalError("Used section wasn't found", -1, -1);
         const uint64_t& sectionOffset = it->second;
         const int64_t value = sectionOffset + relocation.addend;
 
-        auto itRelocationSection = sectionOffsets.find(relocation.section);
+        auto itRelocationSection = sectionOffsets.find(relocation.section.c_str());
         if (itRelocationSection == sectionOffsets.end()) 
             throw Exception::InternalError("Relocation section offset not found", -1, -1);
         const uint64_t relocationSectionOffset = itRelocationSection->second;
@@ -227,7 +227,7 @@ void Binary::Writer::Write()
         if (section.buffer.empty()) continue;
 
         if (section.align == 0)
-            throw Exception::InternalError("Alignment not set for section '" + section.name + "'", -1, -1);
+            throw Exception::InternalError(std::string("Alignment not set for section '") + section.name.c_str() + "'", -1, -1);
 
         if (!section.isInitialized) continue;
 

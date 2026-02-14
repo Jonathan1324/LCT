@@ -8,7 +8,7 @@ namespace ELF
     struct RelocationSection
     {
         std::vector<uint8_t> buffer;
-        std::string name;
+        StringPool::String name;
 
         std::variant<SectionHeader32, SectionHeader64> header;
     };
@@ -16,7 +16,7 @@ namespace ELF
     struct Section
     {
         std::vector<uint8_t>* buffer;
-        std::string name;
+        StringPool::String name;
 
         bool writeBuffer = true;
         
@@ -46,7 +46,7 @@ namespace ELF
         std::vector<SymbolEntry> globalSymbols;
         std::vector<SymbolEntry> weakSymbols;
 
-        uint64_t getSectionFlags(const std::string& name);
-        uint32_t getSectionType(const std::string& name);
+        uint64_t getSectionFlags(StringPool::String name);
+        uint32_t getSectionType(StringPool::String name);
     };
 }

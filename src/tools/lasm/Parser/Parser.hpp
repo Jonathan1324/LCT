@@ -18,12 +18,12 @@ namespace Parser
 
     struct Operator
     {
-        std::string op;
+        StringPool::String op;
     };
 
     struct String
     {
-        std::string value;
+        StringPool::String value;
     };
 
     struct CurrentPosition
@@ -96,7 +96,7 @@ namespace Parser
 
     struct Label
     {
-        std::string name;
+        StringPool::String name;
         bool isGlobal;
         bool isExtern;
 
@@ -106,7 +106,7 @@ namespace Parser
 
     struct Constant
     {
-        std::string name;
+        StringPool::String name;
         Immediate value;
         bool isGlobal;
 
@@ -136,7 +136,7 @@ namespace Parser
 
     struct Section
     {
-        std::string name;
+        StringPool::String name;
         std::vector<SectionEntry> entries;
 
         uint64_t align = 0;
@@ -151,7 +151,7 @@ namespace Parser
         virtual void Parse(const std::vector<Token::Token>& tokens) = 0;
         void Print() const;
 
-        const std::string& getOrg() const noexcept { return org; }
+        const std::string& getOrg() const noexcept { return org.c_str(); }
         const std::vector<Section>& getSections() const noexcept { return sections; }
 
     protected:

@@ -2,7 +2,7 @@
 
 #include "ShuntingYard.hpp"
 
-Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, const std::string* curSection, bool ripRelative, uint64_t ripExtra)
+Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, StringPool::String curSection, bool ripRelative, uint64_t ripExtra)
 {
     // TODO: ripRelative and ripExtra
 
@@ -16,9 +16,9 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
     {
         uint64_t off1;
         if (tokens.isExtern) off1 = 348234582348;
-        else
+        else if (tokens.useSection)
         {
-            auto it = sectionStarts.find(tokens.usedSection);
+            auto it = sectionStarts.find(tokens.usedSection.c_str());
             if (it == sectionStarts.end()) throw Exception::InternalError("Couldn't find start of used section", -1, -1);
             off1 = it->second;
         }
@@ -41,7 +41,7 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
 
             evaluation.result = res1;
 
-            if (res1 == res2 && tokens.useSection && currentSection->compare(evaluation.usedSection) == 0)
+            if (res1 == res2 && tokens.useSection && currentSection == evaluation.usedSection)
             {
                 evaluation.useOffset = false;
                 evaluation.relocationPossible = true;
@@ -87,7 +87,7 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
 
         if (evaluation.relocationPossible && evaluation.isExtern && tokens.useSection)
         {
-            if (auto it = labels.find(evaluation.usedSection); it != labels.end())
+            if (auto it = labels.find(evaluation.usedSection.c_str()); it != labels.end())
             {
                 it->second.externUsed = true;
             }

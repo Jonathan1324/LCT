@@ -13,8 +13,8 @@ namespace Encoder
 
     struct Label
     {
-        std::string name;
-        std::string section;
+        StringPool::String name;
+        StringPool::String section;
         uint64_t offset = 0;
 
         bool isGlobal;
@@ -32,13 +32,13 @@ namespace Encoder
 
     struct Constant
     {
-        std::string name;
-        std::string section;
+        StringPool::String name;
+        StringPool::String section;
         Parser::Immediate expression;
         int64_t value;
 
         int64_t off;
-        std::string usedSection;
+        StringPool::String usedSection;
 
         HasPos hasPos;
         bool useOffset = false;
@@ -71,8 +71,8 @@ namespace Encoder
     {
         uint64_t offsetInSection;
         int64_t addend;
-        std::string section;
-        std::string usedSection;
+        StringPool::String section;
+        StringPool::String usedSection;
 
         RelocationType type;
         RelocationSize size;
@@ -91,7 +91,7 @@ namespace Encoder
         bool relocationPossible;
         bool isExtern;
 
-        std::string usedSection;
+        StringPool::String usedSection;
     };
 
     class Encoder
@@ -116,7 +116,7 @@ namespace Encoder
 
             void AddRelocation(
                 uint64_t extra_offset, uint64_t addend,
-                bool addendInCode, const std::string& usedSection,
+                bool addendInCode, StringPool::String usedSection,
                 ::Encoder::RelocationType type,
                 ::Encoder::RelocationSize size,
                 bool isSigned,
@@ -127,7 +127,7 @@ namespace Encoder
                 relocation.offsetInSection = enc.sectionOffset + extra_offset;
                 relocation.addend = addend;
                 relocation.addendInCode = addendInCode;
-                relocation.section = *enc.currentSection;
+                relocation.section = enc.currentSection;
                 relocation.usedSection = usedSection;
                 relocation.type = type;
                 relocation.size = size;
@@ -172,7 +172,7 @@ namespace Encoder
 
         virtual std::vector<uint8_t> EncodePadding(size_t length) = 0;
 
-        Evaluation Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, const std::string* curSection, bool ripRelative, uint64_t ripExtra);
+        Evaluation Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, StringPool::String curSection, bool ripRelative, uint64_t ripExtra);
 
         void resolveConstants(bool withPos);
         bool Resolvable(const Parser::Immediate& immediate);
@@ -197,7 +197,7 @@ namespace Encoder
 
         size_t bytesWritten = 0;
         size_t sectionOffset = 0;
-        const std::string* currentSection;
+        StringPool::String currentSection;
     };
 
     class SectionEntry
@@ -205,16 +205,16 @@ namespace Encoder
     public:
         struct Label
         {
-            Label(std::string _name) : name(_name) {}
+            Label(StringPool::String _name) : name(_name) {}
 
-            std::string name;
+            StringPool::String name;
         };
 
         struct Constant
         {
-            Constant(std::string _name) : name(_name) {}
+            Constant(StringPool::String _name) : name(_name) {}
 
-            std::string name;
+            StringPool::String name;
         };
 
         SectionEntry(Encoder::Instruction* instr)
@@ -273,7 +273,7 @@ namespace Encoder
 
     struct Section
     {
-        std::string name;
+        StringPool::String name;
         bool isInitialized = true;
         SectionBuffer buffer;
         size_t reservedSize = 0;

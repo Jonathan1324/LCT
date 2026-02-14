@@ -2,7 +2,7 @@
 
 #include <stack>
 
-static int precedence(const std::string& op)
+static int precedence(StringPool::String op)
 {
     if (op == "+" || op == "-") return 1;
     if (op == "*" || op == "/" || op == "%") return 2;
@@ -10,7 +10,7 @@ static int precedence(const std::string& op)
     return 0;
 }
 
-static bool isLeftAssociative(const std::string& op)
+static bool isLeftAssociative(StringPool::String op)
 {
     return op != "^";
 }
@@ -21,18 +21,18 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
         const std::unordered_map<std::string, Encoder::Constant>& constants,
         uint64_t bytesWritten,
         uint64_t sectionOffset,
-        const std::string* currentSection
+        StringPool::String currentSection
     )
 {
     PreparedTokens output;
     output.relocationPossible = true;
 
     std::vector<Token> outputQueue;
-    std::stack<std::string> operatorStack;
+    std::stack<StringPool::String> operatorStack;
 
     bool expectUnaryMinus = false;
 
-    const std::string* usedSection;
+    StringPool::String usedSection;
     bool useSection = false;
 
     for (size_t i = 0; i < operands.size(); i++)
@@ -41,7 +41,7 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
 
         if (std::holds_alternative<Parser::Operator>(op))
         {
-            std::string opStr = std::get<Parser::Operator>(op).op;
+            StringPool::String opStr = std::get<Parser::Operator>(op).op;
 
             if (opStr == "-" && (
                 i == 0 ||
@@ -70,7 +70,7 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
                 // other operator
                 while (!operatorStack.empty())
                 {
-                    const std::string& topOp = operatorStack.top();
+                    StringPool::String topOp = operatorStack.top();
                     if (topOp == "(")
                         break;
 
@@ -103,12 +103,12 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
         }
         else if (std::holds_alternative<Parser::String>(op))
         {
-            const std::string& name = std::get<Parser::String>(op).value;
-            if (auto it = labels.find(name); it != labels.end())
+            StringPool::String name = std::get<Parser::String>(op).value;
+            if (auto it = labels.find(name.c_str()); it != labels.end())
             {
                 if (it->second.isExtern)
                 {
-                    if (useSection && it->second.name.compare(*usedSection) != 0)
+                    if (useSection && it->second.name != usedSection)
                     {
                         output.relocationPossible = false;
                     }
@@ -121,13 +121,13 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
                         expectUnaryMinus = false;
                     }
                     outputQueue.push_back(std::move(token));
-                    usedSection = &it->second.name;
+                    usedSection = it->second.name;
                     useSection = true;
                     output.isExtern = true;
                 }
                 else
                 {
-                    if (useSection && it->second.section.compare(*usedSection) != 0)
+                    if (useSection && it->second.section != usedSection)
                     {
                         output.relocationPossible = false;
                     }
@@ -140,20 +140,20 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
                         expectUnaryMinus = false;
                     }
                     outputQueue.push_back(std::move(token));
-                    usedSection = &it->second.section;
+                    usedSection = it->second.section;
                     useSection = true;
                     output.isExtern = false;
                 }
             }
-            else if (auto it = constants.find(name); it != constants.end())
+            else if (auto it = constants.find(name.c_str()); it != constants.end())
             {
                 const Encoder::Constant& c = it->second;
-                if (useSection && c.usedSection.compare(*usedSection) != 0 && c.hasPos == Encoder::HasPos::TRUE || !it->second.relocationPossible)
+                if (useSection && c.usedSection != usedSection && c.hasPos == Encoder::HasPos::TRUE || !it->second.relocationPossible)
                 {
                     output.relocationPossible = false;
                 }
                 if (!c.resolved)
-                    throw Exception::InternalError("Unresolved constants '" + name + "' used in expression", -1, -1);
+                    throw Exception::InternalError(std::string("Unresolved constants '") + name.c_str() + "' used in expression", -1, -1);
 
                 if (c.useOffset)
                 {
@@ -166,7 +166,7 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
                         expectUnaryMinus = false;
                     }
                     outputQueue.push_back(std::move(token));
-                    usedSection = &c.usedSection;
+                    usedSection = c.usedSection;
                     useSection = true;
                 }
                 else
@@ -180,7 +180,7 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
                     outputQueue.emplace_back(val);
                 }
             }
-            else throw Exception::InternalError("Unknown string '" + name + "'", -1, -1);
+            else throw Exception::InternalError(std::string("Unknown string '") + name.c_str() + "'", -1, -1);
         }
         else if (std::holds_alternative<Parser::CurrentPosition>(op))
         {
@@ -194,7 +194,7 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
                 expectUnaryMinus = false;
             }
             outputQueue.push_back(std::move(token));
-            if (useSection && currentSection->compare(*usedSection) != 0)
+            if (useSection && currentSection != usedSection)
             {
                 output.relocationPossible = false;
             }
@@ -219,9 +219,9 @@ ShuntingYard::PreparedTokens ShuntingYard::prepareTokens(
     output.tokens = outputQueue;
     output.useSection = useSection;
     if (useSection)
-        output.usedSection = *usedSection;
+        output.usedSection = usedSection;
     else
-        output.usedSection = *currentSection;
+        output.usedSection = currentSection;
 
     return output;
 }
@@ -258,7 +258,7 @@ Int128 ShuntingYard::evaluate(const std::vector<ShuntingYard::Token>& tokens, ui
                 stack.push(lhs % rhs);
             }
             else
-                throw Exception::InternalError("Unknown operator: " + token.op, -1, -1);
+                throw Exception::InternalError(std::string("Unknown operator: ") + token.op.c_str(), -1, -1);
         }
         else
             throw Exception::InternalError("Unknown token type", -1, -1);

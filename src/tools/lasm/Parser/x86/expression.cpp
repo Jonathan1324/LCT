@@ -137,27 +137,27 @@ std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parsePrimary()
 
     if (peek()->type == Token::Type::Token)
     {
-        std::string val = advance()->value;
+        StringPool::String val = advance()->value;
 
-        if (isNumber(val))
+        if (isNumber(val.c_str()))
         {
             std::shared_ptr<ExpressionParser::ExprNode> node = std::make_shared<ExprNode>();
             node->type = ExprNode::Type::NUMBER;
             node->value = evalInteger(val, 8, -1, -1); // TODO: line + column
             return node;
         }
-        else if (isRegister(val))
+        else if (isRegister(val.c_str()))
         {
             std::shared_ptr<ExpressionParser::ExprNode> node = std::make_shared<ExprNode>();
             node->type = ExprNode::Type::REGISTER;
-            node->reg = getRegister(val);
+            node->reg = getRegister(val.c_str());
             return node;
         }
         else
         {
             std::shared_ptr<ExpressionParser::ExprNode> node = std::make_shared<ExprNode>();
             node->type = ExprNode::Type::LABEL;
-            node->name = val;
+            node->name = val.c_str();
             return node;
         }
     }
@@ -205,7 +205,7 @@ bool ExpressionParser::hasRegister(const std::shared_ptr<ExprNode>& e)
     return hasRegister(e->left) || hasRegister(e->right) || hasRegister(e->operand);
 }
 
-Parser::Immediate ExpressionParser::convertToImmediate(std::shared_ptr<ExprNode> e)
+Parser::Immediate ExpressionParser::convertToImmediate(std::shared_ptr<ExprNode> e, Context& context)
 {
     Parser::Immediate imm;
 
@@ -234,7 +234,7 @@ Parser::Immediate ExpressionParser::convertToImmediate(std::shared_ptr<ExprNode>
         else
         {
             Parser::String str;
-            str.value = e->name;
+            str.value = context.stringPool->GetString(e->name);
             imm.operands.push_back(str);
         }
         
@@ -243,15 +243,15 @@ Parser::Immediate ExpressionParser::convertToImmediate(std::shared_ptr<ExprNode>
 
     if (e->type == ExprNode::Type::UNARY_OP)
     {
-        Parser::Immediate operand = convertToImmediate(e->operand);
+        Parser::Immediate operand = convertToImmediate(e->operand, context);
 
         Parser::Operator op;
-        op.op = e->unary_op;
+        op.op = context.stringPool->GetString(e->unary_op);
         
         Parser::Operator bOpen;
-        bOpen.op = "(";
+        bOpen.op = context.stringPool->GetString("(");
         Parser::Operator bClose;
-        bClose.op = ")";
+        bClose.op = context.stringPool->GetString(")");
 
         imm.operands.push_back(bOpen);
         imm.operands.push_back(op);
@@ -263,16 +263,16 @@ Parser::Immediate ExpressionParser::convertToImmediate(std::shared_ptr<ExprNode>
 
     if (e->type == ExprNode::Type::BINARY_OP)
     {
-        Parser::Immediate left = convertToImmediate(e->left);
-        Parser::Immediate right = convertToImmediate(e->right);
+        Parser::Immediate left = convertToImmediate(e->left, context);
+        Parser::Immediate right = convertToImmediate(e->right, context);
 
         Parser::Operator bOpen;
-        bOpen.op = "(";
+        bOpen.op = context.stringPool->GetString("(");
         Parser::Operator bClose;
-        bClose.op = ")";
+        bClose.op = context.stringPool->GetString(")");
 
         Parser::Operator op;
-        op.op = e->op;
+        op.op = context.stringPool->GetString(e->op);
 
         imm.operands.push_back(bOpen);
         imm.operands.insert(imm.operands.end(), left.operands.begin(), left.operands.end());
