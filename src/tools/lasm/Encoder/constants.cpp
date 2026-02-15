@@ -40,7 +40,7 @@ std::vector<std::string> Encoder::Encoder::getDependencies(const Parser::Immedia
         if (std::holds_alternative<Parser::String>(operand))
         {
             const Parser::String& str = std::get<Parser::String>(operand);
-            deps.push_back(str.value);
+            deps.push_back(str.value.c_str());
         }
     }
     return deps;
@@ -51,16 +51,16 @@ bool Encoder::Encoder::resolveConstantWithoutPos(Constant& c, std::unordered_set
     if (c.resolved) return true;
     if (c.hasPos == HasPos::TRUE) return false;
 
-    if (visited.count(c.name))
-        throw Exception::SemanticError("Circular dependency at " + c.name, -1, -1); // FIXME: no line or column
-    visited.insert(c.name);
+    if (visited.count(c.name.c_str()))
+        throw Exception::SemanticError(std::string("Circular dependency at ") + c.name.c_str(), -1, -1); // FIXME: no line or column
+    visited.insert(c.name.c_str());
 
     for (const auto& dep : getDependencies(c.expression))
     {
         if (labels.count(dep))
         {
             c.hasPos = HasPos::TRUE;
-            visited.erase(c.name);
+            visited.erase(c.name.c_str());
             return false;
         }
 
@@ -71,12 +71,12 @@ bool Encoder::Encoder::resolveConstantWithoutPos(Constant& c, std::unordered_set
         if (!resolveConstantWithoutPos(it->second, visited))
         {
             c.hasPos = HasPos::TRUE;
-            visited.erase(c.name);
+            visited.erase(c.name.c_str());
             return false;
         }
     }
 
-    Evaluation evaluated = Evaluate(c.expression, 0, 0, &c.section);
+    Evaluation evaluated = Evaluate(c.expression, 0, 0, c.section, false, 0);
     if (evaluated.relocationPossible) c.relocationPossible = true;
     if (evaluated.relocationPossible && evaluated.useOffset)
     {
@@ -90,14 +90,14 @@ bool Encoder::Encoder::resolveConstantWithoutPos(Constant& c, std::unordered_set
 
         if (value < static_cast<Int128>(std::numeric_limits<int64_t>::min()) ||
             value > static_cast<Int128>(std::numeric_limits<int64_t>::max()))
-            throw Exception::OverflowError("Constant '" + c.name + "' too big for a signed 64-bit integer", -1, -1); // FIXME: no line or column
+            throw Exception::OverflowError(std::string("Constant '") + c.name.c_str() + "' too big for a signed 64-bit integer", -1, -1); // FIXME: no line or column
         c.value = static_cast<int64_t>(value);
     }
     c.resolved = true;
     c.prePass = true;
 
     c.hasPos = HasPos::FALSE;
-    visited.erase(c.name);
+    visited.erase(c.name.c_str());
     return true;
 }
 
@@ -105,9 +105,9 @@ bool Encoder::Encoder::resolveConstantWithPos(Constant& c, std::unordered_set<st
 {
     if (c.resolved) return true;
     
-    if (visited.count(c.name))
-        throw Exception::SemanticError("Circular dependency at " + c.name, -1, -1); // FIXME: no line or column
-    visited.insert(c.name);
+    if (visited.count(c.name.c_str()))
+        throw Exception::SemanticError(std::string("Circular dependency at ") + c.name.c_str(), -1, -1); // FIXME: no line or column
+    visited.insert(c.name.c_str());
 
     for (const auto& dep : getDependencies(c.expression))
     {
@@ -121,7 +121,7 @@ bool Encoder::Encoder::resolveConstantWithPos(Constant& c, std::unordered_set<st
             throw Exception::InternalError("Couldn't resolve constant '" + dep + "'", -1, -1);
     }
 
-    Evaluation evaluated = Evaluate(c.expression, c.bytesWritten, c.offset, &c.section);
+    Evaluation evaluated = Evaluate(c.expression, c.bytesWritten, c.offset, c.section, false, 0);
     if (evaluated.relocationPossible) c.relocationPossible = true;
     if (evaluated.relocationPossible && evaluated.useOffset)
     {
@@ -135,11 +135,11 @@ bool Encoder::Encoder::resolveConstantWithPos(Constant& c, std::unordered_set<st
     
         if (value < static_cast<Int128>(std::numeric_limits<int64_t>::min()) ||
             value > static_cast<Int128>(std::numeric_limits<int64_t>::max()))
-            throw Exception::OverflowError("Constant '" + c.name + "' too big for a signed 64-bit integer", -1, -1); // FIXME: no line or column
+            throw Exception::OverflowError(std::string("Constant '") + c.name.c_str() + "' too big for a signed 64-bit integer", -1, -1); // FIXME: no line or column
         c.value = static_cast<int64_t>(value);
     }
     c.resolved = true;
 
-    visited.erase(c.name);
+    visited.erase(c.name.c_str());
     return true;
 }

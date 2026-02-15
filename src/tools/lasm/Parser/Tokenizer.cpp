@@ -16,17 +16,33 @@ void Token::Tokenizer::clear() {
 
 void Token::Tokenizer::tokenize(std::istream* input)
 {
-    uint64_t file;
+    StringPool::String file;
     std::string line;
     size_t lineNumber = 0;
     size_t lineIncrease = 1;
+
+    // TODO: Make dynamic
+    const char commentStart = ';';
 
     while (std::getline(*input, line))
     {
         lineNumber += lineIncrease;
         size_t pos = 0;
         size_t length = line.size();
+
         std::string trimmed = trim(line);
+
+        if (!trimmed.empty() && trimmed[0] == commentStart)
+        {
+            continue;
+        }
+
+        size_t commentPos = line.find(';');
+        if (commentPos != std::string::npos)
+        {
+            line = line.substr(0, commentPos);
+            length = line.size();
+        }
 
         if (trimmed.find("%line") == 0)
         {
@@ -45,7 +61,7 @@ void Token::Tokenizer::tokenize(std::istream* input)
                 if (filename == "-") {
                     filename = context->filename;
                 }
-                file = context->stringPool->intern(filename);
+                file = context->stringPool->GetString(filename);
             }
 
             // TODO: parse (including when seeing '-' as filename to put the main file there)
@@ -66,7 +82,7 @@ void Token::Tokenizer::tokenize(std::istream* input)
             {
                 tokens.emplace_back(
                     Type::Comma,
-                    ",",
+                    context->stringPool->GetString(","),
                     lineNumber,
                     pos + 1,
                     file
@@ -76,14 +92,14 @@ void Token::Tokenizer::tokenize(std::istream* input)
             // ; or :
             else if (line[pos] == ';' || line[pos] == ':')
             {
-                tokens.emplace_back(Type::Punctuation, std::string() + line[pos], lineNumber, pos, file);
+                tokens.emplace_back(Type::Punctuation, context->stringPool->GetString(line[pos]), lineNumber, pos, file);
                 pos++;
             }
 
             // +,-,*,/
             else if (line[pos] == '+' || line[pos] == '-' || line[pos] == '*' || line[pos] == '/' || line[pos] == '%')
             {
-                tokens.emplace_back(Type::Operator, std::string() + line[pos], lineNumber, pos, file);
+                tokens.emplace_back(Type::Operator, context->stringPool->GetString(line[pos]), lineNumber, pos, file);
                 pos++;
             }
 
@@ -94,7 +110,7 @@ void Token::Tokenizer::tokenize(std::istream* input)
             {
                 tokens.emplace_back(
                     Type::Bracket,
-                    std::string(1, line[pos]),
+                    context->stringPool->GetString(line[pos]),
                     lineNumber,
                     pos + 1,
                     file
@@ -135,7 +151,7 @@ void Token::Tokenizer::tokenize(std::istream* input)
                     }
                 }
 
-                tokens.emplace_back(Type::String, value, lineNumber, startPos, file);
+                tokens.emplace_back(Type::String, context->stringPool->GetString(value), lineNumber, startPos, file);
 
                 if (pos < length && line[pos] == '"')
                     pos++; // skip closing "
@@ -176,7 +192,7 @@ void Token::Tokenizer::tokenize(std::istream* input)
                     throw Exception::SyntaxError("Expected closing '", lineNumber, pos);
                 }
 
-                tokens.emplace_back(Type::Character, std::string() + value, lineNumber, startPos, file);
+                tokens.emplace_back(Type::Character, context->stringPool->GetString(value), lineNumber, startPos, file);
 
                 pos++; // skip closing '
             }
@@ -195,7 +211,7 @@ void Token::Tokenizer::tokenize(std::istream* input)
                 
                 tokens.emplace_back(
                     Type::Token,
-                    line.substr(startPos, pos - startPos),
+                    context->stringPool->GetString(line.substr(startPos, pos - startPos)) ,
                     lineNumber,
                     startPos + 1,
                     file
@@ -205,7 +221,7 @@ void Token::Tokenizer::tokenize(std::istream* input)
 
         tokens.emplace_back(
             Type::EOL,
-            "",
+            context->stringPool->empty(),
             lineNumber,
             length + 1,
             file
@@ -213,7 +229,7 @@ void Token::Tokenizer::tokenize(std::istream* input)
     }
     tokens.emplace_back(
         Type::_EOF,
-        "",
+        context->stringPool->empty(),
         lineNumber + 1,
         0,
         file
@@ -259,11 +275,11 @@ std::string Token::Token::what(const Context* context) const
         case Type::Bracket:
         case Type::Punctuation:
         default:
-            result += " '" + value + "' ";
+            result += std::string(" '") + value.c_str() + "' ";
             break;
     }
 
-    result += "in line " + std::to_string(line) + " at column " + std::to_string(column) + " in file " + context->stringPool->lookup(file);
+    result += "in line " + std::to_string(line) + " at column " + std::to_string(column) + " in file " + file.c_str();
 
     return result;
 }

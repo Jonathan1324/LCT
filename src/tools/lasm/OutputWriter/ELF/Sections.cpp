@@ -1,31 +1,31 @@
 #include "ELFWriter.hpp"
 #include "Headers.hpp"
 
-uint64_t ELF::Writer::getSectionFlags(const std::string& name)
+uint64_t ELF::Writer::getSectionFlags(StringPool::String name)
 {
-    if (name.compare(".text") == 0)
+    if (name == ".text")
         return SectionFlags::S_ALLOC | SectionFlags::S_EXECINSTR;
-    else if (name.compare(".data") == 0)
+    else if (name == ".data")
         return SectionFlags::S_ALLOC | SectionFlags::S_WRITE;
 
-    else if (name.compare(".bss") == 0)
+    else if (name == ".bss")
         return SectionFlags::S_ALLOC | SectionFlags::S_WRITE;
 
-    else if (name.compare(".rodata") == 0)
+    else if (name == ".rodata")
         return SectionFlags::S_ALLOC;
 
-    else if (name.compare(".tdata") == 0)
+    else if (name == ".tdata")
         return SectionFlags::S_ALLOC | SectionFlags::S_WRITE | SectionFlags::S_TLS;
 
-    else if (name.compare(".comment") == 0)
+    else if (name == ".comment")
         return 0;
 
     return SectionFlags::S_ALLOC;
 }
 
-uint32_t ELF::Writer::getSectionType(const std::string& name)
+uint32_t ELF::Writer::getSectionType(StringPool::String name)
 {
-    if (name.compare(".bss") == 0)
+    if (name == ".bss")
         return SectionType::NoBits;
     else
         return SectionType::ProgBits; // TODO

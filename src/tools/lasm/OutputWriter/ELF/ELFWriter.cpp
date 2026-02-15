@@ -161,7 +161,7 @@ void ELF::Writer::Write()
             entry.Other = 0;
             entry.IndexInSectionHeaderTable = i + 1; // TODO: ugly
             
-            sectionSymbolIndex[section.name] = static_cast<uint64_t>(localSymbols.size());
+            sectionSymbolIndex[section.name.c_str()] = static_cast<uint64_t>(localSymbols.size());
             localSymbols.push_back(std::move(entry));
         }
         else if (bits == BitMode::Bits64)
@@ -191,12 +191,12 @@ void ELF::Writer::Write()
             entry.Value = 0;
             entry.Size = 0;
             
-            sectionSymbolIndex[section.name] = static_cast<uint64_t>(localSymbols.size());
+            sectionSymbolIndex[section.name.c_str()] = static_cast<uint64_t>(localSymbols.size());
             localSymbols.push_back(std::move(entry));
         }
         else throw Exception::InternalError("Unknown bit mode", -1, -1);
 
-        sectionIndexes[section.name] = static_cast<uint16_t>(sections.size());
+        sectionIndexes[section.name.c_str()] = static_cast<uint16_t>(sections.size());
         sections.push_back(std::move(s));
     }
 
@@ -213,14 +213,14 @@ void ELF::Writer::Write()
             if (label->isExtern && !label->externUsed) continue;
             strtabBuffer.insert(strtabBuffer.end(), label->name.begin(), label->name.end());
             strtabBuffer.push_back(0);
-            labelNameOffsets[label->name] = offset;
+            labelNameOffsets[label->name.c_str()] = offset;
         }
         else if (std::holds_alternative<Encoder::Constant*>(symbol))
         {
             const Encoder::Constant* constant = std::get<Encoder::Constant*>(symbol);
             strtabBuffer.insert(strtabBuffer.end(), constant->name.begin(), constant->name.end());
             strtabBuffer.push_back(0);
-            labelNameOffsets[constant->name] = offset;
+            labelNameOffsets[constant->name.c_str()] = offset;
         }
     }
 
@@ -232,7 +232,7 @@ void ELF::Writer::Write()
         {
             const Encoder::Label* label = std::get<Encoder::Label*>(symbol);
             if (label->isExtern && !label->externUsed) continue;
-            auto it = labelNameOffsets.find(label->name);
+            auto it = labelNameOffsets.find(label->name.c_str());
             if (it == labelNameOffsets.end()) throw Exception::InternalError("Couldn't find offset for label in .strtab", -1, -1);
             uint32_t nameOffset = it->second;
 
@@ -244,7 +244,7 @@ void ELF::Writer::Write()
                 entry.Size = 0;
                 entry.Info = Symbol::SetInfo((label->isGlobal || label->isExtern) ? Symbol::Bind::GLOBAL : Symbol::Bind::LOCAL, Symbol::Type::NONE);
                 entry.Other = 0;
-                auto it = sectionIndexes.find(label->section);
+                auto it = sectionIndexes.find(label->section.c_str());
                 if (it == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
                 entry.IndexInSectionHeaderTable = it->second;
                 
@@ -252,7 +252,7 @@ void ELF::Writer::Write()
                 {
                     entry.Value = 0;
                     entry.IndexInSectionHeaderTable = Symbol::UNDEFINDEX;
-                    externLabelIndex[label->name] = globalSymbols.size();
+                    externLabelIndex[label->name.c_str()] = globalSymbols.size();
                     globalSymbols.push_back(std::move(entry));
                 }
                 else if (label->isGlobal) globalSymbols.push_back(std::move(entry));
@@ -264,7 +264,7 @@ void ELF::Writer::Write()
                 entry.OffsetInNameStringTable = nameOffset;
                 entry.Info = Symbol::SetInfo((label->isGlobal || label->isExtern) ? Symbol::Bind::GLOBAL : Symbol::Bind::LOCAL, Symbol::Type::NONE);
                 entry.Other = 0;
-                auto it = sectionIndexes.find(label->section);
+                auto it = sectionIndexes.find(label->section.c_str());
                 if (it == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
                 entry.IndexInSectionHeaderTable = it->second;
                 entry.Value = label->offset;
@@ -274,7 +274,7 @@ void ELF::Writer::Write()
                 {
                     entry.Value = 0;
                     entry.IndexInSectionHeaderTable = Symbol::UNDEFINDEX;
-                    externLabelIndex[label->name] = globalSymbols.size();
+                    externLabelIndex[label->name.c_str()] = globalSymbols.size();
                     globalSymbols.push_back(std::move(entry));
                 }
                 else if (label->isGlobal) globalSymbols.push_back(std::move(entry));
@@ -286,7 +286,7 @@ void ELF::Writer::Write()
         {
             const Encoder::Constant* constant = std::get<Encoder::Constant*>(symbol);
             
-            auto it = labelNameOffsets.find(constant->name);
+            auto it = labelNameOffsets.find(constant->name.c_str());
             if (it == labelNameOffsets.end()) throw Exception::InternalError("Couldn't find offset for constant in .strtab", -1, -1);
             uint32_t nameOffset = it->second;
 
@@ -300,7 +300,7 @@ void ELF::Writer::Write()
                 entry.Other = 0;
                 if (constant->useOffset)
                 {
-                    auto it = sectionIndexes.find(constant->usedSection);
+                    auto it = sectionIndexes.find(constant->usedSection.c_str());
                     if (it == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
                     entry.IndexInSectionHeaderTable = it->second;
                 }
@@ -317,7 +317,7 @@ void ELF::Writer::Write()
                 entry.Other = 0;
                 if (constant->useOffset)
                 {
-                    auto it = sectionIndexes.find(constant->usedSection);
+                    auto it = sectionIndexes.find(constant->usedSection.c_str());
                     if (it == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
                     entry.IndexInSectionHeaderTable = it->second;
                 }
@@ -335,7 +335,7 @@ void ELF::Writer::Write()
     // SHSTRTAB
     Section shstrtab;
     shstrtab.buffer = &shstrtabBuffer;
-    shstrtab.name = ".shstrtab";
+    shstrtab.name = context.stringPool->GetString(".shstrtab");
     std::string shstrtabName = ".shstrtab";
 
     uint32_t shstrtabNameOffset = static_cast<uint32_t>(shstrtabBuffer.size());
@@ -347,7 +347,7 @@ void ELF::Writer::Write()
     // SYMTAB
     Section symtab;
     symtab.buffer = &symtabBuffer;
-    symtab.name = ".symtab";
+    symtab.name = context.stringPool->GetString(".symtab");
     std::string symtabName = ".symtab";
     uint32_t symtabIndex = static_cast<uint32_t>(sections.size()) + 1; // TODO: ugly way
 
@@ -409,7 +409,7 @@ void ELF::Writer::Write()
     // STRTAB
     Section strtab;
     strtab.buffer = &strtabBuffer;
-    strtab.name = ".strtab";
+    strtab.name = context.stringPool->GetString(".strtab");
     std::string strtabName = ".strtab";
 
     uint32_t strtabNameOffset = static_cast<uint32_t>(shstrtabBuffer.size());
@@ -419,7 +419,7 @@ void ELF::Writer::Write()
     // Relocations
     for (const Encoder::Relocation& relocation : relocations)
     {
-        auto it = sectionIndexes.find(relocation.section);
+        auto it = sectionIndexes.find(relocation.section.c_str());
         if (it == sectionIndexes.end()) throw Exception::InternalError("Section not found", -1, -1);
         const uint16_t sectionIndex = it->second;
         Section& section = sections[sectionIndex];
@@ -435,37 +435,94 @@ void ELF::Writer::Write()
         if (!section.hasRelocations || section.nullSection) continue;
         RelocationSection relocSection;
 
-        auto getType32 = [](Encoder::RelocationType type, Encoder::RelocationSize size) -> uint8_t
+        auto getType32 = [](Encoder::RelocationType type, Encoder::RelocationSize size, bool isSigned) -> uint8_t
         {
             switch (type)
             {
                 case Encoder::RelocationType::Absolute:
                     switch (size)
                     {
-                        case Encoder::RelocationSize::Bit8: return RelocationType32::R386_ABS8;
-                        case Encoder::RelocationSize::Bit16: return RelocationType32::R386_ABS16;
-                        case Encoder::RelocationSize::Bit32: return RelocationType32::R386_ABS32;
-                        case Encoder::RelocationSize::Bit64: return RelocationType32::R386_ABS32; // FIXME: not very nice way of doing it
-                        default: throw Exception::InternalError("Unknown relocation size", -1, -1);
+                        case Encoder::RelocationSize::Bit8:
+                            return RelocationType32::R386_ABS8;
+
+                        case Encoder::RelocationSize::Bit16:
+                            return RelocationType32::R386_ABS16;
+
+                        case Encoder::RelocationSize::Bit32:
+                            return RelocationType32::R386_ABS32;
+
+                        case Encoder::RelocationSize::Bit64: // TODO
+                            return RelocationType32::R386_ABS32;
+
+                        default:
+                            throw Exception::InternalError("Unknown relocation size", -1, -1);
                     }
+
+                case Encoder::RelocationType::PC_Relative:
+                    switch (size)
+                    {
+                        case Encoder::RelocationSize::Bit8:
+                            return RelocationType32::R386_PC8;
+
+                        case Encoder::RelocationSize::Bit16:
+                            return RelocationType32::R386_PC16;
+
+                        case Encoder::RelocationSize::Bit32:
+                            return RelocationType32::R386_PC32;
+
+                        case Encoder::RelocationSize::Bit64: // TODO
+                            return RelocationType32::R386_PC32;
+
+                        default:
+                            throw Exception::InternalError("Unknown relocation size", -1, -1);
+                    }
+
                 default: throw Exception::InternalError("Unknown relocation type", -1, -1);
             }
             return RelocationType32::R386_None;
         };
 
-        auto getType64 = [](Encoder::RelocationType type, Encoder::RelocationSize size) -> uint32_t
+        auto getType64 = [](Encoder::RelocationType type, Encoder::RelocationSize size, bool isSigned) -> uint32_t
         {
             switch (type)
             {
                 case Encoder::RelocationType::Absolute:
                     switch (size)
                     {
-                        case Encoder::RelocationSize::Bit8: return RelocationType64::RX64_ABS8;
-                        case Encoder::RelocationSize::Bit16: return RelocationType64::RX64_ABS16;
-                        case Encoder::RelocationSize::Bit32: return RelocationType64::RX64_ABS32;
-                        case Encoder::RelocationSize::Bit64: return RelocationType64::RX64_ABS64;
+                        case Encoder::RelocationSize::Bit8:
+                            return isSigned ? RelocationType64::RX64_8S  : RelocationType64::RX64_ABS8;
+
+                        case Encoder::RelocationSize::Bit16:
+                            return isSigned ? RelocationType64::RX64_16S : RelocationType64::RX64_ABS16;
+
+                        case Encoder::RelocationSize::Bit32:
+                            return isSigned ? RelocationType64::RX64_32S : RelocationType64::RX64_ABS32;
+
+                        case Encoder::RelocationSize::Bit64: // TODO
+                            return RelocationType64::RX64_ABS64;
+                        
                         default: throw Exception::InternalError("Unknown relocation size", -1, -1);
                     }
+
+                case Encoder::RelocationType::PC_Relative:
+                    switch (size)
+                    {
+                        case Encoder::RelocationSize::Bit8:
+                            return RelocationType64::RX64_PC8;
+
+                        case Encoder::RelocationSize::Bit16:
+                            return RelocationType64::RX64_PC16;
+
+                        case Encoder::RelocationSize::Bit32:
+                            return RelocationType64::RX64_PC32;
+
+                        case Encoder::RelocationSize::Bit64: // TODO
+                            return RelocationType64::RX64_PC32;
+
+                        default:
+                            throw Exception::InternalError("Unknown relocation size", -1, -1);
+                    }
+
                 default: throw Exception::InternalError("Unknown relocation type", -1, -1);
             }
             return RelocationType64::RX64_None;
@@ -473,19 +530,19 @@ void ELF::Writer::Write()
         
         if (section.hasAddend)
         {
-            relocSection.name = ".rela" + section.name;
+            relocSection.name = context.stringPool->GetString(std::string(".rela") + section.name.c_str());
             for (const Encoder::Relocation& relocation : section.relocations)
             {
                 uint64_t symbolIndex;
                 if (relocation.isExtern)
                 {
-                    auto it = externLabelIndex.find(relocation.usedSection);
+                    auto it = externLabelIndex.find(relocation.usedSection.c_str());
                     if (it == externLabelIndex.end()) throw Exception::InternalError("Couldn't find index in .symtab", -1, -1);
                     symbolIndex = it->second + localSymbols.size();
                 }
                 else
                 {
-                    auto it = sectionSymbolIndex.find(relocation.usedSection);
+                    auto it = sectionSymbolIndex.find(relocation.usedSection.c_str());
                     if (it == sectionSymbolIndex.end()) throw Exception::InternalError("Couldn't find index in .symtab", -1, -1);
                     symbolIndex = it->second;
                 }
@@ -528,7 +585,7 @@ void ELF::Writer::Write()
                     entry.offset = static_cast<uint32_t>(relocation.offsetInSection); //TODO: handle overflow
                     entry.addend = static_cast<int32_t>(relocation.addend); //TODO: handle overflow
 
-                    uint8_t type = getType32(relocation.type, relocation.size);
+                    uint8_t type = getType32(relocation.type, relocation.size, relocation.isSigned);
                     // TODO: handle overflows with symbol
                     entry.info = SetRelocationInfo32(static_cast<uint32_t>(symbolIndex), type);
 
@@ -542,7 +599,7 @@ void ELF::Writer::Write()
                     entry.offset = relocation.offsetInSection;
                     entry.addend = relocation.addend;
 
-                    uint32_t type = getType64(relocation.type, relocation.size);
+                    uint32_t type = getType64(relocation.type, relocation.size, relocation.isSigned);
                     // TODO: handle overflows with symbol
                     entry.info = SetRelocationInfo64(static_cast<uint32_t>(symbolIndex), type);
 
@@ -554,19 +611,19 @@ void ELF::Writer::Write()
         }
         else
         {
-            relocSection.name = ".rel" + section.name;
+            relocSection.name = context.stringPool->GetString(std::string(".rel") + section.name.c_str());
             for (const Encoder::Relocation& relocation : section.relocations)
             {
                 uint64_t symbolIndex;
                 if (relocation.isExtern)
                 {
-                    auto it = externLabelIndex.find(relocation.usedSection);
+                    auto it = externLabelIndex.find(relocation.usedSection.c_str());
                     if (it == externLabelIndex.end()) throw Exception::InternalError("Couldn't find index in .symtab", -1, -1);
                     symbolIndex = it->second + localSymbols.size();
                 }
                 else
                 {
-                    auto it = sectionSymbolIndex.find(relocation.usedSection);
+                    auto it = sectionSymbolIndex.find(relocation.usedSection.c_str());
                     if (it == sectionSymbolIndex.end()) throw Exception::InternalError("Couldn't find index in .symtab", -1, -1);
                     symbolIndex = it->second;
                 }
@@ -576,7 +633,7 @@ void ELF::Writer::Write()
                     RelEntry32 entry;
                     entry.offset = static_cast<uint32_t>(relocation.offsetInSection); //TODO: handle overflow
 
-                    uint8_t type = getType32(relocation.type, relocation.size);
+                    uint8_t type = getType32(relocation.type, relocation.size, relocation.isSigned);
                     // TODO: handle overflows with symbol
                     entry.info = SetRelocationInfo32(static_cast<uint32_t>(symbolIndex), type);
 
@@ -588,7 +645,7 @@ void ELF::Writer::Write()
                     RelEntry64 entry;
                     entry.offset = relocation.offsetInSection;
 
-                    uint32_t type = getType64(relocation.type, relocation.size);
+                    uint32_t type = getType64(relocation.type, relocation.size, relocation.isSigned);
                     // TODO: handle overflows with symbol
                     entry.info = SetRelocationInfo64(static_cast<uint32_t>(symbolIndex), type);
 
@@ -603,7 +660,7 @@ void ELF::Writer::Write()
         shstrtabBuffer.insert(shstrtabBuffer.end(), relocSection.name.begin(), relocSection.name.end());
         shstrtabBuffer.push_back(0);
 
-        auto it = sectionIndexes.find(section.name);
+        auto it = sectionIndexes.find(section.name.c_str());
         if (it == sectionIndexes.end()) throw Exception::InternalError("Couldn't find section index", -1, -1);
         const uint32_t sectionIndex = it->second;
 

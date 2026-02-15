@@ -2,8 +2,10 @@
 
 #include "ShuntingYard.hpp"
 
-Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, const std::string* curSection)
+Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, StringPool::String curSection, bool ripRelative, uint64_t ripExtra)
 {
+    // TODO: ripRelative and ripExtra
+
     // substitute position with two different values:
     // if both are equal:                               position doesn't matter
     // if both are equal when subtracting position:     can be written using offset + position (relocation)
@@ -14,9 +16,9 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
     {
         uint64_t off1;
         if (tokens.isExtern) off1 = 348234582348;
-        else
+        else if (tokens.useSection)
         {
-            auto it = sectionStarts.find(tokens.usedSection);
+            auto it = sectionStarts.find(tokens.usedSection.c_str());
             if (it == sectionStarts.end()) throw Exception::InternalError("Couldn't find start of used section", -1, -1);
             off1 = it->second;
         }
@@ -26,31 +28,66 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
         Int128 res2 = ShuntingYard::evaluate(tokens.tokens, off2);
 
         Evaluation evaluation;
-        evaluation.result = res1;
         evaluation.usedSection = tokens.usedSection;
         evaluation.isExtern = tokens.isExtern;
-        if (res1 == res2)
+
+        if (ripRelative)
         {
-            evaluation.useOffset = false;
-            evaluation.relocationPossible = true;
-            evaluation.offset = 0;
-        }
-        else if ((res1 - off1) == (res2 - off2))
-        {
-            evaluation.useOffset = true;
-            evaluation.relocationPossible = true;
-            evaluation.offset = res1 - off1;
+            uint64_t ripBase1 = bytesWritten + ripExtra;
+            uint64_t ripBase2 = bytesWritten + ripExtra + (off2 - off1);
+            
+            res1 = res1 - static_cast<Int128>(ripBase1);
+            res2 = res2 - static_cast<Int128>(ripBase2);
+
+            evaluation.result = res1;
+
+            if (res1 == res2 && tokens.useSection && currentSection == evaluation.usedSection)
+            {
+                evaluation.useOffset = false;
+                evaluation.relocationPossible = true;
+                evaluation.offset = 0;
+            }
+            else if (!tokens.useSection)
+            {
+                evaluation.useOffset = false;
+                evaluation.relocationPossible = true;
+
+                evaluation.result = res1 + ripBase1 - sectionOffset - ripExtra;
+            }
+            else // TODO: Check
+            {
+                evaluation.useOffset = true;
+                evaluation.relocationPossible = true;
+                evaluation.offset = 0;
+            }
         }
         else
         {
-            evaluation.useOffset = false;
-            evaluation.relocationPossible = false;
-            evaluation.offset = 0;
+            evaluation.result = res1;
+
+            if (res1 == res2)
+            {
+                evaluation.useOffset = false;
+                evaluation.relocationPossible = true;
+                evaluation.offset = 0;
+            }
+            else if ((res1 - off1) == (res2 - off2))
+            {
+                evaluation.useOffset = true;
+                evaluation.relocationPossible = true;
+                evaluation.offset = res1 - off1;
+            }
+            else
+            {
+                evaluation.useOffset = false;
+                evaluation.relocationPossible = false;
+                evaluation.offset = 0;
+            }
         }
 
-        if (evaluation.relocationPossible && evaluation.isExtern)
+        if (evaluation.relocationPossible && evaluation.isExtern && tokens.useSection)
         {
-            if (auto it = labels.find(evaluation.usedSection); it != labels.end())
+            if (auto it = labels.find(evaluation.usedSection.c_str()); it != labels.end())
             {
                 it->second.externUsed = true;
             }

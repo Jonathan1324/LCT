@@ -18,12 +18,12 @@ namespace Parser
 
     struct Operator
     {
-        std::string op;
+        StringPool::String op;
     };
 
     struct String
     {
-        std::string value;
+        StringPool::String value;
     };
 
     struct CurrentPosition
@@ -47,7 +47,25 @@ namespace Parser
 
         struct Memory
         {
-            // TODO
+            Immediate displacement;
+
+            uint64_t reg1;
+            Immediate scale1;
+
+            uint64_t reg2;
+            Immediate scale2;
+            
+            uint64_t segment_reg; // TODO
+
+            static constexpr uint64_t NO_POINTER_SIZE = 0;
+            uint64_t pointer_size;
+
+            bool use_displacement = false;
+
+            bool use_reg1 = false;
+            bool use_reg2 = false;
+
+            bool use_segment_reg = false;
         };
 
         using Operand = std::variant<Register, Immediate, Memory>;
@@ -78,7 +96,7 @@ namespace Parser
 
     struct Label
     {
-        std::string name;
+        StringPool::String name;
         bool isGlobal;
         bool isExtern;
 
@@ -88,7 +106,7 @@ namespace Parser
 
     struct Constant
     {
-        std::string name;
+        StringPool::String name;
         Immediate value;
         bool isGlobal;
 
@@ -118,7 +136,7 @@ namespace Parser
 
     struct Section
     {
-        std::string name;
+        StringPool::String name;
         std::vector<SectionEntry> entries;
 
         uint64_t align = 0;
@@ -133,7 +151,7 @@ namespace Parser
         virtual void Parse(const std::vector<Token::Token>& tokens) = 0;
         void Print() const;
 
-        const std::string& getOrg() const noexcept { return org; }
+        const std::string& getOrg() const noexcept { return org.c_str(); }
         const std::vector<Section>& getSections() const noexcept { return sections; }
 
     protected:

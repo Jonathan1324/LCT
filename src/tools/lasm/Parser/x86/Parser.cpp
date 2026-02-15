@@ -14,20 +14,13 @@ x86::Parser::Parser(const Context& _context, Architecture _arch, BitMode _bits)
 
 }
 
-Parser::ImmediateOperand getOperand(const Token::Token& token)
+Parser::ImmediateOperand getOperand(const Token::Token& token, const std::string& lastMainLabel, const Context& context)
 {
     if (token.type == Token::Type::Operator || token.type == Token::Type::Bracket)
     {
         Parser::Operator op;
         op.op = token.value;
         return op;
-    }
-    else if (std::isdigit(static_cast<unsigned char>(token.value[0])) != 0)
-    {
-        Parser::Integer integer;
-        // TODO: currently only integer
-        integer.value = evalInteger(token.value, 8, token.line, token.column);
-        return integer;
     }
     else if (token.type == Token::Type::Character)
     {
@@ -41,10 +34,22 @@ Parser::ImmediateOperand getOperand(const Token::Token& token)
         curPos.sectionPos = (token.value == "$") ? false : true;
         return curPos;
     }
+    else if (std::isdigit(static_cast<unsigned char>(token.value[0])) != 0)
+    {
+        Parser::Integer integer;
+        // TODO: currently only integer
+        integer.value = evalInteger(token.value, 8, token.line, token.column);
+        return integer;
+    }
     else
     {
         Parser::String str;
-        str.value = token.value;
+
+        if (token.value.size() > 0 && token.value[0] == '.')
+            str.value = context.stringPool->GetString(lastMainLabel + token.value.c_str());
+        else
+            str.value = token.value;
+
         return str;
     }
 }
@@ -53,27 +58,21 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 {
     std::vector<Token::Token> filteredTokens;
     Token::Type before = Token::Type::_EOF;
+
+    std::string lastMainLabel = "";
+
     for (size_t i = 0; i < tokens.size(); i++)
     {
         const Token::Token& token = tokens[i];
 
         if (token.type == Token::Type::EOL && before == Token::Type::EOL)
             continue;
-        
-        if (token.type == Token::Type::Punctuation && token.value.at(0) == ';')
-        {
-            while (i < tokens.size() && tokens[i].type != Token::Type::EOL && tokens[i].type != Token::Type::_EOF)
-                i++;
-            if (i < tokens.size())
-                filteredTokens.push_back(tokens[i]);
-            continue;
-        }
 
         before = token.type;
         filteredTokens.push_back(token);
     }
 
-    std::vector<std::string> globals;
+    std::vector<StringPool::String> globals;
 
     for (auto it = filteredTokens.begin(); it != filteredTokens.end(); /* manual increment */)
     {
@@ -159,11 +158,9 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
         "section", "segment", "bits", "org", "align"
     };
 
-    ::Parser::Section text;
-    text.name = ".text";
-    sections.push_back(text);
+    ::Parser::Section implicitSection;
 
-    ::Parser::Section* currentSection = &sections.at(0);
+    ::Parser::Section* currentSection = &implicitSection;
     BitMode currentBitMode = bits;
 
     for (size_t i = 0; i < filteredTokens.size(); i++)
@@ -175,7 +172,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
         const std::string lowerVal = toLower(token.value);
 
         // Constants
-        if (filteredTokens[i + 1].type == Token::Type::Token && filteredTokens[i + 1].value.compare("equ") == 0)
+        if (filteredTokens[i + 1].type == Token::Type::Token && filteredTokens[i + 1].value == "equ")
         {
             ::Parser::Constant constant;
             constant.lineNumber = token.line;
@@ -200,7 +197,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     while (i < filteredTokens.size() &&
                            !(filteredTokens[i].type == Token::Type::Comma || filteredTokens[i].type == Token::Type::EOL))
                     {
-                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
                         if (std::holds_alternative<::Parser::CurrentPosition>(op) && !constant.hasPos)
                             constant.hasPos = true;
                         constant.value.operands.push_back(op);
@@ -240,7 +237,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                  || filteredTokens[i].type == Token::Type::Character
                  || filteredTokens[i].type == Token::Type::Bracket)
                 {
-                    ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                    ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
                     repetition.count.operands.push_back(op);
                 }
                 else
@@ -276,7 +273,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                 {
                     // Create new section
                     ::Parser::Section section;
-                    section.name = name;
+                    section.name = context.stringPool->GetString(name);
                     sections.emplace_back(section);
                     currentSection = &sections.back();
                 }
@@ -289,7 +286,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
                 if (toLower(filteredTokens[i].value).find("align") == 0)
                 {
-                    size_t pos = filteredTokens[i].value.find("=");
+                    size_t pos = std::string(filteredTokens[i].value.c_str()).find("=");
                     if (pos != 5)
                         context.warningManager->add(Warning::GeneralWarning("Unset section attribute 'align'", filteredTokens[i].line, filteredTokens[i].column));
                     
@@ -298,20 +295,20 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
             }
             else if (lowerDir.compare("bits") == 0)
             {
-                std::string bits = filteredTokens[i + 1].value;
+                StringPool::String bits = filteredTokens[i + 1].value;
 
-                if (bits.compare(0, 2, "16") == 0)
+                if (bits == "16")
                     currentBitMode = BitMode::Bits16;
-                else if (bits.compare(0, 2, "32") == 0)
+                else if (bits == "32")
                     currentBitMode = BitMode::Bits32;
-                else if (bits.compare(0, 2, "64") == 0)
+                else if (bits == "64")
                     currentBitMode = BitMode::Bits64;
                 else
                     throw Exception::SyntaxError("Undefined bits", token.line, token.column);
             }
             else if (lowerDir.compare("org") == 0)
             {
-                org = filteredTokens[i + 1].value;
+                org = filteredTokens[i + 1].value.c_str();
             }
             else if (lowerDir.compare("align") == 0)
             {
@@ -327,7 +324,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     || filteredTokens[i].type == Token::Type::Character
                     || filteredTokens[i].type == Token::Type::Bracket)
                     {
-                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
                         align.align.operands.push_back(op);
                     }
                     else
@@ -362,11 +359,17 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
         // Labels
         if (token.type == Token::Type::Token &&
-           ((filteredTokens[i + 1].type == Token::Type::Punctuation && filteredTokens[i + 1].value == ":" && /*TODO: not segment:offset*/ ::x86::registers.find(token.value) == ::x86::registers.end())
+           ((filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation && filteredTokens[i + 1].value == ":" && /*TODO: not segment:offset*/ ::x86::registers.find(token.value.c_str()) == ::x86::registers.end())
          || (filteredTokens[i + 1].type == Token::Type::Token && std::find(dataDefinitions.begin(), dataDefinitions.end(), toLower(filteredTokens[i + 1].value)) != dataDefinitions.end())))
         {
             ::Parser::Label label;
-            label.name = token.value;
+            if (token.value.size() > 0 && token.value[0] == '.')
+                label.name = context.stringPool->GetString(lastMainLabel + token.value.c_str());
+            else
+            {
+                lastMainLabel = token.value.c_str();
+                label.name = token.value;
+            }
             label.lineNumber = token.line;
             label.column = token.column;
             label.isExtern = false;
@@ -378,7 +381,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
             currentSection->entries.push_back(label);
 
-            if (filteredTokens[i + 1].type == Token::Type::Punctuation && filteredTokens[i + 1].value == ":")
+            if (filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation && filteredTokens[i + 1].value == ":")
                 i++;
             continue;
         }
@@ -428,7 +431,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     while (i < filteredTokens.size() &&
                            !(filteredTokens[i].type == Token::Type::Comma || filteredTokens[i].type == Token::Type::EOL))
                     {
-                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
                         val.operands.push_back(op);
                         i++;
                     }
@@ -438,7 +441,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                 }
                 else if (filteredTokens[i].type == Token::Type::String)
                 {
-                    const std::string& val = filteredTokens[i].value;
+                    const std::string& val = filteredTokens[i].value.c_str();
                     size_t len = val.size();
 
                     for (size_t pos = 0; pos < len; pos += data.size)
@@ -495,7 +498,30 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
         // CONTROL
         static const std::unordered_map<std::string_view, uint64_t> controlInstructions = {
             {"nop", ::x86::Instructions::NOP},
-            {"hlt", ::x86::Instructions::HLT}
+            {"hlt", ::x86::Instructions::HLT},
+
+            {"jmp", Instructions::JMP},
+
+            {"je", Instructions::JE}, {"jz", Instructions::JE},
+            {"jne", Instructions::JNE}, {"jnz", Instructions::JNE},
+
+            {"jg", Instructions::JG}, {"jnle", Instructions::JG},
+            {"jge", Instructions::JGE}, {"jnl", Instructions::JGE},
+            {"jl", Instructions::JL}, {"jnge", Instructions::JL},
+            {"jle", Instructions::JLE}, {"jng", Instructions::JLE},
+
+            {"ja", Instructions::JA}, {"jnbe", Instructions::JA},
+            {"jae", Instructions::JAE}, {"jnb", Instructions::JAE},
+            {"jb", Instructions::JB}, {"jnae", Instructions::JB},
+            {"jbe", Instructions::JBE}, {"jna", Instructions::JBE},
+
+            {"jo", Instructions::JO}, {"jno", Instructions::JNO},
+            {"js", Instructions::JS}, {"jns", Instructions::JNS},
+            {"jp", Instructions::JP}, {"jpe", Instructions::JP},
+            {"jnp", Instructions::JNP}, {"jpo", Instructions::JNP},
+            {"jc", Instructions::JC}, {"jnc", Instructions::JNC},
+
+            {"ret", Instructions::RET}, {"call", Instructions::CALL}
         };
 
         auto it = controlInstructions.find(lowerVal);
@@ -509,11 +535,99 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                 case ::x86::Instructions::HLT:
                     break;
 
+                // TODO: jmp short/near/far
+                // TODO: call far
+
+                case Instructions::JMP: case Instructions::CALL:
+                {
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value.c_str());
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value.c_str());
+
+                    if (regIt != ::x86::registers.end()
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+
+                        break;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+
+                        break;
+                    }
+
+                    // Fallthrough
+                }
+
+                case Instructions::JE: case Instructions::JNE:
+                case Instructions::JG: case Instructions::JGE:
+                case Instructions::JL: case Instructions::JLE:
+                case Instructions::JA: case Instructions::JAE:
+                case Instructions::JB: case Instructions::JBE:
+                case Instructions::JO: case Instructions::JNO:
+                case Instructions::JS: case Instructions::JNS:
+                case Instructions::JP: case Instructions::JNP:
+                case Instructions::JC: case Instructions::JNC:
+                {
+                    // TODO: immediate?
+                    ::Parser::Immediate imm;
+                    while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                    {
+                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
+                        imm.operands.push_back(op);
+                        i++;
+                    }
+                    instruction.operands.push_back(imm);
+                } break;
+
+                case Instructions::RET:
+                {
+                    // TODO: immediate?
+                    if (filteredTokens[i].type != Token::Type::EOL)
+                    {
+                        ::Parser::Immediate imm;
+                        while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                        {
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
+                            imm.operands.push_back(op);
+                            i++;
+                        }
+                        instruction.operands.push_back(imm);
+                    }
+                } break;
+
                 default:
                     throw Exception::InternalError("Unknown control instruction", token.line, token.column);
             }
             if (i >= filteredTokens.size() || filteredTokens[i].type != Token::Type::EOL)
-                throw Exception::SyntaxError("Expected end of line after second argument for '" + lowerVal + "'", token.line, token.column);
+                throw Exception::SyntaxError("Expected end of line after argument for '" + lowerVal + "'", token.line, token.column);
             
             currentSection->entries.push_back(instruction);
             continue;
@@ -544,7 +658,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     ::Parser::Immediate imm;
                     while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
                     {
-                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                        ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
                         imm.operands.push_back(op);
                         i++;
                     }
@@ -613,6 +727,8 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
         // STACK
         static const std::unordered_map<std::string_view, uint64_t> stackInstructions = {
+            {"push", Instructions::PUSH},
+            {"pop", Instructions::POP},
             {"pusha", ::x86::Instructions::PUSHA},
             {"popa", ::x86::Instructions::POPA},
             {"pushad", ::x86::Instructions::PUSHAD},
@@ -643,6 +759,61 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                 case ::x86::Instructions::PUSHFQ:
                 case ::x86::Instructions::POPFQ:
                     break;
+
+                case Instructions::PUSH: case Instructions::POP:
+                {
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value.c_str());
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value.c_str());
+
+                    if (regIt != ::x86::registers.end()
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+                    }
+                    else
+                    {
+                        // TODO: immediate?
+                        ::Parser::Immediate imm;
+
+                        while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                        {
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
+                            imm.operands.push_back(op);
+                            i++;
+                        }
+                        instruction.operands.push_back(imm);
+                    }
+                } break;
                 
                 default:
                     throw Exception::InternalError("Unknown stack instruction", token.line, token.column);
@@ -669,7 +840,9 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                 case ::x86::Instructions::MOV:
                 {
                     const Token::Token& operand1 = filteredTokens[i];
-                    auto regIt = ::x86::registers.find(operand1.value);
+                    auto regIt = ::x86::registers.find(operand1.value.c_str());
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value.c_str());
+
                     if (regIt != ::x86::registers.end()
                      && filteredTokens[i + 1].type != Token::Type::Punctuation)
                     {
@@ -679,11 +852,30 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                         instruction.operands.push_back(reg);
                         i++;
                     }
-                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
-                        || (regIt != ::x86::registers.end()
-                        && filteredTokens[i + 1].type != Token::Type::Punctuation))
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
                     {
-                        // TODO: memory
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
                     }
                     else
                     {
@@ -695,9 +887,11 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     i++;
 
                     const Token::Token& operand2 = filteredTokens[i];
-                    regIt = ::x86::registers.find(operand2.value);
+                    regIt = ::x86::registers.find(operand2.value.c_str());
+                    ptrsizeIt = pointer_sizes.find(operand2.value.c_str());
+
                     if (regIt != ::x86::registers.end()
-                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
                     {
                         // reg
                         ::Parser::Instruction::Register reg;
@@ -705,11 +899,30 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                         instruction.operands.push_back(reg);
                         i++;
                     }
-                    else if ((operand1.type == Token::Type::Bracket && operand1.value == "[")
-                        || (regIt != ::x86::registers.end()
-                        && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand2.type == Token::Type::Bracket && operand2.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
                     {
-                        // TODO: memory
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
                     }
                     else
                     {
@@ -718,7 +931,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
 
                         while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
                         {
-                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i]);
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
                             imm.operands.push_back(op);
                             i++;
                         }
@@ -736,12 +949,471 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
             continue;
         }
 
+        // ALU
+        static const std::unordered_map<std::string_view, uint64_t> aluInstructions = {
+            {"add", ::x86::Instructions::ADD},
+            {"adc", ::x86::Instructions::ADC},
+            {"sub", ::x86::Instructions::SUB},
+            {"sbb", ::x86::Instructions::SBB},
+            {"cmp", ::x86::Instructions::CMP},
+            {"test", ::x86::Instructions::TEST},
+            {"and", ::x86::Instructions::AND},
+            {"or", ::x86::Instructions::OR},
+            {"xor", ::x86::Instructions::XOR},
+
+            {"mul", ::x86::Instructions::MUL},
+            {"imul", ::x86::Instructions::IMUL},
+            {"div", ::x86::Instructions::DIV},
+            {"idiv", ::x86::Instructions::IDIV},
+
+            {"shl", ::x86::Instructions::SHL},
+            {"shr", ::x86::Instructions::SHR},
+            {"sal", ::x86::Instructions::SAL},
+            {"sar", ::x86::Instructions::SAR},
+            {"rol", ::x86::Instructions::ROL},
+            {"ror", ::x86::Instructions::ROR},
+            {"rcl", ::x86::Instructions::RCL},
+            {"rcr", ::x86::Instructions::RCR},
+
+            {"not", ::x86::Instructions::NOT},
+            {"inc", ::x86::Instructions::INC},
+            {"dec", ::x86::Instructions::DEC},
+            {"neg", ::x86::Instructions::NEG}
+        };
+
+        it = aluInstructions.find(lowerVal);
+        if (it != aluInstructions.end())
+        {
+            ::Parser::Instruction::Instruction instruction(it->second, currentBitMode, token.line, token.column);
+            i++;
+            switch (instruction.mnemonic)
+            {
+                case ::x86::Instructions::ADD: case ::x86::Instructions::ADC:
+                case ::x86::Instructions::SUB: case ::x86::Instructions::SBB:
+                case ::x86::Instructions::CMP: case ::x86::Instructions::TEST:
+                case ::x86::Instructions::AND: case ::x86::Instructions::OR:
+                case ::x86::Instructions::XOR:
+                {
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value.c_str());
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value.c_str());
+
+                    if (regIt != ::x86::registers.end()
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+                    }
+                    else
+                    {
+                        // TODO: Error
+                    }
+
+                    if (filteredTokens[i].type != Token::Type::Comma)
+                        throw Exception::SyntaxError(std::string("Expected ',' after first argument for '") + lowerVal + "'", operand1.line, operand1.column);
+                    i++;
+
+                    const Token::Token& operand2 = filteredTokens[i];
+                    regIt = ::x86::registers.find(operand2.value.c_str());
+                    ptrsizeIt = pointer_sizes.find(operand2.value.c_str());
+
+                    if (regIt != ::x86::registers.end()
+                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand2.type == Token::Type::Bracket && operand2.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+                    }
+                    else
+                    {
+                        // TODO: immediate?
+                        ::Parser::Immediate imm;
+
+                        while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                        {
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
+                            imm.operands.push_back(op);
+                            i++;
+                        }
+                        instruction.operands.push_back(imm);
+                    }
+                } break;
+
+                case ::x86::Instructions::MUL:
+                case ::x86::Instructions::DIV: case ::x86::Instructions::IDIV:
+                {
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value.c_str());
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value.c_str());
+
+                    if (regIt != ::x86::registers.end()
+                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+                    }
+                } break;
+
+                case ::x86::Instructions::IMUL:
+                {
+                    bool firstReg = false;
+
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value.c_str());
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value.c_str());
+                    
+                    if (regIt != ::x86::registers.end()
+                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+
+                        firstReg = true;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+                    }
+
+                    if (firstReg && filteredTokens[i].type == Token::Type::Comma)
+                    {
+                        i++;
+
+                        const Token::Token& operand2 = filteredTokens[i];
+                        regIt = ::x86::registers.find(operand2.value.c_str());
+                        ptrsizeIt = pointer_sizes.find(operand2.value.c_str());
+
+                        if (regIt != ::x86::registers.end()
+                        && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                        {
+                            // reg
+                            ::Parser::Instruction::Register reg;
+                            reg.reg = regIt->second;
+                            instruction.operands.push_back(reg);
+                            i++;
+                        }
+                        else if (ptrsizeIt != pointer_sizes.end()
+                                || (operand2.type == Token::Type::Bracket && operand2.value == "[")
+                                || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                        {
+                            std::vector<const Token::Token*> memoryTokens;
+
+                            if (ptrsizeIt != pointer_sizes.end())
+                                i++;
+
+                            // TODO: segment registers
+
+                            i++; // '['
+
+                            while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                            {
+                                memoryTokens.push_back(&filteredTokens[i]);
+                                i++;
+                            }
+
+                            ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                            instruction.operands.push_back(mem);
+
+                            i++; // ']'
+                        }
+                        else
+                        {
+                            throw Exception::SyntaxError("Expected register or memory operand after ','", operand1.line, operand1.column);
+                        }
+
+                        if (filteredTokens[i].type == Token::Type::Comma)
+                        {
+                            i++;
+
+                            // TODO: immediate?
+                            ::Parser::Immediate imm;
+                            while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                            {
+                                ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
+                                imm.operands.push_back(op);
+                                i++;
+                            }
+                            instruction.operands.push_back(imm);
+                        }
+                    }
+                } break;
+
+                case ::x86::Instructions::SHL: case ::x86::Instructions::SHR:
+                case ::x86::Instructions::SAL: case ::x86::Instructions::SAR:
+                case ::x86::Instructions::ROL: case ::x86::Instructions::ROR:
+                case ::x86::Instructions::RCL: case ::x86::Instructions::RCR:
+                {
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value.c_str());
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value.c_str());
+
+                    if (regIt != ::x86::registers.end()
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+                    }
+                    else
+                    {
+                        // TODO: Error
+                    }
+
+                    if (filteredTokens[i].type != Token::Type::Comma)
+                        throw Exception::SyntaxError(std::string("Expected ',' after first argument for '") + lowerVal + "'", operand1.line, operand1.column);
+                    i++;
+
+                    const Token::Token& operand2 = filteredTokens[i];
+                    regIt = ::x86::registers.find(operand2.value.c_str());
+                    ptrsizeIt = pointer_sizes.find(operand2.value.c_str());
+
+                    if (regIt != ::x86::registers.end()
+                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+
+                        if (reg.reg != x86::Registers::CL)
+                            throw Exception::SemanticError("Only CL register is allowed as shift/rotate count", operand2.line, operand2.column);
+
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand2.type == Token::Type::Bracket && operand2.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        throw Exception::SyntaxError("Invalid shift/rotate count operand, must be immediate or CL", operand2.line, operand2.column);
+                    }
+                    else
+                    {
+                        // TODO: immediate?
+                        ::Parser::Immediate imm;
+
+                        while (i < filteredTokens.size() && filteredTokens[i].type != Token::Type::EOL)
+                        {
+                            ::Parser::ImmediateOperand op = getOperand(filteredTokens[i], lastMainLabel, context);
+                            imm.operands.push_back(op);
+                            i++;
+                        }
+                        instruction.operands.push_back(imm);
+                    }
+                } break;
+
+                case ::x86::Instructions::NOT: case ::x86::Instructions::INC:
+                case ::x86::Instructions::DEC: case ::x86::Instructions::NEG:
+                {
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value.c_str());
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value.c_str());
+
+                    if (regIt != ::x86::registers.end()
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+                    }
+                } break;
+
+                default:
+                    throw Exception::InternalError("Unknown data instruction", token.line, token.column);
+            }
+            if (i >= filteredTokens.size() || filteredTokens[i].type != Token::Type::EOL)
+                throw Exception::SyntaxError("Expected end of line after second argument for '" + lowerVal + "'", token.line, token.column);
+            
+            currentSection->entries.push_back(instruction);
+            continue;
+        }
+
+
         context.warningManager->add(Warning::GeneralWarning("Unhandled token: " + token.what(&context)));
     }
 
-    // TODO: probably better way to handle this
-    if (sections.at(0).entries.empty())
+    if (!implicitSection.entries.empty())
     {
-        sections.erase(sections.begin());
+        ::Parser::Section* textSection = nullptr;
+
+        for (auto& section : sections)
+        {
+            if (section.name == ".text")
+            {
+                textSection = &section;
+                break;
+            }
+        }
+
+        if (textSection)
+        {
+            textSection->entries.insert(textSection->entries.begin(), implicitSection.entries.begin(), implicitSection.entries.end());
+        }
+        else
+        {
+            implicitSection.name = context.stringPool->GetString(".text");
+            sections.insert(sections.begin(), implicitSection);
+        }
     }
 }

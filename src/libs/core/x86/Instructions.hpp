@@ -10,6 +10,13 @@ namespace x86
         NOP,
         HLT,
 
+        JMP, JE, JNE,
+        JG, JGE, JL, JLE,
+        JA, JAE, JB, JBE,
+        JO, JNO, JS, JNS, JP, JNP, JC, JNC,
+
+        CALL, RET,
+
         // INTERRUPT
         INT, IRET, IRETQ, IRETD,
         SYSCALL, SYSRET,
@@ -22,6 +29,7 @@ namespace x86
         LAHF, SAHF,
 
         // STACK
+        PUSH, POP,
         PUSHA, POPA,
         PUSHAD, POPAD,
         PUSHF, POPF,
@@ -31,5 +39,13 @@ namespace x86
         // DATA
         MOV,
 
+        // ALU
+        ADD, ADC, SUB, SBB, CMP, TEST, AND, OR, XOR,
+        MUL, IMUL, DIV, IDIV,
+
+        SHL, SHR, SAL, SAR,
+        ROL, ROR, RCL, RCR,
+
+        NOT, NEG, INC, DEC
     };
 }

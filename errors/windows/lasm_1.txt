@@ -1,0 +1,6 @@
+during RTL pass: expand
+src\tools\lasm\OutputWriter\ELF\ELFWriter.cpp:950:1: internal compiler error: in try_forward_edges, at cfgcleanup.cc:580
+  950 | }
+      | ^
+Please submit a full bug report, with preprocessed source (by using -freport-bug).
+See <https://github.com/msys2/MINGW-packages/issues> for instructions.

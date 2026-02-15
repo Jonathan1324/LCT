@@ -100,6 +100,9 @@ def hash_files(files: list[Path]) -> str:
     hasher = hashlib.new("sha256")
 
     for file in sorted(files, key=lambda f: str(f)):
+        if not file.exists():
+            continue
+
         with file.open("rb") as f:
             while chunk := f.read(8192):
                 hasher.update(chunk)
@@ -405,24 +408,35 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
 
     Warning_Flags = [
         "-Wall", "-Wextra", "-Wpedantic", "-Wconversion", "-Wshadow",
-        "-Wformat=2", "-Wundef", "-Wunreachable-code", "-Wduplicated-cond",
-        "-Wnull-dereference", "-Wduplicated-branches",
-        "-Wlogical-op", "-Wunused-parameter"
+        "-Wformat=2", "-Wundef", "-Wunreachable-code",
+        "-Wnull-dereference", "-Wunused-parameter"
     ]
 
     Debug_Flags = [
         "-ggdb3", "-O0", "-fno-omit-frame-pointer",
         "-fno-inline", "-march=native", "-ftrapv",
-        "-fstack-check", "-fno-strict-aliasing"
+        "-fstack-check", "-fno-strict-aliasing",
 
         "-DDEBUG_BUILD"
     ]
 
     Release_Flags = [
-        "-O3", "-DNDEBUG", "-flto", "-fmerge-constants", "-fno-ident",
+        "-O3", "-DNDEBUG", "-fno-ident",
         "-funroll-loops", "-fstrict-aliasing", "-ffunction-sections",
-        "-fdata-sections", "-fpie", "-pie"
+        "-fdata-sections", "-fpie", "-pie",
+        #TODO: "-flto"
     ]
+
+    if OS != OS.macOS:
+        Release_Flags.extend([
+            "-fmerge-constants"
+        ])
+
+        Warning_Flags.extend([
+            "-Wduplicated-branches",
+            "-Wlogical-op",
+            "-Wduplicated-cond"
+        ])
 
     Security_Flags = ["-fstack-protector-strong", "-D_FORTIFY_SOURCE=2", "-fPIC"]
     Static_Flags = ["-static", "-static-libgcc", "-static-libstdc++"]

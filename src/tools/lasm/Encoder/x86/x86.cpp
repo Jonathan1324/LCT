@@ -113,15 +113,6 @@ std::tuple<uint8_t, bool, bool> x86::getReg(uint64_t reg)
         case DR13:   return std::make_tuple(5, false, false);
         case DR14:   return std::make_tuple(6, false, false);
         case DR15:   return std::make_tuple(7, false, false);
-
-        case TR0:    return std::make_tuple(0, false, false);
-        case TR1:    return std::make_tuple(1, false, false);
-        case TR2:    return std::make_tuple(2, false, false);
-        case TR3:    return std::make_tuple(3, false, false);
-        case TR4:    return std::make_tuple(4, false, false);
-        case TR5:    return std::make_tuple(5, false, false);
-        case TR6:    return std::make_tuple(6, false, false);
-        case TR7:    return std::make_tuple(7, false, false);
     }
     throw Exception::InternalError("Unknown register", -1, -1);
 }
@@ -193,13 +184,53 @@ uint8_t x86::getRegSize(uint64_t reg, BitMode mode)
         case DR10: case DR11:
         case DR12: case DR13:
         case DR14: case DR15:
-        case TR0: case TR1:
-        case TR2: case TR3:
-        case TR4: case TR5:
-        case TR6: case TR7:
             if (mode == BitMode::Bits64) return 64;
             else return 32;
     }
 
     return 0;
+}
+
+bool x86::isGPR(uint64_t reg)
+{
+    switch (reg)
+    {
+        case AL: case CL: case DL: case BL:
+        case AH: case CH: case DH: case BH:
+        case SPL: case BPL: case SIL: case DIL:
+        case R8B: case R9B: case R10B: case R11B:
+        case R12B: case R13B: case R14B: case R15B:
+
+        case AX: case CX: case DX: case BX:
+        case SP: case BP: case SI: case DI:
+        case R8W: case R9W: case R10W: case R11W:
+        case R12W: case R13W: case R14W: case R15W:
+
+        case EAX: case ECX: case EDX: case EBX:
+        case ESP: case EBP: case ESI: case EDI:
+        case R8D: case R9D: case R10D: case R11D:
+        case R12D: case R13D: case R14D: case R15D:
+
+        case RAX: case RCX: case RDX: case RBX:
+        case RSP: case RBP: case RSI: case RDI:
+        case R8: case R9: case R10: case R11:
+        case R12: case R13: case R14: case R15:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+bool x86::isSegment(uint64_t reg)
+{
+    switch (reg)
+    {
+        case ES: case CS: case SS:
+        case DS: case FS: case GS:
+            return true;
+
+        default:
+            return false;
+    }
 }

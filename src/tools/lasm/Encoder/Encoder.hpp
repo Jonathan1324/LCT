@@ -13,8 +13,8 @@ namespace Encoder
 
     struct Label
     {
-        std::string name;
-        std::string section;
+        StringPool::String name;
+        StringPool::String section;
         uint64_t offset = 0;
 
         bool isGlobal;
@@ -32,13 +32,13 @@ namespace Encoder
 
     struct Constant
     {
-        std::string name;
-        std::string section;
+        StringPool::String name;
+        StringPool::String section;
         Parser::Immediate expression;
         int64_t value;
 
         int64_t off;
-        std::string usedSection;
+        StringPool::String usedSection;
 
         HasPos hasPos;
         bool useOffset = false;
@@ -54,7 +54,8 @@ namespace Encoder
 
     enum class RelocationType
     {
-        Absolute
+        Absolute,
+        PC_Relative
     };
 
     enum class RelocationSize
@@ -70,14 +71,16 @@ namespace Encoder
     {
         uint64_t offsetInSection;
         int64_t addend;
-        std::string section;
-        std::string usedSection;
+        StringPool::String section;
+        StringPool::String usedSection;
 
         RelocationType type;
         RelocationSize size;
 
         bool addendInCode = false;
         bool isExtern = false;
+
+        bool isSigned = false;
     };
 
     struct Evaluation
@@ -88,7 +91,7 @@ namespace Encoder
         bool relocationPossible;
         bool isExtern;
 
-        std::string usedSection;
+        StringPool::String usedSection;
     };
 
     class Encoder
@@ -103,18 +106,20 @@ namespace Encoder
 
             Instruction(Encoder& e) : enc(e) {}
 
-            BitMode getBitMode() { return enc.bits; }
+            inline BitMode getBitMode() { return enc.bits; }
 
-            ::Encoder::Evaluation Evaluate(
-                const Parser::Immediate& immediate
+            inline ::Encoder::Evaluation Evaluate(
+                const Parser::Immediate& immediate,
+                bool ripRelative, uint64_t ripExtra
             )
-            { return enc.Evaluate(immediate, enc.bytesWritten, enc.sectionOffset, enc.currentSection); }
+            { return enc.Evaluate(immediate, enc.bytesWritten, enc.sectionOffset, enc.currentSection, ripRelative, ripExtra); }
 
             void AddRelocation(
                 uint64_t extra_offset, uint64_t addend,
-                bool addendInCode, const std::string& usedSection,
+                bool addendInCode, StringPool::String usedSection,
                 ::Encoder::RelocationType type,
                 ::Encoder::RelocationSize size,
+                bool isSigned,
                 bool isExtern
             )
             {
@@ -122,10 +127,11 @@ namespace Encoder
                 relocation.offsetInSection = enc.sectionOffset + extra_offset;
                 relocation.addend = addend;
                 relocation.addendInCode = addendInCode;
-                relocation.section = *enc.currentSection;
+                relocation.section = enc.currentSection;
                 relocation.usedSection = usedSection;
                 relocation.type = type;
                 relocation.size = size;
+                relocation.isSigned = isSigned;
                 relocation.isExtern = isExtern;
                 enc.relocations.push_back(std::move(relocation));
             }
@@ -133,9 +139,10 @@ namespace Encoder
         public:
             virtual ~Instruction() {};
 
-            virtual std::vector<uint8_t> encode() = 0;
+            virtual void encode(std::vector<uint8_t>& buffer) = 0;
             virtual uint64_t size() = 0;
             virtual void evaluate() = 0;
+            virtual bool optimize() = 0;
         };
 
         Encoder(const Context& _context, Architecture _arch, BitMode _bits, const Parser::Parser* _parser);
@@ -151,11 +158,21 @@ namespace Encoder
         const std::vector<Relocation>& getRelocations() const { return relocations; }
         
     protected:
+        void Initialize();
+
+        void EvaluationPhase();
+        void CalculationPhase();
+        bool OptimizationPhase();
+
+        void GenerateCode();
+
+        Instruction* GetDataDefinition(const Parser::DataDefinition& dataDefinition);
+
         virtual Instruction* GetInstruction(const Parser::Instruction::Instruction& instruction) = 0;
 
         virtual std::vector<uint8_t> EncodePadding(size_t length) = 0;
 
-        Evaluation Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, const std::string* curSection);
+        Evaluation Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, StringPool::String curSection, bool ripRelative, uint64_t ripExtra);
 
         void resolveConstants(bool withPos);
         bool Resolvable(const Parser::Immediate& immediate);
@@ -180,7 +197,7 @@ namespace Encoder
 
         size_t bytesWritten = 0;
         size_t sectionOffset = 0;
-        const std::string* currentSection;
+        StringPool::String currentSection;
     };
 
     class SectionEntry
@@ -188,16 +205,16 @@ namespace Encoder
     public:
         struct Label
         {
-            Label(std::string _name) : name(_name) {}
+            Label(StringPool::String _name) : name(_name) {}
 
-            std::string name;
+            StringPool::String name;
         };
 
         struct Constant
         {
-            Constant(std::string _name) : name(_name) {}
+            Constant(StringPool::String _name) : name(_name) {}
 
-            std::string name;
+            StringPool::String name;
         };
 
         SectionEntry(Encoder::Instruction* instr)
@@ -256,7 +273,7 @@ namespace Encoder
 
     struct Section
     {
-        std::string name;
+        StringPool::String name;
         bool isInitialized = true;
         SectionBuffer buffer;
         size_t reservedSize = 0;
