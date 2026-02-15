@@ -64,7 +64,7 @@ ASCII_Instruction = [
 ALU_Instruction = [
     Instruction(
         mnemonic="ADC",
-        name="ASCII Adjust After Addition",
+        name="Add With Carry",
         description="Adds the destination operand, the source operand, and the carry flag and stores the result in the destination operand",
         asm=[
             "adc al, <imm8>",
