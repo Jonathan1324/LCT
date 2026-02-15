@@ -100,6 +100,9 @@ def hash_files(files: list[Path]) -> str:
     hasher = hashlib.new("sha256")
 
     for file in sorted(files, key=lambda f: str(f)):
+        if not file.exists():
+            continue
+
         with file.open("rb") as f:
             while chunk := f.read(8192):
                 hasher.update(chunk)
