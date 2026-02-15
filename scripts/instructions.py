@@ -1,50 +1,67 @@
+from dataclasses import dataclass
+from typing import List
+
+@dataclass
+class Instruction:
+    mnemonic: str
+    name: str
+    description: str
+    asm: List[str]
+    hex: List[str]
+
+    def to_markdown(self, pad: int = 4) -> str:
+        max_hex_len = max(len(hex) for hex in self.hex)
+        lines = [
+            f"## {self.mnemonic} - {self.name}",
+            ""
+            f"{self.description}",
+            ""
+        ]
+        
+        lines.append("```hex")
+
+        for hex, asm in zip(self.hex, self.asm):
+            spacing = " " * (max_hex_len - len(hex) + pad)
+            lines.append(f"{hex}{spacing}; {asm}")
+
+        lines.append("```")
+
 instructions = [
-    {
-        "mnemonic": "AAA",
-        "name": "ASCII Adjust After Addition",
-        "description": "Adjusts AL after adding two ASCII digits to form a valid BCD result.",
-        "asm": ["aaa"],
-        "hex": ["37"]
-    },
-    {
-        "mnemonic": "AAD",
-        "name": "ASCII Adjust AX Before Division",
-        "description": "Adjusts AX by converting two unpacked BCD digits in AH and AL into a binary number in AL, clearing AH before a division.",
-        "asm": ["aad", "aad <imm8>"],
-        "hex": ["D5 0A", "D5 <imm8>"]
-    },
-    {
-        "mnemonic": "AAM",
-        "name": "ASCII Adjust AX After Multiply",
-        "description": "Adjusts AX after multiplying two unpacked BCD digits to form unpacked BCD digits in AH and AL.",
-        "asm": ["aam", "aam <imm8>"],
-        "hex": ["D4 0A", "D4 <imm8>"]
-    },
-    {
-        "mnemonic": "AAS",
-        "name": "ASCII Adjust AL After Subtraction",
-        "description": "Adjusts AL after subtracting two ASCII digits to form a valid BCD result.",
-        "asm": ["aas"],
-        "hex": ["3F"]
-    }
+    Instruction(
+        mnemonic="AAA",
+        name="ASCII Adjust After Addition",
+        description="Adjusts AL after adding two ASCII digits to form a valid BCD result.",
+        asm=["aaa"],
+        hex=["37"]
+    ),
+    Instruction(
+        mnemonic="AAD",
+        name="ASCII Adjust AX Before Division",
+        description="Adjusts AX by converting two unpacked BCD digits in AH and AL into a binary number in AL, clearing AH before a division.",
+        asm=["aad", "aad <imm8>"],
+        hex=["D5 0A", "D5 <imm8>"]
+    ),
+    Instruction(
+        mnemonic="AAM",
+        name="ASCII Adjust AX After Multiply",
+        description="Adjusts AX after multiplying two unpacked BCD digits to form unpacked BCD digits in AH and AL.",
+        asm=["aam", "aam <imm8>"],
+        hex=["D4 0A", "D4 <imm8>"]
+    ),
+    Instruction(
+        mnemonic="AAS",
+        name="ASCII Adjust AL After Subtraction",
+        description="Adjusts AL after subtracting two ASCII digits to form a valid BCD result.",
+        asm=["aas"],
+        hex=["3F"]
+    )
 ]
 
-def generate_markdown(instructions):
-    md = ["# Instructions\n"]
-    for instr in instructions:
-        md.append(f"## {instr['mnemonic']} – {instr['name']}\n")
-        md.append(f"{instr['description']}\n")
+md_lines = ["# Instructions\n"]
+for instr in instructions:
+    md_lines.append(instr.to_markdown())
 
-        max_len = max(len(a) for a in instr['asm'])
-        pad = 4
+markdown_text = "\n".join(md_lines)
 
-        md.append("```hex")
-        for h, a in zip(instr['hex'], instr['asm']):
-            padding = " " * (max_len - len(h) + pad)
-            md.append(f"{h}{padding}; {a}")
-        md.append("```\n")
-    return "\n".join(md)
-
-markdown_text = generate_markdown(instructions)
 with open("docs/lasm/x86.md", "w") as f:
     f.write(markdown_text)
