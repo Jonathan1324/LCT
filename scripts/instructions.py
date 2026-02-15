@@ -10,10 +10,10 @@ class Instruction:
     hex: List[str]
 
     def to_markdown(self, pad: int = 4) -> str:
-        max_hex_len = max(len(hex) for hex in self.hex)
+        max_hex_len = max(len(h) for h in self.hex)
         lines = [
-            f"## {self.mnemonic} - {self.name}",
-            ""
+            f"### {self.mnemonic} - {self.name}",
+            "",
             f"{self.description}",
             ""
         ]
@@ -26,7 +26,11 @@ class Instruction:
 
         lines.append("```")
 
-instructions = [
+        lines.append("")
+
+        return "\n".join(lines)
+
+ASCII_Instruction = [
     Instruction(
         mnemonic="AAA",
         name="ASCII Adjust After Addition",
@@ -57,8 +61,9 @@ instructions = [
     )
 ]
 
-md_lines = ["# Instructions\n"]
-for instr in instructions:
+md_lines = ["# Instructions", ""]
+md_lines.extend(["## ASCII", ""])
+for instr in ASCII_Instruction:
     md_lines.append(instr.to_markdown())
 
 markdown_text = "\n".join(md_lines)
