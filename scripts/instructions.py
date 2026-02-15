@@ -68,11 +68,11 @@ ALU_Instruction = [
         description="Adds the destination operand, the source operand, and the carry flag and stores the result in the destination operand",
         asm=[
             "adc al, <imm8>",
-            "adc ax/eax/rax, <imm16/32/64>"
+            "adc ax/eax/rax, <imm16/32/64>" # TODO
         ],
         hex=[
             "14 <imm8>",
-            "(66) (REX) 15 <imm16/32/64>"
+            "(66) (REX) 15 <imm16/32/64>" # TODO
         ]
     ),
 ]
