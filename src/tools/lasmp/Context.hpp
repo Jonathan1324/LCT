@@ -6,6 +6,7 @@
 struct Context
 {
     WarningManager* warningManager;
-    std::string filename;
+    std::filesystem::path current_path;
+    std::filesystem::path filename;
     std::vector<std::filesystem::path> include_paths;
 };

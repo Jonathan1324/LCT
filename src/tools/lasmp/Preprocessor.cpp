@@ -13,7 +13,7 @@ PreProcessor::PreProcessor(const Context& _context)
 
 }
 
-void PreProcessor::Process(std::ostream* output, std::istream* input, const std::string& filename)
+void PreProcessor::Process(std::ostream* output, std::istream* input, const std::filesystem::path& file)
 {
     if (!input || !(*input))
         throw Exception::InternalError("Input stream isn't open or is in a bad state", -1, -1);
@@ -22,6 +22,8 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
     
     int64_t inputLine = 0;
     int64_t outputLine = std::numeric_limits<int64_t>::min();
+
+    std::string filename = file.string();
 
     std::string line;
     while (std::getline(*input, line))
@@ -117,11 +119,12 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                     throw Exception::SyntaxError("Missing closing character in %include", -1, -1);
                 }
 
-                std::string filename = rest.substr(firstPos + 1, secondPos - firstPos - 1);
+                std::string file_path = rest.substr(firstPos + 1, secondPos - firstPos - 1);
                 std::ifstream input;
                 std::filesystem::path resolvedPath;
-                std::filesystem::path requested(filename);
+                std::filesystem::path requested(file_path);
 
+                bool found = false;
                 if (requested.is_absolute())
                 {
                     if (std::filesystem::exists(requested) &&
@@ -129,38 +132,65 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                     {
                         input.open(requested);
                         if (input)
+                        {
+                            found = true;
                             resolvedPath = requested;
+                        }
                     }
                 }
                 else
                 {
-                    for (const std::filesystem::path& base : context.include_paths)
+                    if (openChar == '"')
                     {
-                        std::filesystem::path candidate = base / filename;
+                        std::filesystem::path candidate = file.parent_path() / file_path;
 
                         if (std::filesystem::exists(candidate) && std::filesystem::is_regular_file(candidate))
                         {
                             input.open(candidate);
-                            if (input)
+                            if (input.is_open())
                             {
                                 resolvedPath = candidate;
-                                break;
+                                found = true;
                             }
                         }
                     }
+                    else if (openChar == '<')
+                    {
+                        for (const std::filesystem::path& base : context.include_paths)
+                        {
+                            std::filesystem::path candidate = base / file_path;
+
+                            if (std::filesystem::exists(candidate) && std::filesystem::is_regular_file(candidate))
+                            {
+                                input.open(candidate);
+                                if (input.is_open())
+                                {
+                                    resolvedPath = candidate;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!found)
+                {
+                    // TODO: Better
+                    throw Exception::SyntaxError("Could not find include file " + file_path, -1, -1);
                 }
 
                 std::ostringstream buffer;
                 if (!input.is_open())
                 {
                     throw Exception::IOError(
-                        "Could not open include file: " + filename,
+                        "Could not open include file: " + file_path,
                         -1,
                         -1
                     );
                 }
 
-                Process(&buffer, &input, resolvedPath.string());
+                Process(&buffer, &input, resolvedPath);
 
                 (*output) << buffer.str();
 
