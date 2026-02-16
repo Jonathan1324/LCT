@@ -68,18 +68,37 @@ ALU_Instruction = [
         description="Adds the destination operand, the source operand, and the carry flag and stores the result in the destination operand",
         asm=[
             "adc al, <imm8>",
-            "adc ax/eax/rax, <imm16/32/64>" # TODO
+            "adc ax|eax|rax, <imm16|32>",
+            "adc r/m8, imm8",
+            "adc r/m16|32|64, <imm16|32>",
+            "adc r/m16|32|64, <imm8>",
+            "adc r/m8, r8",
+            "adc r/m16|32|64, r16|32|64",
+            "adc r8, r/m8",
+            "adc r16|32|64, r/m16|32|64"
         ],
         hex=[
             "14 <imm8>",
-            "(66) (REX) 15 <imm16/32/64>" # TODO
+            "(66) (REX.W) 15 <imm16|32>",
+            "80 <ModR/M /2> <imm8>",
+            "(66) (REX.W) 81 <ModR/M /2> <imm16|32>",
+            "(66) (REX.W) 83 <ModR/M /2> <imm8>",
+            "10 <ModR/M>",
+            "(66) (REX.W) 11 <ModR/M>",
+            "12 <ModR/M>",
+            "(66) (REX.W) 13 <ModR/M>"
         ]
     ),
 ]
 
 md_lines = ["# Instructions", ""]
+
 md_lines.extend(["## ASCII", ""])
 for instr in ASCII_Instruction:
+    md_lines.append(instr.to_markdown())
+
+md_lines.extend(["## ALU", ""])
+for instr in ALU_Instruction:
     md_lines.append(instr.to_markdown())
 
 markdown_text = "\n".join(md_lines)
