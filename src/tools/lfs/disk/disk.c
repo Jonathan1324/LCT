@@ -5,7 +5,7 @@ uint64_t Disk_Read(Disk* disk, void* buffer, uint64_t offset, uint64_t size)
     if (!disk || !buffer || offset >= disk->size || size == 0) return 0;
 
     if (offset != disk->current_position) {
-        if (FileSeek(disk->f, offset, SEEK_SET) != 0) return 0;
+        if (FileSeek(disk->f, (file_offset_t)offset, SEEK_SET) != 0) return 0;
         disk->current_position = offset;
     }
 
@@ -21,7 +21,7 @@ uint64_t Disk_Write(Disk* disk, void* buffer, uint64_t offset, uint64_t size)
     if (!disk || !buffer /*|| offset >= disk->size*/ || size == 0) return 0;
 
     if (offset != disk->current_position) {
-        if (FileSeek(disk->f, offset, SEEK_SET) != 0) return 0;
+        if (FileSeek(disk->f, (file_offset_t)offset, SEEK_SET) != 0) return 0;
         disk->current_position = offset;
     }
 

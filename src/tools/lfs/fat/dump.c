@@ -31,8 +31,6 @@ void FAT_DumpInfo(FAT_Filesystem* fs, FILE* s, int count_fat)
         uint32_t total_sectors = (uint32_t)(header->total_sectors_large ? header->total_sectors_large : header->total_sectors_small);
         uint64_t total_bytes = (uint64_t)total_sectors*header->bytes_per_sector;
 
-        const uint64_t min = 5;
-        const uint64_t precision = 1000;
         char size_suffix = 0;
         uint64_t main = 0;
         uint64_t decimals = 0;
@@ -270,7 +268,7 @@ void FAT_DumpInfo(FAT_Filesystem* fs, FILE* s, int count_fat)
     } else if (count_fat) {
         uint32_t free_clusters = 0;
         uint32_t current_cluster = 2; //first 2 are reserved
-        uint32_t total_clusters = fs->data_size / fs->cluster_size;
+        uint32_t total_clusters = (uint32_t)(fs->data_size / fs->cluster_size);
         while (current_cluster < total_clusters) {
             uint32_t value = FAT_ReadFATEntry(fs, current_cluster);
             if (FAT_ClusterType(fs, value) == FAT_CLUSTER_FREE) free_clusters++;

@@ -8,7 +8,7 @@ uint32_t FAT_ReadFromFileRaw(FAT_File* f, uint32_t offset, void* buffer, uint32_
     if (!f || !buffer) return 0;
     if (offset >= f->size) return 0;
 
-    uint32_t remaining = size;
+    uint64_t remaining = (uint32_t)size;
     uint32_t file_pos = offset;
     void* out = buffer;
 
@@ -17,29 +17,29 @@ uint32_t FAT_ReadFromFileRaw(FAT_File* f, uint32_t offset, void* buffer, uint32_
     if (f->is_root_directory) {
         uint64_t abs = f->fs->root_offset + offset;
         if (Partition_Read(f->fs->partition, out, abs, remaining) != remaining) return 0;
-        return remaining;
+        return (uint32_t)remaining;
     }
 
     uint32_t cluster = f->first_cluster;
     if (cluster < 2) return 0;
 
-    uint32_t skip = file_pos / f->fs->cluster_size;
-    uint32_t off = file_pos % f->fs->cluster_size;
+    uint32_t skip = (uint32_t)((uint64_t)file_pos / f->fs->cluster_size);
+    uint32_t off = (uint32_t)((uint64_t)file_pos % f->fs->cluster_size);
 
     while (skip--) {
         cluster = FAT_ReadFATEntry(f->fs, cluster);
         if (FAT_ClusterType(f->fs, cluster) == FAT_CLUSTER_EOC) return 0;
     }
 
-    uint32_t total_read = 0;
+    uint64_t total_read = 0;
     while (remaining > 0 && FAT_ClusterType(f->fs, cluster) != FAT_CLUSTER_EOC) {
-        uint32_t abs = f->fs->data_offset + (cluster - 2) * f->fs->cluster_size + off;
-        uint32_t chunk = f->fs->cluster_size - off;
+        uint64_t abs = f->fs->data_offset + (cluster - 2) * f->fs->cluster_size + off;
+        uint64_t chunk = f->fs->cluster_size - off;
         if (chunk > remaining) chunk = remaining;
 
         if (Partition_Read(f->fs->partition, out, abs, chunk) != chunk) break;
 
-        out += chunk;
+        out = (char*)out + chunk;
         remaining -= chunk;
         total_read += chunk;
         off = 0;
@@ -47,7 +47,7 @@ uint32_t FAT_ReadFromFileRaw(FAT_File* f, uint32_t offset, void* buffer, uint32_
         if (remaining > 0) cluster = FAT_ReadFATEntry(f->fs, cluster);
     }
 
-    return total_read;
+    return (uint32_t)total_read;
 }
 
 uint32_t FAT_WriteToFileRaw(FAT_File* f, uint32_t offset, void* buffer, uint32_t size)
@@ -57,22 +57,22 @@ uint32_t FAT_WriteToFileRaw(FAT_File* f, uint32_t offset, void* buffer, uint32_t
     if (f->size > 0) f->changed = 1;
 
     if (f->is_root_directory) {
-        uint32_t abs = f->fs->root_offset + offset;
+        uint64_t abs = f->fs->root_offset + offset;
         if (offset > f->size) return 0;
-        uint32_t remaining = size;
+        uint64_t remaining = size;
         if (offset + remaining > f->size) remaining = f->size - offset;
         if (Partition_Write(f->fs->partition, (void*)buffer, abs, remaining) != remaining) return 0;
-        return remaining;
+        return (uint32_t)remaining;
     }
 
     void* out = buffer;
 
-    uint32_t remaining = size;
+    uint64_t remaining = size;
     if (offset + remaining > f->size) {
         uint32_t old_end = f->size;
-        uint32_t reserve = offset + remaining - f->size;
+        uint64_t reserve = offset + remaining - f->size;
         // TODO
-        int r = FAT_ReserveSpace(f, reserve, !f->is_directory);
+        int r = FAT_ReserveSpace(f, (uint32_t)reserve, !f->is_directory);
         if (r != 0) return 0;
         if (offset > old_end) {
             // fill in the rest
@@ -95,32 +95,32 @@ uint32_t FAT_WriteToFileRaw(FAT_File* f, uint32_t offset, void* buffer, uint32_t
     uint32_t cluster = f->first_cluster;
     if (cluster < 2) return 0;
 
-    uint32_t skip = offset / f->fs->cluster_size;
-    uint32_t off = offset % f->fs->cluster_size;
+    uint32_t skip = (uint32_t)((uint64_t)offset / f->fs->cluster_size);
+    uint32_t off = (uint32_t)((uint64_t)offset % f->fs->cluster_size);
 
     while (skip--) {
         cluster = FAT_ReadFATEntry(f->fs, cluster);
         if (FAT_ClusterType(f->fs, cluster) == FAT_CLUSTER_EOC) return 0;
     }
 
-    uint32_t written = 0;
+    uint64_t written = 0;
 
     while (remaining > 0 && FAT_ClusterType(f->fs, cluster) != FAT_CLUSTER_EOC) {
-        uint32_t abs = f->fs->data_offset + (cluster - 2) * f->fs->cluster_size + off;
-        uint32_t chunk = f->fs->cluster_size - off;
+        uint64_t abs = f->fs->data_offset + (cluster - 2) * f->fs->cluster_size + off;
+        uint64_t chunk = f->fs->cluster_size - off;
         if (chunk > remaining) chunk = remaining;
 
         if (Partition_Write(f->fs->partition, (void*)out, abs, chunk) != chunk) break;
 
+        out = (char*)out + chunk;
         written += chunk;
         remaining -= chunk;
-        out += chunk;
         off = 0;
 
         if (remaining > 0) cluster = FAT_ReadFATEntry(f->fs, cluster);
     }
 
-    return written;
+    return (uint32_t)written;
 }
 
 int FAT_ReserveSpace(FAT_File* f, uint32_t extra, int update_entry_size)
@@ -128,8 +128,8 @@ int FAT_ReserveSpace(FAT_File* f, uint32_t extra, int update_entry_size)
     if (!f || f->is_root_directory || f->read_only || f->fs->read_only) return 1;
 
     uint32_t total_size = f->size + extra;
-    uint32_t needed_clusters = (total_size + f->fs->cluster_size - 1) / f->fs->cluster_size;
-    uint32_t current_clusters = (f->size + f->fs->cluster_size - 1) / f->fs->cluster_size;
+    uint32_t needed_clusters = (uint32_t)((uint64_t)(total_size + f->fs->cluster_size - 1) / f->fs->cluster_size);
+    uint32_t current_clusters = (uint32_t)((uint64_t)(f->size + f->fs->cluster_size - 1) / f->fs->cluster_size);
 
     FAT_DirectoryEntry entry;
     if (!f->is_root_directory_fat32) {
@@ -227,21 +227,21 @@ uint32_t FAT_GetAbsoluteOffset(FAT_File* f, uint32_t relative_offset)
     if (relative_offset > f->size) return 0;
 
     if (f->is_root_directory) {
-        return f->fs->root_offset + relative_offset;
+        return (uint32_t)(f->fs->root_offset + relative_offset);
     }
 
     uint32_t cluster = f->first_cluster;
     if (cluster < 2) return 0;
 
-    uint32_t skip = relative_offset / f->fs->cluster_size;
-    uint32_t off = relative_offset % f->fs->cluster_size;
+    uint32_t skip = (uint32_t)((uint64_t)relative_offset / f->fs->cluster_size);
+    uint32_t off = (uint32_t)((uint64_t)relative_offset % f->fs->cluster_size);
 
     while (skip--) {
         cluster = FAT_ReadFATEntry(f->fs, cluster);
         if (FAT_ClusterType(f->fs, cluster) == FAT_CLUSTER_EOC) return 0;
     }
 
-    return f->fs->data_offset + (cluster - 2) * f->fs->cluster_size + off;
+    return (uint32_t)(f->fs->data_offset + (cluster - 2) * f->fs->cluster_size + off);
 }
 
 int FAT_GetDirectoryEntry(FAT_File* f, FAT_DirectoryEntry* entry)
@@ -292,13 +292,13 @@ void FAT_CloseEntry(FAT_File* entry)
         if (!entry->is_directory) dir_entry.attribute |= FAT_ENTRY_ARCHIVE;
 
         if (entry->read_only) dir_entry.attribute |= FAT_ENTRY_READ_ONLY;
-        else dir_entry.attribute &= ~FAT_ENTRY_READ_ONLY;
+        else dir_entry.attribute &= (uint8_t)~(int8_t)FAT_ENTRY_READ_ONLY;
 
         if (entry->is_hidden) dir_entry.attribute |= FAT_ENTRY_HIDDEN;
-        else dir_entry.attribute &= ~FAT_ENTRY_HIDDEN;
+        else dir_entry.attribute &= (uint8_t)~(int8_t)FAT_ENTRY_HIDDEN;
 
         if (entry->is_system) dir_entry.attribute |= FAT_ENTRY_SYSTEM;
-        else dir_entry.attribute &= ~FAT_ENTRY_SYSTEM;
+        else dir_entry.attribute &= (uint8_t)~(int8_t)FAT_ENTRY_SYSTEM;
 
         if (FAT_SetDirectoryEntry(entry, &dir_entry) != 0) {
             //TODO: Error
@@ -323,13 +323,34 @@ FAT_File* FAT_CreateEntry(FAT_File* parent, const char* name, int is_directory, 
     entry.first_cluster = 0;
     entry.file_size = 0;
 
-    FAT_EncodeTime(creation, &entry.creation_date, &entry.creation_time, &entry.creation_time_tenths);
+    uint16_t creation_date = entry.creation_date;
+    uint16_t creation_time = entry.creation_time;
+    uint8_t  creation_time_tenths = entry.creation_time_tenths;
 
-    uint8_t tenths;
-    FAT_EncodeTime(last_modification, &entry.last_modification_date, &entry.last_modification_time, &tenths);
+    FAT_EncodeTime(creation, &creation_date, &creation_time, &creation_time_tenths);
 
-    uint16_t time;
-    FAT_EncodeTime(last_access, &entry.last_access_date, &time, &tenths);
+    entry.creation_date = creation_date;
+    entry.creation_time = creation_time;
+    entry.creation_time_tenths = creation_time_tenths;
+
+    uint16_t last_mod_date = entry.last_modification_date;
+    uint16_t last_mod_time = entry.last_modification_time;
+    uint8_t  last_mod_tenths = 0;
+
+    FAT_EncodeTime(last_modification, &last_mod_date, &last_mod_time, &last_mod_tenths);
+
+    entry.last_modification_date = last_mod_date;
+    entry.last_modification_time = last_mod_time;
+
+    uint16_t last_access_time = 0;
+    uint16_t last_access_date = entry.last_access_date;
+    uint8_t last_access_tenths = 0;
+
+    FAT_EncodeTime(last_access, &last_access_date, &last_access_time, &last_access_tenths);
+
+    entry.last_access_date = last_access_date;
+
+    // TODO: Delete LFN Entries
 
     uint8_t checksum = FAT_CreateChecksum(&entry);
     uint32_t lfn_count = 0;
@@ -340,6 +361,8 @@ FAT_File* FAT_CreateEntry(FAT_File* parent, const char* name, int is_directory, 
     }
 
     FAT_File* file = FAT_CreateEntryRaw(parent, &entry, is_directory, lfn_entries, lfn_count);
+    if (!file) return NULL;
+
     file->read_only = 0;
     file->is_hidden = is_hidden;
     file->is_system = is_system;
@@ -372,9 +395,9 @@ FAT_File* FAT_FindEntry(FAT_File* parent, const char* name)
         uint32_t r = FAT_ReadFromFileRaw(parent, offset, (void*)&entry, sizeof(FAT_DirectoryEntry));
         if (r != sizeof(FAT_DirectoryEntry)) break;
 
-        if ((uint32_t)(unsigned char)entry.name[0] == 0x00) break; // End of directory
+        if ((char)entry.name[0] == 0x00) break; // End of directory
 
-        if ((uint32_t)(unsigned char)entry.name[0] == FAT_ENTRY_DELETED) {
+        if ((char)entry.name[0] == FAT_ENTRY_DELETED) {
             offset += sizeof(FAT_DirectoryEntry);
             continue;
         }
@@ -427,7 +450,7 @@ FAT_File* FAT_FindEntry(FAT_File* parent, const char* name)
                             cluster_count++;
                             cluster = FAT_ReadFATEntry(file->fs, cluster);
                         }
-                        file->size = file->fs->cluster_size * cluster_count;
+                        file->size = (uint32_t)(file->fs->cluster_size * cluster_count);
                         file->is_directory = 1;
                     } else {
                         file->size = entry.file_size;
@@ -470,7 +493,7 @@ FAT_File* FAT_FindEntry(FAT_File* parent, const char* name)
                     cluster_count++;
                     cluster = FAT_ReadFATEntry(file->fs, cluster);
                 }
-                file->size = file->fs->cluster_size * cluster_count;
+                file->size = (uint32_t)(file->fs->cluster_size * cluster_count);
                 file->is_directory = 1;
             } else {
                 file->size = entry.file_size;

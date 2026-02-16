@@ -2,6 +2,8 @@
 
 #include <stdlib.h>
 
+// TODO: Check if it still works
+
 int FAT_RemoveDirectoryEntry(FAT_File* f)
 {
     if (!f || f->read_only || f->fs->read_only) return 1;
@@ -47,7 +49,7 @@ uint32_t FAT_AddDirectoryEntry(FAT_File* directory, FAT_DirectoryEntry* entry, F
 
     int found = 0;
     while (FAT_ReadFromFileRaw(directory, offset, (uint8_t*)&tmp, sizeof(tmp)) == sizeof(tmp)) {
-        if ((uint32_t)(unsigned char)tmp.name[0] == 0x00 || (uint32_t)(unsigned char)tmp.name[0] == FAT_ENTRY_DELETED) {
+        if ((char)tmp.name[0] == 0x00 || (char)tmp.name[0] == FAT_ENTRY_DELETED) {
             run++;
             if (run == needed) {
                 found = 1;
@@ -59,15 +61,15 @@ uint32_t FAT_AddDirectoryEntry(FAT_File* directory, FAT_DirectoryEntry* entry, F
         offset += sizeof(FAT_DirectoryEntry);
     }
 
-    uint32_t base = offset - (found ? run-1 : run)*sizeof(FAT_DirectoryEntry);
+    uint32_t base = (uint32_t)offset - (uint32_t)((found ? run-1 : run)*sizeof(FAT_DirectoryEntry));
 
     for (uint32_t i = 0; i < lfn_count; i++) {
-        uint32_t off = base + i * sizeof(FAT_DirectoryEntry);
+        uint32_t off = (uint32_t)base + (uint32_t)(i * sizeof(FAT_DirectoryEntry));
         if (FAT_WriteToFileRaw(directory, off, (uint8_t*)&lfn_entries[lfn_count - 1 - i], sizeof(FAT_LFNEntry)) != sizeof(FAT_LFNEntry))
             return 0xFFFFFFFF; // critical
     }
 
-    uint32_t short_off = base + lfn_count*sizeof(FAT_DirectoryEntry);
+    uint32_t short_off = (uint32_t)base + (uint32_t)(lfn_count*sizeof(FAT_DirectoryEntry));
     if (FAT_WriteToFileRaw(directory, short_off, (uint8_t*)entry, sizeof(FAT_DirectoryEntry)) != sizeof(FAT_DirectoryEntry))
         return 0xFFFFFFFF;
 
@@ -91,8 +93,10 @@ int FAT_AddDotsToDirectory(FAT_File* directory, FAT_File* parent)
     dot.ext[1] = ' ';
     dot.ext[2] = ' ';
     dot.attribute = FAT_ENTRY_DIRECTORY;
-    dot.first_cluster = directory->first_cluster;
+    dot.first_cluster = (uint16_t)directory->first_cluster;
+    dot.first_cluster_high = (uint16_t)(directory->first_cluster >> 16);
     uint32_t rel_offset_dot = FAT_AddDirectoryEntry(directory, &dot, NULL, 0);
+    (void)rel_offset_dot;
 
     FAT_DirectoryEntry dotdot = {0};
     dotdot.name[0] = '.';
@@ -107,8 +111,10 @@ int FAT_AddDotsToDirectory(FAT_File* directory, FAT_File* parent)
     dotdot.ext[1] = ' ';
     dotdot.ext[2] = ' ';
     dotdot.attribute = FAT_ENTRY_DIRECTORY;
-    dotdot.first_cluster = parent->first_cluster;
+    dotdot.first_cluster = (uint16_t)parent->first_cluster;
+    dot.first_cluster_high = (uint16_t)(parent->first_cluster >> 16);
     uint32_t rel_offset_dotdot = FAT_AddDirectoryEntry(directory, &dotdot, NULL, 0);
+    (void)rel_offset_dotdot;
 
     return 0;
 }
@@ -130,9 +136,9 @@ char** FAT_ListDir(FAT_File* dir, uint64_t* out_count)
         uint32_t r = FAT_ReadFromFileRaw(dir, offset, (uint8_t*)&entry, sizeof(FAT_DirectoryEntry));
         if (r != sizeof(FAT_DirectoryEntry)) break;
 
-        if ((uint32_t)(unsigned char)entry.name[0] == 0x00) break; // End of directory
+        if (entry.name[0] == 0x00) break; // End of directory
 
-        if ((uint32_t)(unsigned char)entry.name[0] == FAT_ENTRY_DELETED) {
+        if (entry.name[0] == FAT_ENTRY_DELETED) {
             offset += sizeof(FAT_DirectoryEntry);
             continue;
         }
@@ -157,6 +163,7 @@ char** FAT_ListDir(FAT_File* dir, uint64_t* out_count)
             uint16_t* u16 = FAT_CombineLFN(lfn_entries, lfn_count, &u16len);
             if (u16) {
                 uint32_t out_len = utf16_to_utf8(u16, u16len, &name_utf8);
+                (void)out_len; // TODO
                 free(u16);
             }
             free(lfn_entries);
@@ -171,17 +178,17 @@ char** FAT_ListDir(FAT_File* dir, uint64_t* out_count)
             while (ext_len > 0 && entry.ext[ext_len-1] == ' ') ext_len--;
 
             int total_len = len + (ext_len > 0 ? 1 + ext_len : 0);
-            name_utf8 = (char*)malloc(total_len + 1);
+            name_utf8 = (char*)malloc((size_t)total_len + 1);
             if (!name_utf8) {
                 for (uint64_t i = 0; i < count; i++) free(list[i]);
                 free(list);
                 return NULL;
             }
 
-            memcpy(name_utf8, entry.name, len);
+            memcpy(name_utf8, entry.name, (size_t)len);
             if (ext_len > 0) {
                 name_utf8[len] = '.';
-                memcpy(name_utf8 + len + 1, entry.ext, ext_len);
+                memcpy(name_utf8 + len + 1, entry.ext, (size_t)ext_len);
             }
             name_utf8[total_len] = '\0';
         }
@@ -199,7 +206,7 @@ char** FAT_ListDir(FAT_File* dir, uint64_t* out_count)
         offset += sizeof(FAT_DirectoryEntry);
     }
 
-    if (!list) list = (char**)malloc(1);
+    if (!list) list = (char**)malloc(8);
 
     *out_count = count;
     return list;

@@ -28,7 +28,7 @@ MBR_Disk* MBR_CreateDisk(Disk* disk, int fast, void* bootsector, int force_boots
         uint64_t offset = 512;
         uint8_t zero_block[CHUNK_SIZE] = {0};
         while (offset < disk->size) {
-            uint32_t chunk = (disk->size - offset) < CHUNK_SIZE ? (disk->size - offset) : CHUNK_SIZE;
+            uint32_t chunk = (uint32_t)((disk->size - offset) < CHUNK_SIZE ? (disk->size - offset) : CHUNK_SIZE);
             if (Disk_Write(disk, (uint8_t*)zero_block, offset, chunk) != chunk) {
                 // TODO
             }
@@ -148,7 +148,7 @@ uint64_t MBR_GetEndOfUsedRegion(MBR_Disk* mbr, uint64_t start)
     uint64_t last_end = start;
 
     for (int i = 0; i < 4; i++) {
-        uint64_t part_start = MBR_GetPartitionStart(&partitions[i], mbr->disk->sectorSize);
+        //uint64_t part_start = MBR_GetPartitionStart(&partitions[i], mbr->disk->sectorSize);
         uint64_t part_end   = MBR_GetPartitionEnd(&partitions[i], mbr->disk->sectorSize);
 
         if (part_end > start && part_end > last_end) {
@@ -245,6 +245,7 @@ int MBR_PrintAll(MBR_Disk* mbr, const char* name)
                 case MBR_TYPE_FAT16_LBA: type_str = type_fat16; break;
                 case MBR_TYPE_FAT32_CHS: type_str = type_fat32_chs; break;
                 case MBR_TYPE_FAT32_LBA: type_str = type_fat32; break;
+                case MBR_TYPE_NTFS_EXFAT: type_str = type_exfat_ntfs; break;
 
                 case MBR_TYPE_LINUX_SWAP: type_str = type_linux_swap; break;
                 case MBR_TYPE_LINUX_NATIVE: type_str = type_linux_native; break;
@@ -275,4 +276,6 @@ int MBR_PrintAll(MBR_Disk* mbr, const char* name)
             
         }
     }
+
+    return 0;
 }

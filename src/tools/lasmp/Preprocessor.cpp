@@ -117,18 +117,18 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                     throw Exception::SyntaxError("Missing closing character in %include", -1, -1);
                 }
 
-                std::string filename = rest.substr(firstPos + 1, secondPos - firstPos - 1);
-                std::ifstream input;
+                std::string new_filename = rest.substr(firstPos + 1, secondPos - firstPos - 1);
+                std::ifstream new_input;
                 std::filesystem::path resolvedPath;
-                std::filesystem::path requested(filename);
+                std::filesystem::path requested(new_filename);
 
                 if (requested.is_absolute())
                 {
                     if (std::filesystem::exists(requested) &&
                         std::filesystem::is_regular_file(requested))
                     {
-                        input.open(requested);
-                        if (input)
+                        new_input.open(requested);
+                        if (new_input)
                             resolvedPath = requested;
                     }
                 }
@@ -136,12 +136,12 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                 {
                     for (const std::filesystem::path& base : context.include_paths)
                     {
-                        std::filesystem::path candidate = base / filename;
+                        std::filesystem::path candidate = base / new_filename;
 
                         if (std::filesystem::exists(candidate) && std::filesystem::is_regular_file(candidate))
                         {
-                            input.open(candidate);
-                            if (input)
+                            new_input.open(candidate);
+                            if (new_input)
                             {
                                 resolvedPath = candidate;
                                 break;
@@ -151,16 +151,16 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                 }
 
                 std::ostringstream buffer;
-                if (!input.is_open())
+                if (!new_input.is_open())
                 {
                     throw Exception::IOError(
-                        "Could not open include file: " + filename,
+                        "Could not open include file: " + new_filename,
                         -1,
                         -1
                     );
                 }
 
-                Process(&buffer, &input, resolvedPath.string());
+                Process(&buffer, &new_input, resolvedPath.string());
 
                 (*output) << buffer.str();
 
