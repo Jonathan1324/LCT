@@ -36,9 +36,6 @@ namespace x86
         virtual void encodeS(std::vector<uint8_t>& buffer) {};
         virtual uint64_t sizeS() { return 0; };
 
-        void evaluateDisplacement();
-        bool optimizeDisplacement();
-
         void checkSize(uint64_t size, BitMode bits);
         
         uint64_t parseMemory(
@@ -60,9 +57,9 @@ namespace x86
 
         void checkReg(const Parser::Instruction::Register& reg, BitMode bits);
 
-        Instruction(::Encoder::Encoder& e, BitMode bits);
+        Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr);
 
-        BitMode bitmode;
+        BitMode bits;
 
         bool use16BitPrefix = false;
         bool use16BitAddressPrefix = false;
@@ -115,5 +112,19 @@ namespace x86
             StringPool::String relocationUsedSection;
             bool relocationIsExtern;
         } displacement;
+
+        struct Immediate {
+            bool use = false;
+            bool is_signed = false;
+
+            uint16_t sizeInBits;
+
+            uint64_t value;
+            Parser::Immediate immediate;
+
+            bool needsRelocation = false;
+            StringPool::String relocationUsedSection;
+            bool relocationIsExtern;
+        } immediate;
     };
 }

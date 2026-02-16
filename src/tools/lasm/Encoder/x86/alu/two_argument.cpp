@@ -3,11 +3,10 @@
 #include <limits>
 #include <cstring>
 
-x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e, bits)
+x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encoder& e, const Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    bitmode = bits;
-    switch (mnemonic)
+    switch (instr.mnemonic)
     {
         case Instructions::ADD: case Instructions::ADC:
         case Instructions::SUB: case Instructions::SBB:
@@ -15,11 +14,11 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
         case Instructions::AND: case Instructions::OR:
         case Instructions::XOR:
         {
-            if (operands.size() != 2)
+            if (instr.operands.size() != 2)
                 throw Exception::InternalError("Wrong argument count for two argument alu instruction", -1, -1);
 
-            mainOperand = operands[0];
-            otherOperand = operands[1];
+            mainOperand = instr.operands[0];
+            const Parser::Instruction::Operand& otherOperand = instr.operands[1];
 
             bool useRMFirst = false;
             bool otherIsImmediate = false;
@@ -66,8 +65,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     switch (reg.reg)
                     {
                         case AL:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint8_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 8;
+                            immediate.sizeInBits = 8;
 
                             accumulatorReg = true;
                             break;
@@ -75,8 +73,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                         case AX:
                             if (bits != BitMode::Bits16) use16BitPrefix = true;
 
-                            specific.alu_reg_imm.max = std::numeric_limits<uint16_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 16;
+                            immediate.sizeInBits = 16;
                             
                             accumulatorReg = true;
                             break;
@@ -84,15 +81,13 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                         case EAX:
                             if (bits == BitMode::Bits16) use16BitPrefix = true;
 
-                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 32;
+                            immediate.sizeInBits = 32;
 
                             accumulatorReg = true;
                             break;
 
                         case RAX:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 32;
+                            immediate.sizeInBits = 32;
 
                             rex.use = true;
                             rex.w = true;
@@ -102,13 +97,14 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     }
                 }
 
-                aluType = AluType::ALU_REG_IMM;
+                immediate.use = true;
+                immediate.immediate = std::get<Parser::Immediate>(otherOperand);
 
                 if (accumulatorReg)
                 {
-                    if (specific.alu_reg_imm.sizeInBits == 8)
+                    if (immediate.sizeInBits == 8)
                     {
-                        switch (mnemonic)
+                        switch (instr.mnemonic)
                         {
                             case ADD: opcode = 0x04; break;
                             case OR:  opcode = 0x0C; break;
@@ -123,8 +119,8 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     }
                     else
                     {
-                        if (mnemonic != TEST) canOptimize = true;
-                        switch (mnemonic)
+                        if (instr.mnemonic != TEST) canOptimize = true;
+                        switch (instr.mnemonic)
                         {
                             case ADD: opcode = 0x05; break;
                             case OR:  opcode = 0x0D; break;
@@ -158,29 +154,25 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     switch (mainSize)
                     {
                         case 8:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint8_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 8;
+                            immediate.sizeInBits = 8;
                             break;
 
                         case 16:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint16_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 16;
+                            immediate.sizeInBits = 16;
 
                             if (bits != BitMode::Bits16)
                                 use16BitPrefix = true;
                             break;
 
                         case 32:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 32;
+                            immediate.sizeInBits = 32;
 
                             if (bits == BitMode::Bits16)
                                 use16BitPrefix = true;
                             break;
 
                         case 64:
-                            specific.alu_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                            specific.alu_reg_imm.sizeInBits = 32;
+                            immediate.sizeInBits = 32;
 
                             rex.use = true;
                             rex.w = true;
@@ -191,9 +183,9 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                             throw Exception::InternalError("Invalid bits", -1, -1);
                     }
 
-                    if (mnemonic == TEST)
+                    if (instr.mnemonic == TEST)
                     {
-                        if (specific.alu_reg_imm.sizeInBits == 8)
+                        if (immediate.sizeInBits == 8)
                         {
                             opcode = 0xF6;
                         }
@@ -204,7 +196,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                     }
                     else
                     {
-                        if (specific.alu_reg_imm.sizeInBits == 8)
+                        if (immediate.sizeInBits == 8)
                         {
                             opcode = 0x80;
                         }
@@ -214,7 +206,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                             opcode = 0x81;
                         }
 
-                        switch (mnemonic)
+                        switch (instr.mnemonic)
                         {
                             case ADD: modrm.reg = 0; break;
                             case OR:  modrm.reg = 1; break;
@@ -230,8 +222,6 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
             }
             else
             {
-                aluType = AluType::ALU_REG_REG;
-
                 uint64_t mainSize;
                 uint64_t otherSize;
 
@@ -274,7 +264,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
 
                 if (mainSize == 8)
                 {
-                    switch (mnemonic)
+                    switch (instr.mnemonic)
                     {
                         case ADD:  opcode = (useRMFirst ? 0x00 : 0x02); break;
                         case OR:   opcode = (useRMFirst ? 0x08 : 0x0A); break;
@@ -289,7 +279,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                 }
                 else
                 {
-                    switch (mnemonic)
+                    switch (instr.mnemonic)
                     {
                         case ADD:  opcode = (useRMFirst ? 0x01 : 0x03); break;
                         case OR:   opcode = (useRMFirst ? 0x09 : 0x0B); break;
@@ -349,45 +339,11 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
     }
 }
 
-void x86::Two_Argument_ALU_Instruction::evaluateS()
-{
-    switch (aluType)
-    {
-        case AluType::ALU_REG_REG: break;
-
-        case AluType::ALU_REG_IMM:
-        {
-            Parser::Immediate imm = std::get<Parser::Immediate>(otherOperand);
-
-            ::Encoder::Evaluation evaluation = Evaluate(imm, false, 0);
-
-            if (evaluation.useOffset)
-            {
-                usedReloc = true;
-                evalUsedSection = evaluation.usedSection;
-                evalIsExtern = evaluation.isExtern;
-                specific.alu_reg_imm.value = evaluation.offset;
-            }
-            else
-            {
-                Int128 result = evaluation.result;
-
-                // FIXME
-                //if (result > specific.alu_reg_imm.max) throw Exception::SemanticError("Operand too large for instruction", -1, -1);
-
-                specific.alu_reg_imm.value = static_cast<uint64_t>(result);
-            }
-
-            break;
-        }
-    }
-}
-
 bool x86::Two_Argument_ALU_Instruction::optimizeS()
 {
-    if (canOptimize && !usedReloc)
+    if (canOptimize && !immediate.needsRelocation)
     {
-        int32_t value = static_cast<int32_t>(static_cast<uint32_t>(specific.alu_reg_imm.value));
+        int32_t value = static_cast<int32_t>(static_cast<uint32_t>(immediate.value));
         if (
             value <= static_cast<int64_t>(std::numeric_limits<int8_t>::max()) &&
             value >= static_cast<int64_t>(std::numeric_limits<int8_t>::min())
@@ -397,8 +353,7 @@ bool x86::Two_Argument_ALU_Instruction::optimizeS()
 
             opcode = 0x83;
 
-            specific.alu_reg_imm.max = std::numeric_limits<uint8_t>::max();
-            specific.alu_reg_imm.sizeInBits = 8;
+            immediate.sizeInBits = 8;
 
             if (accumulatorReg)
             {
@@ -406,7 +361,7 @@ bool x86::Two_Argument_ALU_Instruction::optimizeS()
                 if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
                 {
                     Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
-                    mainSize = parseRegister(reg, bitmode, false);
+                    mainSize = parseRegister(reg, bits, false);
 
                     if (!isGPR(reg.reg))
                         throw Exception::SemanticError("Two argument ALU instruction only accepts GPRs", -1, -1);
@@ -414,7 +369,7 @@ bool x86::Two_Argument_ALU_Instruction::optimizeS()
                 else if (std::holds_alternative<Parser::Instruction::Memory>(mainOperand))
                 {
                     Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(mainOperand);
-                    mainSize = parseMemory(mem, bitmode, true);
+                    mainSize = parseMemory(mem, bits, true);
                 }
             }
 
@@ -423,88 +378,4 @@ bool x86::Two_Argument_ALU_Instruction::optimizeS()
     }
 
     return false;
-}
-
-void x86::Two_Argument_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
-{
-    switch (aluType)
-    {
-        case AluType::ALU_REG_REG:
-        {
-            // TODO
-            break;
-        }
-
-        case AluType::ALU_REG_IMM:
-        {
-            uint32_t sizeInBytes = specific.alu_reg_imm.sizeInBits / 8;
-
-            uint64_t oldSize = buffer.size();
-            buffer.resize(oldSize + sizeInBytes);
-
-            std::memcpy(buffer.data() + oldSize, &specific.alu_reg_imm.value, sizeInBytes);
-
-            if (usedReloc)
-            {
-                uint64_t currentOffset = 1; // opcode
-                if (use16BitPrefix) currentOffset++;
-                if (rex.use) currentOffset++;
-                if (modrm.use) currentOffset++;
-
-                ::Encoder::RelocationSize relocSize;
-                switch (specific.alu_reg_imm.sizeInBits)
-                {
-                    case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
-                    case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
-                    case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
-                    case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
-                    default: throw Exception::InternalError("Unknown size in bits " + std::to_string(specific.alu_reg_imm.sizeInBits), -1, -1);
-                }
-
-                AddRelocation(
-                    currentOffset,
-                    specific.alu_reg_imm.value,
-                    true,
-                    evalUsedSection,
-                    ::Encoder::RelocationType::Absolute,
-                    relocSize,
-                    false, // TODO: Check if signed
-                    evalIsExtern
-                );
-            }
-
-            break;
-        }
-
-        default:
-            throw Exception::InternalError("Unknown aluType", -1, -1);
-    }
-}
-
-uint64_t x86::Two_Argument_ALU_Instruction::sizeS()
-{
-    uint64_t s = 0;
-
-    switch (aluType)
-    {
-        case AluType::ALU_REG_REG:
-        {
-            // TODO
-            break;
-        }
-
-        case AluType::ALU_REG_IMM:
-        {
-            uint32_t sizeInBytes = specific.alu_reg_imm.sizeInBits / 8;
-
-            s += sizeInBytes;
-
-            break;
-        }
-
-        default:
-            throw Exception::InternalError("Unknown aluType", -1, -1);
-    }
-
-    return s;
 }

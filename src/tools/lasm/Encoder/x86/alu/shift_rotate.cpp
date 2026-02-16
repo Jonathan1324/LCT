@@ -3,21 +3,21 @@
 #include <limits>
 #include <cstring>
 
-x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e, bits)
+x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encoder& e, const Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    switch (mnemonic)
+    switch (instr.mnemonic)
     {
         case Instructions::SHL: case Instructions::SHR:
         case Instructions::SAL: case Instructions::SAR:
         case Instructions::ROL: case Instructions::ROR:
         case Instructions::RCL: case Instructions::RCR:
         {
-            if (operands.size() != 2)
+            if (instr.operands.size() != 2)
                 throw Exception::InternalError("Wrong argument count for Shift/Rotate ALU instruction", -1, -1);
 
-            mainOperand = operands[0];
-            countOperand = operands[1];
+            const Parser::Instruction::Operand& mainOperand = instr.operands[0];
+            const Parser::Instruction::Operand& countOperand = instr.operands[1];
 
             uint64_t size;
             if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
@@ -48,14 +48,17 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
             }
             else if (std::holds_alternative<Parser::Immediate>(countOperand))
             {
-                usesImmediate = true;
+                immediate.use = true;
+                immediate.immediate = std::get<Parser::Immediate>(countOperand);
+
+                immediate.sizeInBits = 8;
 
                 canOptimize = true;
                 if (size == 8) opcode = 0xC0;
                 else           opcode = 0xC1;
             }
 
-            switch (mnemonic)
+            switch (instr.mnemonic)
             {
                 case Instructions::ROL: modrm.reg = 0; break;
                 case Instructions::ROR: modrm.reg = 1; break;
@@ -97,42 +100,15 @@ x86::Shift_Rotate_ALU_Instruction::Shift_Rotate_ALU_Instruction(::Encoder::Encod
     }
 }
 
-void x86::Shift_Rotate_ALU_Instruction::evaluateS()
-{
-    if (usesImmediate)
-    {
-        Parser::Immediate imm = std::get<Parser::Immediate>(countOperand);
-
-        ::Encoder::Evaluation evaluation = Evaluate(imm, false, 0);
-
-        if (evaluation.useOffset)
-        {
-            usedReloc = true;
-            relocUsedSection = evaluation.usedSection;
-            relocIsExtern = evaluation.isExtern;
-            count = static_cast<uint8_t>(evaluation.offset); // TODO: Check for overflow
-        }
-        else
-        {
-            Int128 result = evaluation.result;
-
-            if (result < 0)   throw Exception::SemanticError("shift/rotate instruction can't have a negative operand", -1, -1);
-            if (result > 255) throw Exception::SemanticError("Operand too large for shift/rotate instruction", -1, -1);
-
-            count = static_cast<uint8_t>(result);
-        }
-    }
-}
-
 bool x86::Shift_Rotate_ALU_Instruction::optimizeS()
 {
-    if (canOptimize && !usedReloc)
+    if (canOptimize && !immediate.needsRelocation)
     {
-        if (count == 1)
+        if (static_cast<uint8_t>(immediate.value) == 1)
         {
             canOptimize = false;
 
-            usesImmediate = false;
+            immediate.use = false;
 
             if (is8Bit) opcode = 0xD0;
             else        opcode = 0xD1;
@@ -140,40 +116,4 @@ bool x86::Shift_Rotate_ALU_Instruction::optimizeS()
     }
 
     return false;
-}
-
-void x86::Shift_Rotate_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
-{
-    if (usesImmediate)
-    {
-        buffer.push_back(count);
-
-        if (usedReloc)
-        {
-            uint64_t currentOffset = 1; // opcode
-            if (use16BitPrefix) currentOffset++;
-            if (rex.use) currentOffset++;
-            if (modrm.use) currentOffset++;
-
-            AddRelocation(
-                currentOffset,
-                static_cast<uint64_t>(count),
-                true,
-                relocUsedSection,
-                ::Encoder::RelocationType::Absolute,
-                ::Encoder::RelocationSize::Bit8,
-                false, // TODO: Check if signed
-                relocIsExtern
-            );
-        }
-    }
-}
-
-uint64_t x86::Shift_Rotate_ALU_Instruction::sizeS()
-{
-    uint64_t s = 0;
-
-    if (usesImmediate) s++;
-
-    return s;
 }

@@ -3,18 +3,18 @@
 #include <limits>
 #include <cstring>
 
-x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder &e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e, bits)
+x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    mnemonicI = mnemonic;
-    switch (mnemonic)
+    mnemonicI = instr.mnemonic;
+    switch (instr.mnemonic)
     {
         case JMP:
         {
-            if (operands.size() != 1)
+            if (instr.operands.size() != 1)
                 throw Exception::InternalError("Wrong argument count for jmp instruction", -1, -1);
 
-            Parser::Instruction::Operand& operand = operands[0];
+            const Parser::Instruction::Operand& operand = instr.operands[0];
 
             if (std::holds_alternative<Parser::Instruction::Register>(operand))
             {
@@ -102,10 +102,10 @@ x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
         case JO: case JNO: case JS: case JNS:
         case JP: case JNP: case JC: case JNC:
         {
-            if (operands.size() != 1)
+            if (instr.operands.size() != 1)
                 throw Exception::InternalError("Wrong argument count for jmp instruction", -1, -1);
 
-            Parser::Instruction::Operand& operand = operands[0];
+            const Parser::Instruction::Operand& operand = instr.operands[0];
 
             if (!std::holds_alternative<Parser::Immediate>(operand))
                 throw Exception::SyntaxError("Only immediates are allowed for conditional jumps", -1, -1);
@@ -132,7 +132,7 @@ x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
 
             immediate = std::get<Parser::Immediate>(operand);
 
-            switch (mnemonic)
+            switch (instr.mnemonic)
             {
                 case JMP: opcode = 0xE9; break;
 

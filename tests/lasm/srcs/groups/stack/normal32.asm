@@ -40,7 +40,7 @@ _start:
     push -128
 
     ; PUSH - 16-bit Immediate (outside int8_t range)
-    push 255
+    push _start
     push 256
     push 1000
     push 10000

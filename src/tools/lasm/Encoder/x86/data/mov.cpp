@@ -3,18 +3,18 @@
 #include <limits>
 #include <cstring>
 
-x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e, bits)
+x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    switch (mnemonic)
+    switch (instr.mnemonic)
     {
         case Instructions::MOV:
         {
-            if (operands.size() != 2)
+            if (instr.operands.size() != 2)
                 throw Exception::InternalError("Wrong argument count for 'mov'", -1, -1);
 
-            destinationOperand = operands[0];
-            sourceOperand = operands[1];
+            const Parser::Instruction::Operand& destinationOperand = instr.operands[0];
+            const Parser::Instruction::Operand& sourceOperand = instr.operands[1];
 
             bool usingSpecialReg = false;
             bool usingSegment = false;
@@ -43,8 +43,6 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
 
                 Parser::Instruction::Register destReg = std::get<Parser::Instruction::Register>(destinationOperand);
                 Parser::Instruction::Register srcReg = std::get<Parser::Instruction::Register>(sourceOperand);
-
-                movType = MovType::MOV_REG_REG;
 
                 bool usingSpecialRegDest = false;
                 bool usingSpecialRegSrc = false;
@@ -245,8 +243,6 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                     }
                 }
 
-                movType = MovType::MOV_REG_REG;
-
                 uint64_t destSize;
                 uint64_t srcSize;
 
@@ -343,8 +339,6 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
 
                 if (otherIsImmediate)
                 {
-                    movType = MovType::MOV_REG_IMM;
-
                     uint64_t destSize;
                     if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))
                     {
@@ -357,26 +351,26 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                         destSize = parseMemory(mem, bits, false);
                     }
 
+                    immediate.use = true;
+                    immediate.immediate = std::get<Parser::Immediate>(sourceOperand);
+
                     switch (destSize)
                     {
                         case 8:
-                            specific.mov_reg_imm.max = std::numeric_limits<uint8_t>::max();
-                            specific.mov_reg_imm.sizeInBits = 8;
+                            immediate.sizeInBits = 8;
 
                             is_8_bit = true;
                             break;
 
                         case 16:
-                            specific.mov_reg_imm.max = std::numeric_limits<uint16_t>::max();
-                            specific.mov_reg_imm.sizeInBits = 16;
+                            immediate.sizeInBits = 16;
 
                             if (bits != BitMode::Bits16)
                                 use16BitPrefix = true;
                             break;
 
                         case 32:
-                            specific.mov_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                            specific.mov_reg_imm.sizeInBits = 32;
+                            immediate.sizeInBits = 32;
 
                             if (bits == BitMode::Bits16)
                                 use16BitPrefix = true;
@@ -385,13 +379,11 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                         case 64:
                             if (oneMem)
                             {
-                                specific.mov_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                                specific.mov_reg_imm.sizeInBits = 32;
+                                immediate.sizeInBits = 32;
                             }
                             else
                             {
-                                specific.mov_reg_imm.max = std::numeric_limits<uint64_t>::max();
-                                specific.mov_reg_imm.sizeInBits = 64;
+                                immediate.sizeInBits = 64;
                             }
 
                             rex.use = true;
@@ -566,8 +558,6 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                 }
                 else
                 {
-                    movType = MovType::MOV_REG_REG;
-
                     uint64_t destSize;
                     uint64_t srcSize;
 
@@ -754,45 +744,13 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
     }
 }
 
-void x86::Mov_Instruction::evaluateS()
-{
-    switch (movType)
-    {
-        case MovType::MOV_REG_REG: break;
-
-        case MovType::MOV_REG_IMM:
-        {
-            Parser::Immediate srcImm = std::get<Parser::Immediate>(sourceOperand);
-
-            ::Encoder::Evaluation evaluation = Evaluate(srcImm, false, 0);
-
-            if (evaluation.useOffset)
-            {
-                usedReloc = true;
-                relocUsedSection = evaluation.usedSection;
-                relocIsExtern = evaluation.isExtern;
-                specific.mov_reg_imm.value = evaluation.offset;
-            }
-            else
-            {
-                Int128 result = evaluation.result;
-
-                // FIXME
-                //if (result > specific.mov_reg_imm.max) throw Exception::SemanticError("Operand too large for instruction", -1, -1);
-
-                specific.mov_reg_imm.value = static_cast<uint64_t>(result);
-            }
-
-            break;
-        }
-    }
-}
-
 bool x86::Mov_Instruction::optimizeS()
 {
-    if (can_optimize && movType == MovType::MOV_REG_IMM && !usedReloc)
+    if (can_optimize && immediate.use && !immediate.needsRelocation)
     {
-        int64_t value = static_cast<int64_t>(specific.mov_reg_imm.value);
+        // TODO
+        int64_t value = static_cast<int64_t>(immediate.value);
+
         if (value <= static_cast<int64_t>(static_cast<uint64_t>(std::numeric_limits<uint32_t>().max())))
         {
             if (value >= 0)
@@ -800,16 +758,14 @@ bool x86::Mov_Instruction::optimizeS()
                 if (!needs_rex) rex.use = false;
                 rex.w = false;
 
-                specific.mov_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                specific.mov_reg_imm.sizeInBits = 32;
+                immediate.sizeInBits = 32;
                 
                 can_optimize = false;
                 return true;
             }
             else if (value >= static_cast<int64_t>(static_cast<uint64_t>(std::numeric_limits<int32_t>().min())))
             {
-                specific.mov_reg_imm.max = std::numeric_limits<uint32_t>::max();
-                specific.mov_reg_imm.sizeInBits = 32;
+                immediate.sizeInBits = 32;
 
                 if (is_8_bit) opcode = 0xC6;
                 else          opcode = 0xC7;
@@ -826,89 +782,4 @@ bool x86::Mov_Instruction::optimizeS()
     }
 
     return false;
-}
-
-void x86::Mov_Instruction::encodeS(std::vector<uint8_t>& buffer)
-{
-    switch (movType)
-    {
-        case MovType::MOV_REG_REG:
-        {
-            // TODO
-            break;
-        }
-
-        case MovType::MOV_REG_IMM:
-        {
-            uint32_t sizeInBytes = specific.mov_reg_imm.sizeInBits / 8;
-
-            uint64_t oldSize = buffer.size();
-            buffer.resize(oldSize + sizeInBytes);
-
-            std::memcpy(buffer.data() + oldSize, &specific.mov_reg_imm.value, sizeInBytes);
-
-            if (usedReloc)
-            {
-                uint64_t currentOffset = 1; // opcode
-                if (use16BitPrefix) currentOffset++;
-                if (rex.use) currentOffset++;
-                if (useOpcodeEscape) currentOffset++;
-                if (modrm.use) currentOffset++;
-
-                ::Encoder::RelocationSize relocSize;
-                switch (specific.mov_reg_imm.sizeInBits)
-                {
-                    case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
-                    case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
-                    case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
-                    case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
-                    default: throw Exception::InternalError("Unknown size in bits " + std::to_string(specific.mov_reg_imm.sizeInBits), -1, -1);
-                }
-
-                AddRelocation(
-                    currentOffset,
-                    specific.mov_reg_imm.value,
-                    true,
-                    relocUsedSection,
-                    ::Encoder::RelocationType::Absolute,
-                    relocSize,
-                    false, // TODO: Check if signed
-                    relocIsExtern
-                );
-            }
-
-            break;
-        }
-
-        default:
-            throw Exception::InternalError("Unknown movType", -1, -1);
-    }
-}
-
-uint64_t x86::Mov_Instruction::sizeS()
-{
-    uint64_t s = 0;
-
-    switch (movType)
-    {
-        case MovType::MOV_REG_REG:
-        {
-            // TODO
-            break;
-        }
-
-        case MovType::MOV_REG_IMM:
-        {
-            uint32_t sizeInBytes = specific.mov_reg_imm.sizeInBits / 8;
-
-            s += sizeInBytes;
-
-            break;
-        }
-
-        default:
-            throw Exception::InternalError("Unknown movType", -1, -1);
-    }
-
-    return s;
 }

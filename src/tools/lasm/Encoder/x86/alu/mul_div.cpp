@@ -3,19 +3,19 @@
 #include <limits>
 #include <cstring>
 
-x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e, bits)
+x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, const Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    switch (mnemonic)
+    switch (instr.mnemonic)
     {
         case Instructions::IMUL:
         {
-            if (operands.size() <= 0)
+            if (instr.operands.size() <= 0)
                 throw Exception::InternalError("Wrong argument count for mul/div alu instruction", -1, -1);
 
-            mainOperand = operands[0];
+            const Parser::Instruction::Operand& mainOperand = instr.operands[0];
 
-            if (operands.size() != 1)
+            if (instr.operands.size() != 1)
             {
                 if (!std::holds_alternative<Parser::Instruction::Register>(mainOperand))
                 {
@@ -27,9 +27,9 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                 if (!isGPR(mainReg.reg))
                     throw Exception::SemanticError("Mul/Div ALU instruction only accepts GPRs", -1, -1);
 
-                if (operands.size() == 2)
+                if (instr.operands.size() == 2)
                 {
-                    secondOperand = operands[1];
+                    const Parser::Instruction::Operand& secondOperand = instr.operands[1];
 
                     uint64_t secondSize;
                     if (std::holds_alternative<Parser::Instruction::Register>(secondOperand))
@@ -55,8 +55,6 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
 
                     if (secondSize != mainSize)
                         throw Exception::SemanticError("Operand sizes don't match", -1, -1);
-
-                    mulDivType = MulDivType::TwoOperands;
 
                     useOpcodeEscape = true;
                     
@@ -88,9 +86,9 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                             throw Exception::InternalError("Unknown mainRegSize", -1, -1);
                     }
                 }
-                else if (operands.size() == 3)
+                else if (instr.operands.size() == 3)
                 {
-                    secondOperand = operands[1];
+                    const Parser::Instruction::Operand& secondOperand = instr.operands[1];
 
                     uint64_t secondSize;
                     if (std::holds_alternative<Parser::Instruction::Register>(secondOperand))
@@ -117,7 +115,12 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                     if (secondSize != mainSize)
                         throw Exception::SemanticError("Operand sizes don't match", -1, -1);
 
-                    mulDivType = MulDivType::ThreeOperands;
+                    immediate.use = true;
+
+                    if (!std::holds_alternative<Parser::Immediate>(instr.operands[2]))
+                        throw Exception::InternalError("imul 3 operands: third operands needs to be an immediate", -1, -1);
+                    
+                    immediate.immediate = std::get<Parser::Immediate>(instr.operands[2]);
 
                     opcode = 0x69;
                     canOptimize = true;
@@ -130,22 +133,19 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                         case 16:
                             if (bits != BitMode::Bits16) use16BitPrefix = true;
 
-                            threeOperandsSpecific.max = std::numeric_limits<uint16_t>::max();
-                            threeOperandsSpecific.sizeInBits = 16;
+                            immediate.sizeInBits = 16;
 
                             break;
                         
                         case 32:
                             if (bits == BitMode::Bits16) use16BitPrefix = true;
 
-                            threeOperandsSpecific.max = std::numeric_limits<uint32_t>::max();
-                            threeOperandsSpecific.sizeInBits = 32;
+                            immediate.sizeInBits = 32;
 
                             break;
 
                         case 64:
-                            threeOperandsSpecific.max = std::numeric_limits<uint32_t>::max();
-                            threeOperandsSpecific.sizeInBits = 32;
+                            immediate.sizeInBits = 32;
 
                             rex.use = true;
                             rex.w = true;
@@ -158,10 +158,6 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
                         default:
                             throw Exception::InternalError("Unknown mainRegSize", -1, -1);
                     }
-
-                    if (!std::holds_alternative<Parser::Immediate>(operands[2]))
-                        throw Exception::InternalError("imul 3 operands: third operands needs to be an immediate", -1, -1);
-                    thirdOperand = std::get<Parser::Immediate>(operands[2]);
                 }
                 else
                 {
@@ -176,12 +172,10 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
 
         case Instructions::MUL: case Instructions::DIV: case Instructions::IDIV:
         {
-            if (operands.size() != 1)
+            if (instr.operands.size() != 1)
                 throw Exception::InternalError("Wrong argument count for mul/div alu instruction", -1, -1);
 
-            mulDivType = MulDivType::Simple;
-
-            mainOperand = operands[0];
+            const Parser::Instruction::Operand& mainOperand = instr.operands[0];
 
             uint64_t size;
             if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
@@ -223,7 +217,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
             if (size == 8) opcode = 0xF6;
             else           opcode = 0xF7;
 
-            switch (mnemonic)
+            switch (instr.mnemonic)
             {
                 case MUL:  modrm.reg = 4; break;
                 case IMUL: modrm.reg = 5; break;
@@ -239,43 +233,11 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, Bit
     }
 }
 
-void x86::Mul_Div_ALU_Instruction::evaluateS()
-{
-    switch (mulDivType)
-    {
-        case MulDivType::Simple: case MulDivType::TwoOperands: break;
-
-        case MulDivType::ThreeOperands:
-        {
-            ::Encoder::Evaluation evaluation = Evaluate(thirdOperand, false, 0);
-
-            if (evaluation.useOffset)
-            {
-                usedReloc = true;
-                evalUsedSection = evaluation.usedSection;
-                evalIsExtern = evaluation.isExtern;
-                threeOperandsSpecific.value = evaluation.offset;
-            }
-            else
-            {
-                Int128 result = evaluation.result;
-
-                // FIXME
-                if (result > threeOperandsSpecific.max) throw Exception::SemanticError("Operand too large for instruction", -1, -1);
-
-                threeOperandsSpecific.value = static_cast<uint64_t>(result);
-            }
-
-            break;
-        }
-    }
-}
-
 bool x86::Mul_Div_ALU_Instruction::optimizeS()
 {
-    if (canOptimize && !usedReloc)
+    if (canOptimize && !immediate.needsRelocation)
     {
-        int32_t value = static_cast<int32_t>(static_cast<uint32_t>(threeOperandsSpecific.value));
+        int32_t value = static_cast<int32_t>(static_cast<uint32_t>(immediate.value));
         if (
             value <= static_cast<int64_t>(std::numeric_limits<int8_t>::max()) &&
             value >= static_cast<int64_t>(std::numeric_limits<int8_t>::min())
@@ -285,89 +247,11 @@ bool x86::Mul_Div_ALU_Instruction::optimizeS()
 
             opcode = 0x6B;
 
-            threeOperandsSpecific.max = std::numeric_limits<uint8_t>::max();
-            threeOperandsSpecific.sizeInBits = 8;
+            immediate.sizeInBits = 8;
 
             return true;
         }
     }
 
     return false;
-}
-
-void x86::Mul_Div_ALU_Instruction::encodeS(std::vector<uint8_t>& buffer)
-{
-    switch (mulDivType)
-    {
-        case MulDivType::Simple: case MulDivType::TwoOperands: break;
-
-        case MulDivType::ThreeOperands:
-        {
-            uint32_t sizeInBytes = threeOperandsSpecific.sizeInBits / 8;
-
-            uint64_t oldSize = buffer.size();
-            buffer.resize(oldSize + sizeInBytes);
-
-            std::memcpy(buffer.data() + oldSize, &threeOperandsSpecific.value, sizeInBytes);
-
-            if (usedReloc)
-            {
-                uint64_t currentOffset = 1; // Opcode
-                if (use16BitPrefix) currentOffset++;
-                if (rex.use) currentOffset++;
-                if (useOpcodeEscape) currentOffset++;
-                if (modrm.use) currentOffset++;
-
-                ::Encoder::RelocationSize relocSize;
-                switch (threeOperandsSpecific.sizeInBits)
-                {
-                    case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
-                    case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
-                    case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
-                    case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
-                    default: throw Exception::InternalError("Unknown size in bits " + std::to_string(threeOperandsSpecific.sizeInBits), -1, -1);
-                }
-
-                AddRelocation(
-                    currentOffset,
-                    threeOperandsSpecific.value,
-                    true,
-                    evalUsedSection,
-                    ::Encoder::RelocationType::Absolute,
-                    relocSize,
-                    false, // TODO: Check if signed
-                    evalIsExtern
-                );
-            }
-
-            break;
-        }
-
-        default:
-            throw Exception::InternalError("Unknown aluType", -1, -1);
-    }
-}
-
-uint64_t x86::Mul_Div_ALU_Instruction::sizeS()
-{
-    uint64_t s = 0;
-
-    switch (mulDivType)
-    {
-        case MulDivType::Simple: case MulDivType::TwoOperands: break;
-
-        case MulDivType::ThreeOperands:
-        {
-            uint32_t sizeInBytes = threeOperandsSpecific.sizeInBits / 8;
-
-            s += sizeInBytes;
-
-            break;
-        }
-
-        default:
-            throw Exception::InternalError("Unknown aluType", -1, -1);
-    }
-
-    return s;
 }

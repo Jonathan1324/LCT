@@ -1,9 +1,9 @@
 #include "control.hpp"
 
-x86::Simple_Control_Instruction::Simple_Control_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic)
-    : ::x86::Instruction(e, bits)
+x86::Simple_Control_Instruction::Simple_Control_Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    switch (mnemonic)
+    switch (instr.mnemonic)
     {
         case Instructions::NOP:
             opcode = 0x90;

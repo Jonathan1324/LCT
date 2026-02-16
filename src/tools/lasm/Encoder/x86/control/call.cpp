@@ -3,16 +3,16 @@
 #include <limits>
 #include <cstring>
 
-x86::CALL_Instruction::CALL_Instruction(::Encoder::Encoder &e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e, bits)
+x86::CALL_Instruction::CALL_Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    if (mnemonic != CALL)
+    if (instr.mnemonic != CALL)
         throw Exception::InternalError("Unknown call instruction", -1, -1);
 
-    if (operands.size() != 1)
+    if (instr.operands.size() != 1)
         throw Exception::InternalError("Wrong argument count for call instruction", -1, -1);
 
-    Parser::Instruction::Operand& operand = operands[0];
+    const Parser::Instruction::Operand& operand = instr.operands[0];
 
     if (std::holds_alternative<Parser::Immediate>(operand))
     {
