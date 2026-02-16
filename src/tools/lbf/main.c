@@ -71,10 +71,10 @@ int main(int argc, const char *argv[])
         return 1;
     }
 
-    int c;
+    char c;
     int inComment = 0;
     uint64_t line = 1;
-    while ((c = fgetc(f)) != EOF)
+    while ((c = (char)fgetc(f)) != EOF)
     {
         if (c == '\n') line++;
 
@@ -132,7 +132,7 @@ int main(int argc, const char *argv[])
     uint64_t programSize = 0;
     for (uint64_t i = 0; i < rawProgramSize; i++)
     {
-        char c = rawProgram[i];
+        c = rawProgram[i];
         if (c == '[' || c == ']' || c == '.' || c == ',')
         {
             programSize++;
@@ -154,7 +154,7 @@ int main(int argc, const char *argv[])
     uint64_t index = 0;
     for (uint64_t i = 0; i < rawProgramSize; i++)
     {
-        char c = rawProgram[i];
+        c = rawProgram[i];
         if (c == '[')
         {
             program[index] = '[';

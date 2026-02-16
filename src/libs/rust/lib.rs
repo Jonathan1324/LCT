@@ -30,7 +30,7 @@ pub extern "C" fn run_program(
             .spawn()
         { Ok(c) => c, Err(_) => return -1 };
 
-        let mut stdin = child.stdin.take();
+        let stdin = child.stdin.take();
         let stdin_thread = thread::spawn(move || {
             if let Some(mut s) = stdin {
                 let mut pos = 0;
@@ -78,6 +78,6 @@ pub extern "C" fn run_program(
 #[no_mangle]
 pub extern "C" fn free_c_string(s: *mut c_char) {
     if !s.is_null() {
-        unsafe { CString::from_raw(s); }
+        unsafe { let _ = CString::from_raw(s); }
     }
 }

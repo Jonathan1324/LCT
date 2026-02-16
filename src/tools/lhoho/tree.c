@@ -28,9 +28,8 @@ int printTree(int height, int trunkHeight, int trunkWidth, int color, int dense,
 
     int total_height = height + trunkHeight;
 
-    Cell* map = (Cell*)calloc(total_height * width, sizeof(Cell));
+    Cell* map = (Cell*)calloc((size_t)(total_height * width), sizeof(Cell));
     if (!map) return 1;
-
     
     // Set types
     for (int i = 0; i < height; i++) {
@@ -54,7 +53,7 @@ int printTree(int height, int trunkHeight, int trunkWidth, int color, int dense,
             for (int col = 0; col < width; col++) {
                 Cell* cell = &CELL(row, col);
                 if (cell->type == CELL_LEAF) {
-                    if (rand() % chance == 0) {
+                    if ((unsigned int)rand() % chance == 0) {
                         cell->ornament = ORNAMENT_RED;
                         chance = start_chance;
                     } else {

@@ -28,9 +28,9 @@ Exception::Type Exception::getType() const noexcept
 
 void Exception::print(std::ostream& os) const
 {
-    std::string type = typeToString();
-    if (!type.empty())
-        os << "[" << type << "] ";
+    std::string type_str = typeToString();
+    if (!type_str.empty())
+        os << "[" << type_str << "] ";
     if (line >= 0)
         os << "On line " << line;
     if (column >= 0)

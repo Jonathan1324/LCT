@@ -243,7 +243,7 @@ struct FAT_Filesystem {
 
 };
 
-static inline const uint32_t FAT_GetMaxClusters(FAT_Filesystem* fs)
+static inline uint32_t FAT_GetMaxClusters(FAT_Filesystem* fs)
 {
     switch (fs->version) {
         case FAT_VERSION_12: return 4084;
@@ -253,7 +253,7 @@ static inline const uint32_t FAT_GetMaxClusters(FAT_Filesystem* fs)
     }
 }
 
-static inline const uint32_t FAT_GetLastCluster(FAT_Filesystem* fs)
+static inline uint32_t FAT_GetLastCluster(FAT_Filesystem* fs)
 {
     switch (fs->version) {
         case FAT_VERSION_12: return 0xFEF;
@@ -263,7 +263,7 @@ static inline const uint32_t FAT_GetLastCluster(FAT_Filesystem* fs)
     }
 }
 
-static inline const uint32_t FAT_GetEOF(FAT_Filesystem* fs)
+static inline uint32_t FAT_GetEOF(FAT_Filesystem* fs)
 {
     switch (fs->version) {
         case FAT_VERSION_12: return 0xFF8;
@@ -421,7 +421,7 @@ int FAT_WriteEmptyRootDir(FAT_Filesystem* fs);
 
 static inline uint32_t utf8_to_utf16(const char* input, uint16_t** out)
 {
-    uint32_t len = strlen(input);
+    uint32_t len = (uint32_t)strlen(input);
     uint16_t* buf = malloc(sizeof(uint16_t) * (len + 1) * 2);
     if (!buf) return 0;
     uint32_t outlen = 0;

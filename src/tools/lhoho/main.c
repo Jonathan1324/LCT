@@ -7,7 +7,7 @@
 #include "tree.h"
 #include "countdown.h"
 
-void printHelp(char* name)
+void printHelp(const char* name)
 {
     fprintf(stdout, "Usage: %s <command> (<args>)\n", name);
 
@@ -42,7 +42,7 @@ int main(int argc, const char* argv[])
     int dense = 1;
     int ornaments = 1;
 
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
 
     const char* command = argv[1];
 

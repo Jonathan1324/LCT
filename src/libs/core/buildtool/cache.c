@@ -21,7 +21,7 @@ void hashInit(HashMapEntry*** table, uint32_t capacity)
 void hashInsert(CacheBuffer* buffer, const char* key, uint64_t key_len, uint64_t index)
 {
     uint64_t h = hashFunc(key, key_len);
-    uint32_t bucket = h % buffer->hash_capacity;
+    uint32_t bucket = (uint32_t)(h % buffer->hash_capacity);
 
     HashMapEntry* entry = malloc(sizeof(HashMapEntry));
     entry->key     = malloc(key_len);
@@ -37,7 +37,7 @@ void hashInsert(CacheBuffer* buffer, const char* key, uint64_t key_len, uint64_t
 HashMapEntry* hashGet(CacheBuffer* buffer, const char* key, uint64_t key_len)
 {
     uint64_t h = hashFunc(key, key_len);
-    uint32_t bucket = h % buffer->hash_capacity;
+    uint32_t bucket = (uint32_t)(h % buffer->hash_capacity);
 
     HashMapEntry* e = buffer->hash_table[bucket];
     while (e)
@@ -138,7 +138,7 @@ uint8_t readBuffer(CacheBuffer* buffer, FILE* f)
         free(header);
         return 1;
     }
-    fseek(f, header->CacheHeaderTableOffset, SEEK_SET);
+    fseek(f, (long)header->CacheHeaderTableOffset, SEEK_SET);
     if (fread(raw_entries, sizeof(CacheTableEntry), header->CacheHeaderEntryCount, f) != header->CacheHeaderEntryCount)
     {
         free(raw_entries);
@@ -154,7 +154,7 @@ uint8_t readBuffer(CacheBuffer* buffer, FILE* f)
         free(header);
         return 1;
     }
-    fseek(f, header->NameStringTableOffset, SEEK_SET);
+    fseek(f, (long)header->NameStringTableOffset, SEEK_SET);
     if (fread(name_table, 1, header->NameStringTableSize, f) != header->NameStringTableSize)
     {
         free(name_table);
@@ -171,7 +171,7 @@ uint8_t readBuffer(CacheBuffer* buffer, FILE* f)
         free(header);
         return 1;
     }
-    fseek(f, header->ValueStringTableOffset, SEEK_SET);
+    fseek(f, (long)header->ValueStringTableOffset, SEEK_SET);
     if (fread(value_table, 1, header->ValueStringTableSize, f) != header->ValueStringTableSize)
     {
         free(value_table);
@@ -308,8 +308,8 @@ void WriteCacheFile(uint64_t buf_ptr, const char* path)
     uint32_t entry_count = header.CacheHeaderEntryCount;
 
     uint32_t used_count = 0;
-    uint32_t name_table_size = 0;
-    uint32_t value_table_size = 0;
+    uint64_t name_table_size = 0;
+    uint64_t value_table_size = 0;
 
     for (uint32_t i = 0; i < entry_count; ++i)
     {

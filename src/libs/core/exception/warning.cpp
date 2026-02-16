@@ -18,9 +18,9 @@ Warning::Type Warning::getType() const noexcept
 
 void Warning::print(std::ostream& os) const
 {
-    std::string type = typeToString();
-    if (!type.empty())
-        os << "(" << type << ") ";
+    std::string type_str = typeToString();
+    if (!type_str.empty())
+        os << "(" << type_str << ") ";
     if (line >= 0)
         os << "On line " << line;
     if (line >= 0)

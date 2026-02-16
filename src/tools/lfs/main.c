@@ -123,7 +123,7 @@ int main(int argc, const char* argv[])
     uint64_t partition_number = 0;
     if (p_name) {
         const char* p_num = p_name + 1;
-        uint64_t image_len = p_name - image_str;
+        uint64_t image_len = (uint64_t)p_name - (uint64_t)image_str;
 
         char* image_name = (char*)malloc(image_len + 1);
         if (!image_name) {
@@ -138,7 +138,7 @@ int main(int argc, const char* argv[])
 
         mode_str[0] = 'r';
 
-        partition_number = atoll(p_num);
+        partition_number = (uint64_t)atoll(p_num);
     }
 
     if (mode_str[0]) {
@@ -193,15 +193,15 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    if (p_name) free(image_str);
+    if (p_name) free((void*)image_str);
 
     { // Set size
         uint8_t b = 0;
-        fseek(image_file, image_size - 1, SEEK_SET);
-        fread(&b, 1, 1, image_file);
-        fseek(image_file, image_size - 1, SEEK_SET);
-        fwrite(&b, 1, 1, image_file);
-        fseek(image_file, 0, SEEK_SET);
+        (void)fseek(image_file, (long)image_size - 1, SEEK_SET);
+        (void)fread(&b, 1, 1, image_file);
+        (void)fseek(image_file, (long)image_size - 1, SEEK_SET);
+        (void)fwrite(&b, 1, 1, image_file);
+        (void)fseek(image_file, 0, SEEK_SET);
     }
 
     // TODO
@@ -521,8 +521,8 @@ int main(int argc, const char* argv[])
             const char* volume_name = "NO NAME";
             uint32_t volume_id = 0x12345678;
 
-            uint32_t bytes_per_sector = disk->sectorSize;
-            uint32_t sectors_per_cluster = fat_version == FAT_VERSION_16 ? 4 : 1;
+            uint32_t bytes_per_sector = (uint32_t)disk->sectorSize;
+            uint8_t sectors_per_cluster = fat_version == FAT_VERSION_16 ? 4 : 1;
             uint16_t reserved_sectors;
             switch (fat_version) {
                 case FAT_VERSION_12: reserved_sectors = 1; break;
@@ -541,7 +541,7 @@ int main(int argc, const char* argv[])
             uint8_t drive_number = fat_version == FAT_VERSION_12 ? 0x00 : 0x80;
             uint8_t media_descriptor = fat_version == FAT_VERSION_12 ? FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY144 : FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_DISK;
 
-            uint32_t hidden_sectors = partition->offset / bytes_per_sector;
+            uint32_t hidden_sectors = (uint32_t)(partition->offset / bytes_per_sector);
 
             // TODO
             fat_fs = FAT_CreateEmptyFilesystem(partition, fat_version, args.flag_fast, (args.boot_file ? bootsector_buffer : NULL), args.flag_force_bootsector,
@@ -642,11 +642,11 @@ int main(int argc, const char* argv[])
                     return 1;
                 }
                 const char* image_path = argv[3];
-                int result = Filesystem_DeletePath(fs->root, image_path, args.flag_safe);
-                if (result == 2) {
+                int operation_result = Filesystem_DeletePath(fs->root, image_path, args.flag_safe);
+                if (operation_result == 2) {
                     fprintf(stderr, "Directory '%s' isn't empty\n", image_path);
                     result = 1;
-                } else if (result != 0) {
+                } else if (operation_result != 0) {
                     fprintf(stderr, "Couldn't remove '%s'\n", image_path);
                     result = 1;
                 }
