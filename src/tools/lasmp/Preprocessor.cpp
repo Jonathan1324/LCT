@@ -58,7 +58,7 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
             trimmed += trim(next);
         }
 
-        // TODO: I know, ugly
+        // TODO: Ugly
         if (!trimmed.empty() && trimmed.find("%") == 0)
         {
             if (trimmed.find("%define") == 0)
