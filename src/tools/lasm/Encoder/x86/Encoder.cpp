@@ -58,6 +58,7 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
         case Instructions::INT:
             return new x86::Argument_Interrupt_Instruction(*this, instruction);
 
+        case Instructions::INT3: case Instructions::INTO: case Instructions::INT1:
         case Instructions::IRET: case Instructions::IRETQ:
         case Instructions::IRETD: case Instructions::SYSCALL:
         case Instructions::SYSRET: case Instructions::SYSENTER:
@@ -92,6 +93,9 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
         case Instructions::AND: case Instructions::OR: case Instructions::XOR:
             return new x86::Two_Argument_ALU_Instruction(*this, instruction);
 
+        case Instructions::ADCX: case Instructions::ADOX:
+            return new x86::ADX_ALU_Instruction(*this, instruction);
+
         case Instructions::MUL: case Instructions::IMUL:
         case Instructions::DIV: case Instructions::IDIV:
             return new x86::Mul_Div_ALU_Instruction(*this, instruction);
@@ -115,14 +119,95 @@ x86::Instruction::Instruction(::Encoder::Encoder& e, const ::Parser::Instruction
     bits = instr.bits;
 }
 
+uint64_t x86::Instruction::getDisplacementOffset()
+{
+    uint64_t displacementOffset = 1; // Opcode
+
+    if (use16BitPrefix) displacementOffset++;
+    if (use16BitAddressPrefix) displacementOffset++;
+    if (useREPPrefix) displacementOffset++;
+
+    if (use66OpcodeOverride) displacementOffset++;
+    if (useF3OpcodeOverride) displacementOffset++;
+
+    if (rex.use) displacementOffset++;
+
+    switch (opcodeEscape)
+    {
+        case OpcodeEscape::NONE: break;
+        case OpcodeEscape::TWO_BYTE: displacementOffset++; break;
+        case OpcodeEscape::THREE_BYTE_38: displacementOffset += 2; break;
+        case OpcodeEscape::THREE_BYTE_3A: displacementOffset += 2; break;
+    }
+
+    if (modrm.use) displacementOffset++;
+
+    if (sib.use) displacementOffset++;
+
+    return displacementOffset;
+}
+
+uint64_t x86::Instruction::getImmediateOffset()
+{
+    uint64_t displacementSize = 0;
+
+    if (displacement.use)
+    {
+        if (displacement.is_short) displacementSize = 1;
+        else
+        {
+            if (addressMode == AddressMode::Bits16) displacementSize = 2;
+            else                                    displacementSize = 4;
+        }
+    }
+    else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP8)
+    {
+        displacementSize = 1;
+    }
+    else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP32)
+    {
+        if (addressMode == AddressMode::Bits16) displacementSize = 2;
+        else                                    displacementSize = 4;
+    }
+
+    return getDisplacementOffset() + displacementSize;
+}
+
 void x86::Instruction::encode(std::vector<uint8_t>& buffer)
 {
     if (use16BitPrefix) buffer.push_back(prefix16Bit);
     if (use16BitAddressPrefix) buffer.push_back(addressPrefix16Bit);
+    if (useREPPrefix) buffer.push_back(repPrefix);
+
+    // TODO: not happy
+    if (use66OpcodeOverride) buffer.push_back(0x66);
+    if (useF3OpcodeOverride) buffer.push_back(0xF3);
 
     if (rex.use) buffer.push_back(getRex(rex.w, rex.r, rex.x, rex.b));
 
-    if (useOpcodeEscape) buffer.push_back(opcodeEscape);
+    switch (opcodeEscape)
+    {
+        case OpcodeEscape::NONE:
+            break;
+
+        case OpcodeEscape::TWO_BYTE:
+            buffer.push_back(opcodeEscapeFirst);
+            break;
+
+        case OpcodeEscape::THREE_BYTE_38:
+            buffer.push_back(opcodeEscapeFirst);
+            buffer.push_back(opcodeEscape38);
+            break;
+
+        case OpcodeEscape::THREE_BYTE_3A:
+            buffer.push_back(opcodeEscapeFirst);
+            buffer.push_back(opcodeEscape3A);
+            break;
+
+        default:
+            throw Exception::InternalError("Invalid opcodeEscape", -1, -1);
+    }
+
     buffer.push_back(opcode);
 
     if (modrm.use)
@@ -168,14 +253,7 @@ void x86::Instruction::encode(std::vector<uint8_t>& buffer)
 
         if (displacement.needsRelocation)
         {
-            uint64_t currentOffset = 0;
-            if (use16BitPrefix) currentOffset++;
-            if (use16BitAddressPrefix) currentOffset++;
-            if (rex.use) currentOffset++;
-            if (useOpcodeEscape) currentOffset++;
-            currentOffset++; // Opcode
-            if (modrm.use) currentOffset++;
-            if (sib.use) currentOffset++;
+            uint64_t currentOffset = getDisplacementOffset();
 
             AddRelocation(
                 currentOffset,
@@ -215,33 +293,7 @@ void x86::Instruction::encode(std::vector<uint8_t>& buffer)
 
         if (immediate.needsRelocation)
         {
-            uint64_t currentOffset = 0;
-            if (use16BitPrefix) currentOffset++;
-            if (use16BitAddressPrefix) currentOffset++;
-            if (rex.use) currentOffset++;
-            if (useOpcodeEscape) currentOffset++;
-            currentOffset++; // Opcode
-            if (modrm.use) currentOffset++;
-            if (sib.use) currentOffset++;
-
-            if (displacement.use)
-            {
-                if (displacement.is_short) currentOffset++;
-                else
-                {
-                    if (addressMode == AddressMode::Bits16) currentOffset += 2;
-                    else                                    currentOffset += 4;
-                }
-            }
-            else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP8)
-            {
-                currentOffset++;
-            }
-            else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP32)
-            {
-                if (addressMode == AddressMode::Bits16) currentOffset += 2;
-                else                                    currentOffset += 4;
-            }
+            uint64_t currentOffset = getImmediateOffset();
 
             ::Encoder::RelocationSize relocationSize;
             switch (immediate.sizeInBits)
@@ -284,10 +336,17 @@ uint64_t x86::Instruction::size()
 
     if (use16BitPrefix) s++;
     if (use16BitAddressPrefix) s++;
+    if (useREPPrefix) s++;
 
     if (rex.use) s++;
 
-    if (useOpcodeEscape) s++;
+    switch (opcodeEscape)
+    {
+        case OpcodeEscape::NONE: break;
+        case OpcodeEscape::TWO_BYTE: s++; break;
+        case OpcodeEscape::THREE_BYTE_38: s += 2; break;
+        case OpcodeEscape::THREE_BYTE_3A: s += 2; break;
+    }
     s++; // Opcode
 
     if (modrm.use) s++;
@@ -350,35 +409,7 @@ void x86::Instruction::evaluate()
     // TODO: RIP-Relative
     if (immediate.use)
     {
-        uint64_t ripExtra = 0;
-        if (use16BitPrefix) ripExtra++;
-        if (use16BitAddressPrefix) ripExtra++;
-        if (rex.use) ripExtra++;
-        if (useOpcodeEscape) ripExtra++;
-        ripExtra++; // Opcode
-        if (modrm.use) ripExtra++;
-        if (sib.use) ripExtra++;
-
-        if (displacement.use)
-        {
-            if (displacement.is_short) ripExtra++;
-            else
-            {
-                if (addressMode == AddressMode::Bits16) ripExtra += 2;
-                else                                    ripExtra += 4;
-            }
-        }
-        else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP8)
-        {
-            ripExtra++;
-        }
-        else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP32)
-        {
-            if (addressMode == AddressMode::Bits16) ripExtra += 2;
-            else                                    ripExtra += 4;
-        }
-
-        ripExtra += immediate.sizeInBits / 8;
+        uint64_t ripExtra = getImmediateOffset() + immediate.sizeInBits / 8;
 
         ::Encoder::Evaluation evaluation = Evaluate(immediate.immediate, immediate.ripRelative, ripExtra);
 

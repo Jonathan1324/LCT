@@ -50,4 +50,11 @@ namespace x86 {
         Argument_ALU_Instruction(::Encoder::Encoder& e, const Parser::Instruction::Instruction& instr);
         ~Argument_ALU_Instruction() override {}
     };
+
+    class ADX_ALU_Instruction : public Instruction
+    {
+    public:
+        ADX_ALU_Instruction(::Encoder::Encoder& e, const Parser::Instruction::Instruction& instr);
+        ~ADX_ALU_Instruction() override {}
+    };
 }

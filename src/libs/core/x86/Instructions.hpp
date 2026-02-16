@@ -21,7 +21,8 @@ namespace x86
         CALL, RET,
 
         // INTERRUPT
-        INT, IRET, IRETQ, IRETD,
+        INT, INT3, INTO, INT1,
+        IRET, IRETQ, IRETD,
         SYSCALL, SYSRET,
         SYSENTER, SYSEXIT,
 
@@ -45,6 +46,8 @@ namespace x86
         // ALU
         ADD, ADC, SUB, SBB, CMP, TEST, AND, OR, XOR,
         MUL, IMUL, DIV, IDIV,
+
+        ADCX, ADOX,
 
         SHL, SHR, SAL, SAR,
         ROL, ROR, RCL, RCR,

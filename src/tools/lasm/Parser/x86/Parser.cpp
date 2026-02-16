@@ -685,6 +685,11 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
         // INTERRUPT
         static const std::unordered_map<std::string_view, uint64_t> interruptInstructions = {
             {"int", ::x86::Instructions::INT},
+
+            {"int3", Instructions::INT3},
+            {"into", Instructions::INTO},
+            {"int1", Instructions::INT1}, {"icebp", Instructions::INT1},
+
             {"iret", ::x86::Instructions::IRET},
             {"iretq", ::x86::Instructions::IRETQ},
             {"iretd", ::x86::Instructions::IRETD},
@@ -714,6 +719,8 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                     instruction.operands.push_back(imm);
                 } break;
 
+                case Instructions::INT3: case Instructions::INTO:
+                case Instructions::INT1:
                 case x86::Instructions::IRET:
                 case x86::Instructions::IRETQ:
                 case x86::Instructions::IRETD:
@@ -1010,6 +1017,9 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
             {"or", ::x86::Instructions::OR},
             {"xor", ::x86::Instructions::XOR},
 
+            {"adcx", Instructions::ADCX},
+            {"adox", Instructions::ADOX},
+
             {"mul", ::x86::Instructions::MUL},
             {"imul", ::x86::Instructions::IMUL},
             {"div", ::x86::Instructions::DIV},
@@ -1140,6 +1150,80 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                             i++;
                         }
                         instruction.operands.push_back(imm);
+                    }
+                } break;
+
+                case Instructions::ADCX: case Instructions::ADOX:
+                {
+                    const Token::Token& operand1 = filteredTokens[i];
+                    auto regIt = ::x86::registers.find(operand1.value.c_str());
+                    auto ptrsizeIt = pointer_sizes.find(operand1.value.c_str());
+
+                    if (regIt != ::x86::registers.end()
+                     && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand1.type == Token::Type::Bracket && operand1.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        throw Exception::SyntaxError("Invalid ADX ALU destination operand, must be register", operand1.line, operand1.column);
+                    }
+                    else
+                    {
+                        // TODO: Error
+                    }
+
+                    if (filteredTokens[i].type != Token::Type::Comma)
+                        throw Exception::SyntaxError(std::string("Expected ',' after first argument for '") + lowerVal + "'", operand1.line, operand1.column);
+                    i++;
+
+                    const Token::Token& operand2 = filteredTokens[i];
+                    regIt = ::x86::registers.find(operand2.value.c_str());
+                    ptrsizeIt = pointer_sizes.find(operand2.value.c_str());
+
+                    if (regIt != ::x86::registers.end()
+                    && filteredTokens[i + 1].type != Token::Type::Punctuation)
+                    {
+                        // reg
+                        ::Parser::Instruction::Register reg;
+                        reg.reg = regIt->second;
+                        instruction.operands.push_back(reg);
+                        i++;
+                    }
+                    else if (ptrsizeIt != pointer_sizes.end()
+                             || (operand2.type == Token::Type::Bracket && operand2.value == "[")
+                             || (regIt != ::x86::registers.end() && filteredTokens.size() > i+1 && filteredTokens[i + 1].type == Token::Type::Punctuation))
+                    {
+                        std::vector<const Token::Token*> memoryTokens;
+
+                        if (ptrsizeIt != pointer_sizes.end())
+                            i++;
+
+                        // TODO: segment registers
+
+                        i++; // '['
+
+                        while (!(filteredTokens[i].type == Token::Type::Bracket && filteredTokens[i].value == "]"))
+                        {
+                            memoryTokens.push_back(&filteredTokens[i]);
+                            i++;
+                        }
+
+                        ::Parser::Instruction::Memory mem = parseMemoryOperand(memoryTokens, ptrsizeIt, pointer_sizes.end());
+
+                        instruction.operands.push_back(mem);
+
+                        i++; // ']'
+                    }
+                    else
+                    {
+                        // TODO: Error
                     }
                 } break;
 

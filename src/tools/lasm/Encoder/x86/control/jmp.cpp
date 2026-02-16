@@ -134,28 +134,28 @@ x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
             {
                 case JMP: opcode = 0xE9; break;
 
-                case JE: useOpcodeEscape = true; opcode = 0x84; break;
-                case JNE: useOpcodeEscape = true; opcode = 0x85; break;
+                case JE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x84; break;
+                case JNE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x85; break;
 
-                case JG: useOpcodeEscape = true; opcode = 0x8F; break;
-                case JGE: useOpcodeEscape = true; opcode = 0x8D; break;
-                case JL: useOpcodeEscape = true; opcode = 0x8C; break;
-                case JLE: useOpcodeEscape = true; opcode = 0x8E; break;
+                case JG: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8F; break;
+                case JGE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8D; break;
+                case JL: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8C; break;
+                case JLE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8E; break;
 
-                case JA: useOpcodeEscape = true; opcode = 0x87; break;
-                case JAE: useOpcodeEscape = true; opcode = 0x83; break;
-                case JB: useOpcodeEscape = true; opcode = 0x82; break;
-                case JBE: useOpcodeEscape = true; opcode = 0x86; break;
+                case JA: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x87; break;
+                case JAE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x83; break;
+                case JB: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x82; break;
+                case JBE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x86; break;
 
-                case JO: useOpcodeEscape = true; opcode = 0x80; break;
-                case JNO: useOpcodeEscape = true; opcode = 0x81; break;
-                case JS: useOpcodeEscape = true; opcode = 0x88; break;
-                case JNS: useOpcodeEscape = true; opcode = 0x89; break;
+                case JO: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x80; break;
+                case JNO: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x81; break;
+                case JS: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x88; break;
+                case JNS: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x89; break;
 
-                case JP: useOpcodeEscape = true; opcode = 0x8A; break;
-                case JNP: useOpcodeEscape = true; opcode = 0x8B; break;
-                case JC: useOpcodeEscape = true; opcode = 0x82; break;
-                case JNC: useOpcodeEscape = true; opcode = 0x83; break;
+                case JP: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8A; break;
+                case JNP: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8B; break;
+                case JC: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x82; break;
+                case JNC: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x83; break;
             }
         }
     }
@@ -178,7 +178,7 @@ bool x86::JMP_Instruction::optimizeS()
         {
             canOptimize = false;
 
-            useOpcodeEscape = false;
+            opcodeEscape = OpcodeEscape::NONE;
 
             switch (mnemonicI)
             {

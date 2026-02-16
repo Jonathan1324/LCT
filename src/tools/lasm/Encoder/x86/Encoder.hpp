@@ -37,6 +37,9 @@ namespace x86
         virtual uint64_t sizeS() { return 0; };
 
         void checkSize(uint64_t size, BitMode bits);
+
+        uint64_t getDisplacementOffset();
+        uint64_t getImmediateOffset();
         
         uint64_t parseMemory(
             const Parser::Instruction::Memory& mem,
@@ -62,7 +65,13 @@ namespace x86
         BitMode bits;
 
         bool use16BitPrefix = false;
+
         bool use16BitAddressPrefix = false;
+
+        bool useREPPrefix = false;
+
+        bool use66OpcodeOverride = false;
+        bool useF3OpcodeOverride = false;
 
         enum class AddressMode {
             Bits16,
@@ -79,7 +88,13 @@ namespace x86
             bool b = false;
         } rex;
 
-        bool useOpcodeEscape = false;
+        enum class OpcodeEscape {
+            NONE,
+            TWO_BYTE,
+            THREE_BYTE_38,
+            THREE_BYTE_3A
+        } opcodeEscape = OpcodeEscape::NONE;
+
         uint8_t opcode;
 
         struct ModRM {

@@ -56,7 +56,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                     case CR5:
                     case CR6:
                     case CR7:
-                        useOpcodeEscape = true;
+                        opcodeEscape = OpcodeEscape::TWO_BYTE;
                         opcode = 0x22;
 
                         usingSpecialRegDest = true;
@@ -69,7 +69,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                     case CR13:
                     case CR14:
                     case CR15:
-                        useOpcodeEscape = true;
+                        opcodeEscape = OpcodeEscape::TWO_BYTE;
                         opcode = 0x22;
 
                         rex.use = true;
@@ -84,7 +84,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                     case DR3:
                     case DR6:
                     case DR7:
-                        useOpcodeEscape = true;
+                        opcodeEscape = OpcodeEscape::TWO_BYTE;
                         opcode = 0x23;
 
                         usingSpecialRegDest = true;
@@ -97,7 +97,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                     case DR13:
                     case DR14:
                     case DR15:
-                        useOpcodeEscape = true;
+                        opcodeEscape = OpcodeEscape::TWO_BYTE;
                         opcode = 0x23;
 
                         rex.use = true;
@@ -116,7 +116,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                     case CR5:
                     case CR6:
                     case CR7:
-                        useOpcodeEscape = true;
+                        opcodeEscape = OpcodeEscape::TWO_BYTE;
                         opcode = 0x20;
 
                         usingSpecialRegSrc = true;
@@ -129,7 +129,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                     case CR13:
                     case CR14:
                     case CR15:
-                        useOpcodeEscape = true;
+                        opcodeEscape = OpcodeEscape::TWO_BYTE;
                         opcode = 0x20;
 
                         rex.use = true;
@@ -144,7 +144,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                     case DR3:
                     case DR6:
                     case DR7:
-                        useOpcodeEscape = true;
+                        opcodeEscape = OpcodeEscape::TWO_BYTE;
                         opcode = 0x21;
 
                         usingSpecialRegSrc = true;
@@ -157,7 +157,7 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                     case DR13:
                     case DR14:
                     case DR15:
-                        useOpcodeEscape = true;
+                        opcodeEscape = OpcodeEscape::TWO_BYTE;
                         opcode = 0x21;
 
                         rex.use = true;

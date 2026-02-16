@@ -56,7 +56,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, con
                     if (secondSize != mainSize)
                         throw Exception::SemanticError("Operand sizes don't match", -1, -1);
 
-                    useOpcodeEscape = true;
+                    opcodeEscape = OpcodeEscape::TWO_BYTE;
                     
                     opcode = 0xAF;
 
