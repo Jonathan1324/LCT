@@ -16,8 +16,8 @@
 void print_help(const char* name, FILE* s)
 {
     fprintf(s, "Usage: %s ( <fs>: <image>(:<part>) | <disk>: <image> )\n", name);
-    fprintf(s, "> %s create <fs/disk> mbr | fat12|fat16|fat32 [--size B/K/M/G/T] [--boot <file>] [--root <path>] [--start B/K/M/G/T] [flags]\n", name);
-    fprintf(s, "> %s format <fs/disk> mbr | fat12|fat16|fat32 [--boot <file>] [--root <path>] [flags]\n", name);
+    fprintf(s, "> %s create <partition/disk> mbr | fat12|fat16|fat32 [--size B/K/M/G/T] [--boot <file>] [--root <path>] [--start B/K/M/G/T] [flags]\n", name);
+    fprintf(s, "> %s format <partition/disk> mbr | fat12|fat16|fat32 [--boot <file>] [--root <path>] [flags]\n", name);
     fprintf(s, "> %s insert <fs> <host path> [--path <image path>] [flags]\n", name);
     fprintf(s, "> %s extract <fs> <image path> [--path <host path>] [flags]\n", name);
     fprintf(s, "> %s remove <fs> <image path> [flags]\n", name);
@@ -25,21 +25,21 @@ void print_help(const char* name, FILE* s)
     fprintf(s, "> %s info <fs/disk> [flags]\n", name);
     fprintf(s, "> %s list <fs> <image path> [flags]\n", name);
     fprintf(s, "> %s list <disk> [flags]\n", name);
-    fprintf(s, "> %s write <fs/disk> <host path> [--size B/K/M/G/T] [flags]\n", name);
-    fprintf(s, "> %s read <fs/disk> <host path> [--size B/K/M/G/T] [flags]\n", name);
+    fprintf(s, "> %s write <partition/disk> <host path> [--size B/K/M/G/T] [flags]\n", name);
+    fprintf(s, "> %s read <partition/disk> <host path> [--size B/K/M/G/T] [flags]\n", name);
     fputc('\n', s);
     fputs("Commands:\n", s);
-    fputs("> create            Create a new image, format it, optionally set boot sector and root\n", s);
-    fputs("> format            Format an existing image, optionally set boot sector and root\n", s);
-    fputs("> insert <fs>       Insert a file or directory from the host into the image\n", s);
-    fputs("> extract <fs>      Extract a file or directory from the image into the host\n", s);
-    fputs("> remove <fs>       Remove a file or directory from the image\n", s);
-    fputs("> remove <disk>     Remove a partition from the image\n", s);
-    fputs("> info/list <disk>  List partitions of the image\n", s);
-    fputs("> info <fs>         Print information about the FS of the image\n", s);
-    fputs("> list <fs>         List files at a specific path in the image\n", s);
-    fputs("> write <disk/fs>   Write a file raw to the image or partition\n", s);
-    fputs("> read <disk/fs>    Read a file raw to the image or partition\n", s);
+    fputs("> create                   Create a new image, format it, optionally set boot sector and root\n", s);
+    fputs("> format                   Format an existing image, optionally set boot sector and root\n", s);
+    fputs("> insert <fs>              Insert a file or directory from the host into the image\n", s);
+    fputs("> extract <fs>             Extract a file or directory from the image into the host\n", s);
+    fputs("> remove <fs>              Remove a file or directory from the image\n", s);
+    fputs("> remove <disk>            Remove a partition from the image\n", s);
+    fputs("> info/list <disk>         List partitions of the image\n", s);
+    fputs("> info <fs>                Print information about the FS of the image\n", s);
+    fputs("> list <fs>                List files at a specific path in the image\n", s);
+    fputs("> write <disk/partition>   Write a file raw to the image or partition\n", s);
+    fputs("> read <disk/partition>    Read a file raw to the image or partition\n", s);
     fputc('\n', s);
     fputs("Flags:\n", s);
     fputs("> --no-lfn                   Disable long file names for FAT\n", s);
