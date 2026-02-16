@@ -5,7 +5,6 @@ use std::process::Command;
 use std::{fs, io};
 
 use crate::cache::cache;
-use crate::tools::tools::FlagsSpecific;
 use crate::util::{get_format, get_toolchain};
 
 pub fn replace_placeholders(s: &str, replacements: &HashMap<String, String>) -> Result<String, std::io::Error> {
@@ -40,7 +39,7 @@ pub fn execute(
     inputs: Vec<&Path>,
     output: &Path,
     out: &crate::config::OutputKind,
-    config: &crate::config::Config,
+    _config: &crate::config::Config,
     toolchains: &HashMap<String, crate::tools::tools::Toolchain>,
     formats: &HashMap<String, crate::tools::tools::Format>,
     cache: &cache::CacheBuffer,
