@@ -6,8 +6,6 @@
 
 #define CHUNK_SIZE 16384 /*512*/
 
-static const uint32_t sector_size = 512; // TODO
-
 #define MBR_TYPE_UNUSED         0x00
 #define MBR_TYPE_UNDEFINED      0x7F
 
@@ -77,17 +75,17 @@ uint64_t MBR_GetEndOfUsedRegion(MBR_Disk* mbr, uint64_t start);
 
 int MBR_PrintAll(MBR_Disk* mbr, const char* name);
 
-static inline uint64_t MBR_GetPartitionStart(const MBR_Partition* partition)
+static inline uint64_t MBR_GetPartitionStart(const MBR_Partition* partition, uint64_t sectorSize)
 {
-    return partition->lba_first * sector_size;
+    return partition->lba_first * sectorSize;
 }
 
-static inline uint64_t MBR_GetPartitionSize(const MBR_Partition* partition)
+static inline uint64_t MBR_GetPartitionSize(const MBR_Partition* partition, uint64_t sectorSize)
 {
-    return partition->lba_size * sector_size;
+    return partition->lba_size * sectorSize;
 }
 
-static inline uint64_t MBR_GetPartitionEnd(const MBR_Partition* partition)
+static inline uint64_t MBR_GetPartitionEnd(const MBR_Partition* partition, uint64_t sectorSize)
 {
-    return MBR_GetPartitionStart(partition) + MBR_GetPartitionSize(partition);
+    return MBR_GetPartitionStart(partition, sectorSize) + MBR_GetPartitionSize(partition, sectorSize);
 }

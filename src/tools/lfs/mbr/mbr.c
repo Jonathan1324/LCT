@@ -84,13 +84,15 @@ int MBR_ReadBootsector(MBR_Disk* mbr)
     return 0;
 }
 
+static uint64_t FSectorSize;
+
 int MBR_ComparePartitions(const void* a, const void* b)
 {
     const MBR_Partition* pa = (MBR_Partition*)a;
     const MBR_Partition* pb = (MBR_Partition*)b;
 
-    const uint64_t a_start = MBR_GetPartitionStart(pa);
-    const uint64_t b_start = MBR_GetPartitionStart(pb);
+    const uint64_t a_start = MBR_GetPartitionStart(pa, FSectorSize);
+    const uint64_t b_start = MBR_GetPartitionStart(pb, FSectorSize);
 
     if (a_start < b_start) return -1;
     if (a_start > b_start) return 1;
@@ -105,17 +107,18 @@ uint64_t MBR_GetNextFreeRegion(MBR_Disk* mbr, uint64_t start, uint64_t size)
         return 0;
     }
     memcpy(partitions, mbr->bootsector.partitions, 4 * sizeof(MBR_Partition));
+    FSectorSize = mbr->disk->sectorSize;
     qsort(partitions, 4, sizeof(MBR_Partition), MBR_ComparePartitions);
 
-    uint64_t first_start = MBR_GetPartitionStart(&partitions[0]);
+    uint64_t first_start = MBR_GetPartitionStart(&partitions[0], mbr->disk->sectorSize);
     if (first_start > start && (first_start - start) >= size) {
         free(partitions);
         return start;
     }
 
     for (uint64_t i = 0; i < 4 - 1; i++) {
-        uint64_t end_of_current = MBR_GetPartitionEnd(&partitions[i]);
-        uint64_t start_of_next = MBR_GetPartitionStart(&partitions[i+1]);
+        uint64_t end_of_current = MBR_GetPartitionEnd(&partitions[i], mbr->disk->sectorSize);
+        uint64_t start_of_next = MBR_GetPartitionStart(&partitions[i+1], mbr->disk->sectorSize);
 
         if (start_of_next > end_of_current) {
             uint64_t candidate_start = (end_of_current < start) ? start : end_of_current;
@@ -127,7 +130,7 @@ uint64_t MBR_GetNextFreeRegion(MBR_Disk* mbr, uint64_t start, uint64_t size)
         }
     }
 
-    uint64_t last_end = MBR_GetPartitionEnd(&partitions[4-1]);
+    uint64_t last_end = MBR_GetPartitionEnd(&partitions[4-1], mbr->disk->sectorSize);
     free(partitions);
     return (last_end < start) ? start : last_end;
 }
@@ -139,13 +142,14 @@ uint64_t MBR_GetEndOfUsedRegion(MBR_Disk* mbr, uint64_t start)
         return 0;
     }
     memcpy(partitions, mbr->bootsector.partitions, 4 * sizeof(MBR_Partition));
+    FSectorSize = mbr->disk->sectorSize;
     qsort(partitions, 4, sizeof(MBR_Partition), MBR_ComparePartitions);
 
     uint64_t last_end = start;
 
     for (int i = 0; i < 4; i++) {
-        uint64_t part_start = MBR_GetPartitionStart(&partitions[i]);
-        uint64_t part_end   = MBR_GetPartitionEnd(&partitions[i]);
+        uint64_t part_start = MBR_GetPartitionStart(&partitions[i], mbr->disk->sectorSize);
+        uint64_t part_end   = MBR_GetPartitionEnd(&partitions[i], mbr->disk->sectorSize);
 
         if (part_end > start && part_end > last_end) {
             last_end = part_end;
@@ -169,9 +173,9 @@ int MBR_PrintAll(MBR_Disk* mbr, const char* name)
         if (partition->type == MBR_TYPE_UNUSED)
             fputs("    Unused\n", stdout);
         else {
-            uint64_t start = MBR_GetPartitionStart(partition);
-            uint64_t end = MBR_GetPartitionEnd(partition);
-            uint64_t size = MBR_GetPartitionSize(partition);
+            uint64_t start = MBR_GetPartitionStart(partition, mbr->disk->sectorSize);
+            uint64_t end = MBR_GetPartitionEnd(partition, mbr->disk->sectorSize);
+            uint64_t size = MBR_GetPartitionSize(partition, mbr->disk->sectorSize);
 
             const uint64_t min = 5;
             const uint64_t precision = 1000;

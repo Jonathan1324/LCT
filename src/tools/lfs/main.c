@@ -9,14 +9,15 @@
 #include "mbr/mbr.h"
 #include <version.h>
 #include "args.h"
+#include "partition/table.h"
 
 #include "native/directory.h"
 
 void print_help(const char* name, FILE* s)
 {
     fprintf(s, "Usage: %s ( <fs>: <image>(:<part>) | <disk>: <image> )\n", name);
-    fprintf(s, "> %s create <fs/disk> mbr | fat12|fat16|fat32 [--size B/K/M/G/T] [--boot <file>] [--root <path>] [--start B/K/M/G/T] [flags]\n", name);
-    fprintf(s, "> %s format <fs/disk> mbr | fat12|fat16|fat32 [--boot <file>] [--root <path>] [flags]\n", name);
+    fprintf(s, "> %s create <partition/disk> mbr | fat12|fat16|fat32 [--size B/K/M/G/T] [--boot <file>] [--root <path>] [--start B/K/M/G/T] [flags]\n", name);
+    fprintf(s, "> %s format <partition/disk> mbr | fat12|fat16|fat32 [--boot <file>] [--root <path>] [flags]\n", name);
     fprintf(s, "> %s insert <fs> <host path> [--path <image path>] [flags]\n", name);
     fprintf(s, "> %s extract <fs> <image path> [--path <host path>] [flags]\n", name);
     fprintf(s, "> %s remove <fs> <image path> [flags]\n", name);
@@ -24,17 +25,21 @@ void print_help(const char* name, FILE* s)
     fprintf(s, "> %s info <fs/disk> [flags]\n", name);
     fprintf(s, "> %s list <fs> <image path> [flags]\n", name);
     fprintf(s, "> %s list <disk> [flags]\n", name);
+    fprintf(s, "> %s write <partition/disk> <host path> [--size B/K/M/G/T] [flags]\n", name);
+    fprintf(s, "> %s read <partition/disk> <host path> [--size B/K/M/G/T] [flags]\n", name);
     fputc('\n', s);
     fputs("Commands:\n", s);
-    fputs("> create            Create a new image, format it, optionally set boot sector and root\n", s);
-    fputs("> format            Format an existing image, optionally set boot sector and root\n", s);
-    fputs("> insert <fs>       Insert a file or directory from the host into the image\n", s);
-    fputs("> extract <fs>      Extract a file or directory from the image into the host\n", s);
-    fputs("> remove <fs>       Remove a file or directory from the image\n", s);
-    fputs("> remove <disk>     Remove a partition from the image\n", s);
-    fputs("> info/list <disk>  List partitions of the image\n", s);
-    fputs("> info <fs>         Print information about the FS of the image\n", s);
-    fputs("> list <fs>         List files at a specific path in the image\n", s);
+    fputs("> create                   Create a new image, format it, optionally set boot sector and root\n", s);
+    fputs("> format                   Format an existing image, optionally set boot sector and root\n", s);
+    fputs("> insert <fs>              Insert a file or directory from the host into the image\n", s);
+    fputs("> extract <fs>             Extract a file or directory from the image into the host\n", s);
+    fputs("> remove <fs>              Remove a file or directory from the image\n", s);
+    fputs("> remove <disk>            Remove a partition from the image\n", s);
+    fputs("> info/list <disk>         List partitions of the image\n", s);
+    fputs("> info <fs>                Print information about the FS of the image\n", s);
+    fputs("> list <fs>                List files at a specific path in the image\n", s);
+    fputs("> write <disk/partition>   Write a file raw to the image or partition\n", s);
+    fputs("> read <disk/partition>    Read a file raw to the image or partition\n", s);
     fputc('\n', s);
     fputs("Flags:\n", s);
     fputs("> --no-lfn                   Disable long file names for FAT\n", s);
@@ -64,6 +69,8 @@ typedef unsigned char Subcommand;
 #define COMMAND_REMOVE      ((Subcommand)7)
 #define COMMAND_INFO        ((Subcommand)8)
 #define COMMAND_LIST        ((Subcommand)9)
+#define COMMAND_WRITE       ((Subcommand)10)
+#define COMMAND_READ        ((Subcommand)11)
 
 int main(int argc, const char* argv[])
 {
@@ -83,6 +90,8 @@ int main(int argc, const char* argv[])
     else if (ARG_CMP(1, "remove"))  command = COMMAND_REMOVE;
     else if (ARG_CMP(1, "info"))    command = COMMAND_INFO;
     else if (ARG_CMP(1, "list"))    command = COMMAND_LIST;
+    else if (ARG_CMP(1, "write"))    command = COMMAND_WRITE;
+    else if (ARG_CMP(1, "read"))    command = COMMAND_READ;
     else {
         fprintf(stderr, "Unknown command '%s'\n", argv[1]);
         return 1;
@@ -99,6 +108,7 @@ int main(int argc, const char* argv[])
         case COMMAND_FORMAT: case COMMAND_INSERT: 
         case COMMAND_EXTRACT: case COMMAND_REMOVE:
         case COMMAND_LIST: case COMMAND_INFO:
+        case COMMAND_WRITE: case COMMAND_READ:
             mode_str[0] = 'r';
             break;
 
@@ -150,6 +160,8 @@ int main(int argc, const char* argv[])
         case COMMAND_REMOVE:  arg_start = 4; break;
         case COMMAND_INFO:    arg_start = 3; break;
         case COMMAND_LIST:    arg_start = 4; break;
+        case COMMAND_WRITE:   arg_start = 4; break;
+        case COMMAND_READ:    arg_start = 4; break;
     }
 
     Arguments args = {0};
@@ -192,7 +204,8 @@ int main(int argc, const char* argv[])
         fseek(image_file, 0, SEEK_SET);
     }
 
-    Disk* disk = Disk_CreateFromFile(image_file, image_size);
+    // TODO
+    Disk* disk = Disk_CreateFromFile(image_file, image_size, DISKFORMAT_RAW);
     if (!disk) {
         fputs("Couldn't open disk\n", stderr);
         fclose(image_file);
@@ -256,21 +269,23 @@ int main(int argc, const char* argv[])
     Partition* partition = NULL;
 
     if (p_name) {
-        MBR_Disk* mbr = MBR_OpenDisk(disk);
-        if (!mbr) {
-            fputs("Couldn't open mbr\n", stderr);
+        // TODO
+        PartitionTable* pt = PartitionTable_Open(disk, PARTITIONTABLE_MBR);
+        if (!pt) {
+            fputs("Couldn't open partition table\n", stderr);
             Disk_Close(disk);
             return 1;
         }
         // FIXME
         if (command != COMMAND_CREATE) {
-            partition = MBR_GetPartitionRaw(mbr, partition_number - 1, args.flag_read_only);
+            partition = PartitionTable_GetPartition(pt, partition_number - 1, args.flag_read_only);
         } else {
-            Partition* tmp = MBR_GetPartitionRaw(mbr, partition_number - 1, args.flag_read_only);
+            Partition* tmp = PartitionTable_GetPartition(pt, partition_number - 1, args.flag_read_only);
             if (tmp) {
                 fputs("Partition already exists\n", stderr);
-                Partition_Close(partition);
-                MBR_CloseDisk(mbr);
+                Partition_Close(tmp);
+                PartitionTable_Close(pt);
+                Disk_Close(disk);
                 return 1;
             }
 
@@ -281,36 +296,146 @@ int main(int argc, const char* argv[])
             if (start_of_search < 512) start_of_search = 512;
 
             if (!args.size) {
-                uint64_t free_start = MBR_GetEndOfUsedRegion(mbr, start_of_search);
+                uint64_t free_start = PartitionTable_GetEndOfUsedRegion(pt, start_of_search);
                 uint64_t free_end = disk->size;
                 args.size = free_end - free_start;
             }
 
-            uint64_t start = MBR_GetNextFreeRegion(mbr, start_of_search, args.size);
+            uint64_t start = PartitionTable_GetNextFreeRegion(pt, start_of_search, args.size);
             
             if (start + args.size > disk->size) {
                 fputs("Not enough space\n", stderr);
                 Partition_Close(partition);
-                MBR_CloseDisk(mbr);
+                PartitionTable_Close(pt);
+                Disk_Close(disk);
                 return 1;
             }
 
-            int result = MBR_SetPartitionRaw(mbr, partition_number - 1, start, args.size, p_type, bootable);
+            int result = PartitionTable_SetPartition(pt, partition_number - 1, start, args.size, p_type, bootable);
             if (result != 0) {
                 fputs("Couldn't create partition\n", stderr);
                 Partition_Close(partition);
-                MBR_CloseDisk(mbr);
+                PartitionTable_Close(pt);
+                Disk_Close(disk);
                 return 1;
             }
 
-            partition = MBR_GetPartitionRaw(mbr, partition_number - 1, args.flag_read_only);
+            partition = PartitionTable_GetPartition(pt, partition_number - 1, args.flag_read_only);
         }
 
-        MBR_Close(mbr, 0);
+        PartitionTable_Close(pt);
         
         is_fs_image = 1;
     } else {
         partition = Partition_Create(disk, 0, disk->size, args.flag_read_only);
+    }
+
+    if (command == COMMAND_WRITE || command == COMMAND_READ)
+    {
+        int result = 0;
+
+        switch (command)
+        {
+            case COMMAND_WRITE: {
+                if (argc < 4) {
+                    print_help(argv[0], stderr);
+                    Partition_Close(partition);
+                    Disk_Close(disk);
+                    return 1;
+                }
+
+                const char* host_path = argv[3];
+
+                uint64_t size;
+                if (args.size != 0) size = args.size;
+                else                size = Path_GetSize(host_path);
+
+                FILE* host_file = fopen(host_path, "rb");
+                if (!host_file) {
+                    fprintf(stderr, "Couldn't open %s\n", host_path);
+                    result = 1;
+                }
+
+                // TODO
+                uint8_t buffer[4096];
+                uint64_t offset = 0;
+
+                while (offset < size)
+                {
+                    uint64_t to_write = sizeof(buffer);
+                    if (offset + to_write > size)
+                        to_write = size - offset;
+
+                    uint64_t read_bytes = fread(buffer, 1, to_write, host_file);
+                    if (read_bytes != to_write) {
+                        fprintf(stderr, "Warning: Couldn't read %" PRIu64 " bytes of %s\n", size, host_path);
+                        break;
+                    }
+
+                    uint64_t written = Partition_Write(partition, buffer, offset, read_bytes);
+                    if (written != read_bytes) {
+                        fprintf(stderr, "Error: Couldn't write %" PRIu64 " bytes to partition\n", size);
+                        break;
+                    }
+
+                    offset += written;
+                }
+
+                fclose(host_file);
+                break;
+            }
+            case COMMAND_READ: {
+                if (argc < 4) {
+                    print_help(argv[0], stderr);
+                    Partition_Close(partition);
+                    Disk_Close(disk);
+                    return 1;
+                }
+
+                const char* host_path = argv[3];
+
+                uint64_t size;
+                if (args.size != 0) size = args.size;
+                else                size = partition->size;
+
+                FILE* host_file = fopen(host_path, "w+b");
+                if (!host_file) {
+                    fprintf(stderr, "Couldn't open %s\n", host_path);
+                    result = 1;
+                }
+
+                // TODO
+                uint8_t buffer[4096];
+                uint64_t offset = 0;
+
+                while (offset < size)
+                {
+                    uint64_t to_read = sizeof(buffer);
+                    if (offset + to_read > size)
+                        to_read = size - offset;
+
+                    uint64_t read_bytes = Partition_Read(partition, buffer, offset, to_read);
+                    if (read_bytes != to_read) {
+                        fprintf(stderr, "Warning: Couldn't read %" PRIu64 " bytes of partition\n", size);
+                        break;
+                    }
+
+                    uint64_t written = fwrite(buffer, 1, read_bytes, host_file);
+                    if (written != read_bytes) {
+                        fprintf(stderr, "Warning: Couldn't write %" PRIu64 " bytes to %s\n", size, host_path);
+                    }
+
+                    offset += written;
+                }
+
+                fclose(host_file);
+                break;
+            }
+        }
+
+        Partition_Close(partition);
+        Disk_Close(disk);
+        return result;
     }
 
     if (is_fs_image) {
@@ -396,7 +521,7 @@ int main(int argc, const char* argv[])
             const char* volume_name = "NO NAME";
             uint32_t volume_id = 0x12345678;
 
-            uint32_t bytes_per_sector = 512;
+            uint32_t bytes_per_sector = disk->sectorSize;
             uint32_t sectors_per_cluster = fat_version == FAT_VERSION_16 ? 4 : 1;
             uint16_t reserved_sectors;
             switch (fat_version) {
@@ -428,7 +553,8 @@ int main(int argc, const char* argv[])
                                             drive_number, media_descriptor, hidden_sectors);
 
             if (p_name && !args.flag_dont_update_partition_entry) {
-                MBR_Disk* mbr = MBR_OpenDisk(disk);
+                // TODO
+                PartitionTable* pt = PartitionTable_Open(disk, PARTITIONTABLE_MBR);
 
                 uint8_t p_type;
                 switch (fs_type) { // TODO
@@ -437,12 +563,12 @@ int main(int argc, const char* argv[])
                     case FILESYSTEM_FAT32: p_type = MBR_TYPE_FAT32_LBA; break;
                 }
 
-                int result = MBR_SetPartitionRaw(mbr, partition_number - 1, partition->offset, partition->size, p_type, bootable);
+                int result = PartitionTable_SetPartition(pt, partition_number - 1, partition->offset, partition->size, p_type, bootable);
                 if (result != 0) {
                     fputs("Warning: Couldn't update partition entry\n", stderr);
                 }
 
-                MBR_Close(mbr, 0);
+                PartitionTable_Close(pt);
             }
         } else {
             fat_fs = FAT_OpenFilesystem(partition, fat_version, args.flag_read_only);
@@ -574,19 +700,19 @@ int main(int argc, const char* argv[])
             fclose(bootcode_f);
         }
 
-        MBR_Disk* mbr = NULL;
+        PartitionTable* pt = NULL;
         if (command != COMMAND_CREATE && command != COMMAND_FORMAT) {
-            mbr = MBR_OpenDisk(disk);
+            pt = PartitionTable_Open(disk, PARTITIONTABLE_MBR); // TODO
         } else {
-            if (args.size < 512) {
-                fputs("MBR needs at least 512 byte to even get it's initial structure\n", stderr);
+            if (disk->size < 512) {
+                fputs("Disk needs at least 512 byte to even get it's initial structure\n", stderr);
                 Disk_Close(disk);
                 return 1;
-            }
-            mbr = MBR_CreateDisk(disk, args.flag_fast, (args.boot_file ? bootsector_buffer : NULL), args.flag_force_bootsector);
+            } // TODO
+            pt = PartitionTable_Create(disk, PARTITIONTABLE_MBR, args.flag_fast, (args.boot_file ? bootsector_buffer : NULL), args.flag_force_bootsector);
         }
-        if (!mbr) {
-            fputs("Couldn't open mbr\n", stderr);
+        if (!pt) {
+            fputs("Couldn't open partition table\n", stderr);
             Disk_Close(disk);
             return 1;
         }
@@ -600,7 +726,8 @@ int main(int argc, const char* argv[])
             case COMMAND_REMOVE: {
                 if (argc < 4) {
                     print_help(argv[0], stderr);
-                    MBR_CloseDisk(mbr);
+                    PartitionTable_Close(pt);
+                    Disk_Close(disk);
                     return 1;
                 }
                 const char* num_str = argv[3];
@@ -608,23 +735,25 @@ int main(int argc, const char* argv[])
                 uint64_t p_num = (uint64_t)strtoull(num_str, NULL, 10);
                 if (p_num == 0 || p_num > 4) {
                     fprintf(stderr, "Invalid partition %" PRIu64 "\n", p_num);
-                    MBR_CloseDisk(mbr);
+                    PartitionTable_Close(pt);
+                    Disk_Close(disk);
                     return 1;
                 }
 
                 if (!args.flag_fast) {
-                    int result = MBR_ClearPartition(mbr, (uint8_t)(p_num - 1));
+                    int result = PartitionTable_ClearPartition(pt, (uint8_t)(p_num - 1));
                     if (result != 0) {
                         // TODO
                     }
                 }
 
-                int result = MBR_DeletePartition(mbr, (uint8_t)(p_num - 1));
+                int result = PartitionTable_DeletePartition(pt, (uint8_t)(p_num - 1));
                 if (result == 2) {
                     fprintf(stderr, "Partition %" PRIu64 " doesn't exist\n", p_num);
                 } else if (result != 0) {
                     fprintf(stderr, "Couldn't delete partition %" PRIu64 "\n", p_num);
-                    MBR_CloseDisk(mbr);
+                    PartitionTable_Close(pt);
+                    Disk_Close(disk);
                     return 1;
                 }
 
@@ -632,7 +761,7 @@ int main(int argc, const char* argv[])
             }
 
             case COMMAND_INFO: case COMMAND_LIST: {
-                MBR_PrintAll(mbr, image_str);
+                PartitionTable_PrintAll(pt, image_str);
                 break;
             }
 
@@ -647,7 +776,8 @@ int main(int argc, const char* argv[])
             }
         }
 
-        MBR_CloseDisk(mbr);
+        PartitionTable_Close(pt);
+        Disk_Close(disk);
         return 0;
     }
 }

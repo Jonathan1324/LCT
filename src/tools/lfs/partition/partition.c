@@ -34,5 +34,6 @@ Partition* Partition_Create(Disk* disk, uint64_t offset, uint64_t size, int read
 
 void Partition_Close(Partition* partition)
 {
+    if (!partition) return;
     free(partition);
 }
