@@ -28,9 +28,14 @@ uint64_t Disk_Write(Disk* disk, void* buffer, uint64_t offset, uint64_t size)
     // if (offset + size > disk->size) size = disk->size - offset;
 
     uint64_t written = fwrite(buffer, 1, size, disk->f);
+
+    if (fflush(disk->f) != 0) {
+        perror("fflush failed");
+    }
+
     if (offset + written > disk->size) disk->size = offset + written;
     disk->current_position += written;
-    fflush(disk->f);
+
     return written;
 }
 

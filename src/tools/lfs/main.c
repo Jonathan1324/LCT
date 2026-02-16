@@ -25,6 +25,8 @@ void print_help(const char* name, FILE* s)
     fprintf(s, "> %s info <fs/disk> [flags]\n", name);
     fprintf(s, "> %s list <fs> <image path> [flags]\n", name);
     fprintf(s, "> %s list <disk> [flags]\n", name);
+    fprintf(s, "> %s write <fs/disk> <host path> [--size B/K/M/G/T] [flags]\n", name);
+    fprintf(s, "> %s read <fs/disk> <host path> [--size B/K/M/G/T] [flags]\n", name);
     fputc('\n', s);
     fputs("Commands:\n", s);
     fputs("> create            Create a new image, format it, optionally set boot sector and root\n", s);
@@ -36,6 +38,8 @@ void print_help(const char* name, FILE* s)
     fputs("> info/list <disk>  List partitions of the image\n", s);
     fputs("> info <fs>         Print information about the FS of the image\n", s);
     fputs("> list <fs>         List files at a specific path in the image\n", s);
+    fputs("> write <disk/fs>   Write a file raw to the image or partition\n", s);
+    fputs("> read <disk/fs>    Read a file raw to the image or partition\n", s);
     fputc('\n', s);
     fputs("Flags:\n", s);
     fputs("> --no-lfn                   Disable long file names for FAT\n", s);
@@ -65,6 +69,8 @@ typedef unsigned char Subcommand;
 #define COMMAND_REMOVE      ((Subcommand)7)
 #define COMMAND_INFO        ((Subcommand)8)
 #define COMMAND_LIST        ((Subcommand)9)
+#define COMMAND_WRITE       ((Subcommand)10)
+#define COMMAND_READ        ((Subcommand)11)
 
 int main(int argc, const char* argv[])
 {
@@ -84,6 +90,8 @@ int main(int argc, const char* argv[])
     else if (ARG_CMP(1, "remove"))  command = COMMAND_REMOVE;
     else if (ARG_CMP(1, "info"))    command = COMMAND_INFO;
     else if (ARG_CMP(1, "list"))    command = COMMAND_LIST;
+    else if (ARG_CMP(1, "write"))    command = COMMAND_WRITE;
+    else if (ARG_CMP(1, "read"))    command = COMMAND_READ;
     else {
         fprintf(stderr, "Unknown command '%s'\n", argv[1]);
         return 1;
@@ -100,6 +108,7 @@ int main(int argc, const char* argv[])
         case COMMAND_FORMAT: case COMMAND_INSERT: 
         case COMMAND_EXTRACT: case COMMAND_REMOVE:
         case COMMAND_LIST: case COMMAND_INFO:
+        case COMMAND_WRITE: case COMMAND_READ:
             mode_str[0] = 'r';
             break;
 
@@ -151,6 +160,8 @@ int main(int argc, const char* argv[])
         case COMMAND_REMOVE:  arg_start = 4; break;
         case COMMAND_INFO:    arg_start = 3; break;
         case COMMAND_LIST:    arg_start = 4; break;
+        case COMMAND_WRITE:   arg_start = 4; break;
+        case COMMAND_READ:    arg_start = 4; break;
     }
 
     Arguments args = {0};
@@ -317,6 +328,114 @@ int main(int argc, const char* argv[])
         is_fs_image = 1;
     } else {
         partition = Partition_Create(disk, 0, disk->size, args.flag_read_only);
+    }
+
+    if (command == COMMAND_WRITE || command == COMMAND_READ)
+    {
+        int result = 0;
+
+        switch (command)
+        {
+            case COMMAND_WRITE: {
+                if (argc < 4) {
+                    print_help(argv[0], stderr);
+                    Partition_Close(partition);
+                    Disk_Close(disk);
+                    return 1;
+                }
+
+                const char* host_path = argv[3];
+
+                uint64_t size;
+                if (args.size != 0) size = args.size;
+                else                size = Path_GetSize(host_path);
+
+                FILE* host_file = fopen(host_path, "rb");
+                if (!host_file) {
+                    fprintf(stderr, "Couldn't open %s\n", host_path);
+                    result = 1;
+                }
+
+                // TODO
+                uint8_t buffer[4096];
+                uint64_t offset = 0;
+
+                while (offset < size)
+                {
+                    uint64_t to_write = sizeof(buffer);
+                    if (offset + to_write > size)
+                        to_write = size - offset;
+
+                    uint64_t read_bytes = fread(buffer, 1, to_write, host_file);
+                    if (read_bytes != to_write) {
+                        fprintf(stderr, "Warning: Couldn't read %" PRIu64 " bytes of %s\n", size, host_path);
+                        break;
+                    }
+
+                    uint64_t written = Partition_Write(partition, buffer, offset, read_bytes);
+                    if (written != read_bytes) {
+                        fprintf(stderr, "Error: Couldn't write %" PRIu64 " bytes to partition\n", size);
+                        break;
+                    }
+
+                    offset += written;
+                }
+
+                fclose(host_file);
+                break;
+            }
+            case COMMAND_READ: {
+                if (argc < 4) {
+                    print_help(argv[0], stderr);
+                    Partition_Close(partition);
+                    Disk_Close(disk);
+                    return 1;
+                }
+
+                const char* host_path = argv[3];
+
+                uint64_t size;
+                if (args.size != 0) size = args.size;
+                else                size = partition->size;
+
+                FILE* host_file = fopen(host_path, "w+b");
+                if (!host_file) {
+                    fprintf(stderr, "Couldn't open %s\n", host_path);
+                    result = 1;
+                }
+
+                // TODO
+                uint8_t buffer[4096];
+                uint64_t offset = 0;
+
+                while (offset < size)
+                {
+                    uint64_t to_read = sizeof(buffer);
+                    if (offset + to_read > size)
+                        to_read = size - offset;
+
+                    uint64_t read_bytes = Partition_Read(partition, buffer, offset, to_read);
+                    if (read_bytes != to_read) {
+                        fprintf(stderr, "Warning: Couldn't read %" PRIu64 " bytes of partition\n", size);
+                        break;
+                    }
+
+                    uint64_t written = fwrite(buffer, 1, read_bytes, host_file);
+                    if (written != read_bytes) {
+                        fprintf(stderr, "Warning: Couldn't write %" PRIu64 " bytes to %s\n", size, host_path);
+                    }
+
+                    offset += written;
+                }
+
+                fclose(host_file);
+                break;
+            }
+        }
+
+        Partition_Close(partition);
+        Disk_Close(disk);
+        return result;
     }
 
     if (is_fs_image) {
