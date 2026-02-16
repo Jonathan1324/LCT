@@ -554,7 +554,11 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str], version: str) -> bo
 
         toolchain.Compiler_CPP_Flags.extend(Debug_Flags)
 
-        toolchain.Rust_Flags.extend(["-C", "opt-level=0"])
+        toolchain.Rust_Flags.extend([
+            "-C", "opt-level=0",
+            "-C", "debuginfo=2",
+            "-C", "panic=unwind"
+        ])
 
     else:
         toolchain.Compiler_C_Flags.extend(Release_Flags)
@@ -562,7 +566,12 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str], version: str) -> bo
         toolchain.Compiler_CPP_Flags.extend(Release_Flags)
         toolchain.Compiler_CPP_Flags.extend(Security_Flags)
 
-        toolchain.Rust_Flags.extend(["-C", "opt-level=3"])
+        toolchain.Rust_Flags.extend([
+            "-C", "opt-level=3",
+            "-C", "debuginfo=0",
+            "-C", "panic=abort",
+            "-C", "codegen-units=1"
+        ])
 
         if os != OS.macOS:
             toolchain.Linker_Flags.extend(Static_Flags)
