@@ -16,28 +16,10 @@ namespace x86 {
         JMP_Instruction(::Encoder::Encoder& e, const Parser::Instruction::Instruction& instr);
         ~JMP_Instruction() override {}
 
-        void evaluateS() override;
         bool optimizeS() override;
-        void encodeS(std::vector<uint8_t>& buffer) override;
-        uint64_t sizeS() override;
 
     private:
         uint64_t mnemonicI;
-
-        bool useImmediate = false;
-        Parser::Immediate immediate;
-
-        bool usedReloc = false;
-        StringPool::String relocUsedSection;
-        bool relocIsExtern;
-
-        uint64_t value;
-
-        uint64_t max;
-        uint16_t sizeInBits;
-
-        uint64_t instrSize;
-
         bool canOptimize = false;
     };
 
@@ -53,26 +35,5 @@ namespace x86 {
     public:
         CALL_Instruction(::Encoder::Encoder& e, const Parser::Instruction::Instruction& instr);
         ~CALL_Instruction() override {}
-
-        void evaluateS() override;
-        void encodeS(std::vector<uint8_t>& buffer) override;
-        uint64_t sizeS() override;
-
-    private:
-        bool useImmediate = false;
-        Parser::Immediate immediate;
-
-        bool usedReloc = false;
-        StringPool::String relocUsedSection;
-        bool relocIsExtern;
-
-        uint64_t value;
-
-        uint64_t max;
-        uint16_t sizeInBits;
-
-        uint64_t instrSize;
-
-        bool canOptimize = false;
     };
 }

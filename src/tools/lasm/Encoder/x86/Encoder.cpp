@@ -254,12 +254,20 @@ void x86::Instruction::encode(std::vector<uint8_t>& buffer)
                 default: throw Exception::InternalError("Unknown size in bits " + std::to_string(immediate.sizeInBits), -1, -1);
             }
 
+            ::Encoder::RelocationType relocationType;
+            if (immediate.ripRelative) relocationType = ::Encoder::RelocationType::PC_Relative;
+            else                       relocationType = ::Encoder::RelocationType::Absolute;
+
+            uint64_t value = immediate.value;
+            if (immediate.ripRelative)
+                value -= immediate.sizeInBits / 8;
+
             AddRelocation(
                 currentOffset,
-                immediate.value,
+                value,
                 true,
                 immediate.relocationUsedSection,
-                ::Encoder::RelocationType::Absolute,
+                relocationType,
                 relocationSize,
                 immediate.is_signed,
                 immediate.relocationIsExtern
@@ -342,7 +350,37 @@ void x86::Instruction::evaluate()
     // TODO: RIP-Relative
     if (immediate.use)
     {
-        ::Encoder::Evaluation evaluation = Evaluate(immediate.immediate, false, 0);
+        uint64_t ripExtra = 0;
+        if (use16BitPrefix) ripExtra++;
+        if (use16BitAddressPrefix) ripExtra++;
+        if (rex.use) ripExtra++;
+        if (useOpcodeEscape) ripExtra++;
+        ripExtra++; // Opcode
+        if (modrm.use) ripExtra++;
+        if (sib.use) ripExtra++;
+
+        if (displacement.use)
+        {
+            if (displacement.is_short) ripExtra++;
+            else
+            {
+                if (addressMode == AddressMode::Bits16) ripExtra += 2;
+                else                                    ripExtra += 4;
+            }
+        }
+        else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP8)
+        {
+            ripExtra++;
+        }
+        else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP32)
+        {
+            if (addressMode == AddressMode::Bits16) ripExtra += 2;
+            else                                    ripExtra += 4;
+        }
+
+        ripExtra += immediate.sizeInBits / 8;
+
+        ::Encoder::Evaluation evaluation = Evaluate(immediate.immediate, immediate.ripRelative, ripExtra);
 
         if (evaluation.useOffset)
         {

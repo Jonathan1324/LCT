@@ -9,57 +9,57 @@ section .text
 
 _start:
     ; CALL - 32-bit Register
-    jmp eax
-    jmp ebx
-    jmp ecx
-    jmp edx
-    jmp esi
-    jmp edi
-    jmp ebp
-    jmp esp
+    call eax
+    call ebx
+    call ecx
+    call edx
+    call esi
+    call edi
+    call ebp
+    call esp
 
     ; CALL - 16-bit Register
-    jmp ax
-    jmp bx
-    jmp cx
-    jmp dx
-    jmp si
-    jmp di
-    jmp bp
-    jmp sp
+    call ax
+    call bx
+    call cx
+    call dx
+    call si
+    call di
+    call bp
+    call sp
 
     ; CALL - 32-bit Memory (32-bit addressing)
-    jmp word [eax]
-    jmp dword [ebx + 10]
-    jmp word [ecx + eax*2 + 100]
-    jmp dword [edx + ebx*4 - 5]
-    jmp word [esi + edi*8 + 1000]
+    call word [eax]
+    call dword [ebx + 10]
+    call word [ecx + eax*2 + 100]
+    call dword [edx + ebx*4 - 5]
+    call word [esi + edi*8 + 1000]
 
     ; CALL - 32-bit Memory (16-bit addressing)
-    jmp word [bx]
-    jmp dword [bp + 10]
-    jmp word [bx + si + 100]
-    jmp dword [bx + di - 5]
+    call word [bx]
+    call dword [bp + 10]
+    call word [bx + si + 100]
+    call dword [bx + di - 5]
 
     ; CALL - 16-bit Memory (32-bit addressing)
-    jmp [eax]
-    jmp [ebx + 10]
-    jmp [ecx + eax*2 + 100]
+    call [eax]
+    call [ebx + 10]
+    call [ecx + eax*2 + 100]
 
     ; CALL - 16-bit Memory (16-bit addressing)
-    jmp [bx]
-    jmp [bp + 10]
-    jmp [bx + si]
+    call [bx]
+    call [bp + 10]
+    call [bx + si]
 
     ; CALL - Direct Labels (relative to next instruction)
-    jmp label1
-    jmp label2
-    jmp label3
-    jmp label4
-    jmp label5
-    jmp label6
-    jmp label7
-    jmp label8
+    call label1
+    call label2
+    call label3
+    call label4
+    call label5
+    call label6
+    call label7
+    call label8
 
 label1:
     nop

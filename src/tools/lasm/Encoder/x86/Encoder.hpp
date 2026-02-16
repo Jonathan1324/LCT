@@ -125,6 +125,8 @@ namespace x86
             bool needsRelocation = false;
             StringPool::String relocationUsedSection;
             bool relocationIsExtern;
+
+            bool ripRelative = false;
         } immediate;
     };
 }

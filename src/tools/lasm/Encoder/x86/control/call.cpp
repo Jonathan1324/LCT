@@ -16,27 +16,23 @@ x86::CALL_Instruction::CALL_Instruction(::Encoder::Encoder& e, const ::Parser::I
 
     if (std::holds_alternative<Parser::Immediate>(operand))
     {
-        useImmediate = true;
-        canOptimize = true;
+        immediate.use= true;
+        immediate.immediate = std::get<Parser::Immediate>(operand);
+        immediate.ripRelative = true;
+
+        // TODO
+        immediate.is_signed = true;
 
         switch (bits)
         {
             case BitMode::Bits16:
-                max = std::numeric_limits<int16_t>::max();
-                sizeInBits = 16;
-
-                instrSize = 3; // opcode + off16
+                immediate.sizeInBits = 16;
                 break;
 
             case BitMode::Bits32: case BitMode::Bits64:
-                max = std::numeric_limits<int32_t>::max();
-                sizeInBits = 32;
-
-                instrSize = 5; // opcode + off32
+                immediate.sizeInBits = 32;
                 break;
         }
-
-        immediate = std::get<Parser::Immediate>(operand);
 
         opcode = 0xE8;
     }
@@ -85,80 +81,4 @@ x86::CALL_Instruction::CALL_Instruction(::Encoder::Encoder& e, const ::Parser::I
         modrm.use = true;
         modrm.reg = 2;
     }
-}
-
-void x86::CALL_Instruction::evaluateS()
-{
-    if (useImmediate)
-    {
-        ::Encoder::Evaluation evaluation = Evaluate(immediate, true, instrSize);
-
-        if (evaluation.useOffset)
-        {
-            usedReloc = true;
-            relocUsedSection = evaluation.usedSection;
-            relocIsExtern = evaluation.isExtern;
-            value = evaluation.offset;
-        }
-        else
-        {
-            Int128 result = evaluation.result;
-
-            // FIXME
-            //if (result > max) throw Exception::SemanticError("Operand too large for instruction", -1, -1);
-
-            value = static_cast<uint64_t>(result);
-        }
-    }
-}
-
-void x86::CALL_Instruction::encodeS(std::vector<uint8_t>& buffer)
-{
-    if (useImmediate)
-    {
-        uint32_t sizeInBytes = sizeInBits / 8;
-
-        uint64_t oldSize = buffer.size();
-        buffer.resize(oldSize + sizeInBytes);
-
-        std::memcpy(buffer.data() + oldSize, &value, sizeInBytes);
-
-        if (usedReloc)
-        {
-            uint64_t currentOffset = 1; // opcode
-            if (use16BitPrefix) currentOffset++;
-            if (rex.use) currentOffset++;
-            if (useOpcodeEscape) currentOffset++;
-            if (modrm.use) currentOffset++;
-
-            ::Encoder::RelocationSize relocSize;
-            switch (sizeInBits)
-            {
-                case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
-                case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
-                case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
-                case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
-                default: throw Exception::InternalError("Unknown size in bits " + std::to_string(sizeInBits), -1, -1);
-            }
-
-            AddRelocation(
-                currentOffset,
-                value - (instrSize - currentOffset),
-                true,
-                relocUsedSection,
-                ::Encoder::RelocationType::PC_Relative,
-                relocSize,
-                false, // TODO: Check if signed
-                relocIsExtern
-            );
-        }
-    }
-}
-
-uint64_t x86::CALL_Instruction::sizeS()
-{
-    if (useImmediate)
-        return sizeInBits / 8;
-    else
-        return 0;
 }

@@ -199,6 +199,9 @@ def test(dir: Path, log_dir: Path):
                     "-",
                     str(as2_out.relative_to(test_build_dir)),
                 ])
+
+                if not equal:
+                    logger.warning(f"{as1_out} and {as2_out} output is not equal")
             write_cmp_file(test_cmp_file, test_cmp_file_content)
 
     return True
