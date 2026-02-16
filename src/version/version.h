@@ -1,8 +1,8 @@
 #pragma once
 
-#include "cpp/cpp.h"
-
-HCB
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef VERSION
 #error "VERSION not defined"
@@ -10,4 +10,6 @@ HCB
 
 void printVersion();
 
-HCE
+#ifdef __cplusplus
+}
+#endif

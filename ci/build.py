@@ -26,6 +26,7 @@ from ci.os import OS, ARCH, getOS, getArch
 logger = logging.getLogger("ci")
 
 source_dir = Path("src")
+version_src = source_dir / "version"
 libs_srcs = source_dir / "libs"
 tools_srcs = source_dir / "tools"
 
@@ -179,7 +180,33 @@ def build_c_cpp_sources(toolchain: Toolchain, buildCache: BuildCache, build_dir:
         
     return objects
 
-def build_lib(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, source_dir: Path, out: Path, force_rebuild: bool) -> bool:
+def build_version(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, source_dir: Path, out: Path, force_rebuild: bool) -> bool:
+    objects = build_c_cpp_sources(toolchain, buildCache, build_dir, source_dir, force_rebuild)
+
+    ar = toolchain.Ar
+    flags = toolchain.Ar_Flags
+
+    if ar is None:
+        raise RuntimeError("AR not specified in toolchain")
+    
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        content_hash = hash_files(objects)
+
+        if not buildCache.is_up_to_date(out, content_hash):
+            print(f"Creating static library {out}")
+            subprocess.run([ar, *flags, out, *map(str, objects)], check=True)
+
+            buildCache.update(out, content_hash)
+
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error: Creating static library failed for {out}")
+        raise e
+    
+    return True
+
+def build_lib(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, source_dir: Path, out: Path) -> bool:
     info_file = source_dir / "build.info"
     if not info_file.exists():
         logger.warning(f"Warning: build.info missing in {source_dir}")
@@ -207,7 +234,7 @@ def build_lib(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, sou
         try:
             content_hash = hash_files(files)
 
-            if force_rebuild or not buildCache.is_up_to_date(out, content_hash):
+            if not buildCache.is_up_to_date(out, content_hash):
                 print(f"Creating static rust library {out}")
                 subprocess.run([rustc, *flags, f"--target={toolchain.Rust_Target}", str(file), "-o", str(out)], check=True)
 
@@ -220,7 +247,7 @@ def build_lib(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, sou
         return True
 
     elif info_content == "c,c++":
-        objects = build_c_cpp_sources(toolchain, buildCache, build_dir, source_dir, force_rebuild)
+        objects = build_c_cpp_sources(toolchain, buildCache, build_dir, source_dir, False)
 
         ar = toolchain.Ar
         flags = toolchain.Ar_Flags
@@ -561,7 +588,7 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str], version: str) -> bo
     libs: list[Path] = [lib for lib in libs_srcs.iterdir() if lib.is_dir()]
 
     ## Include
-    Include_Flags: list[str] = []
+    Include_Flags: list[str] = [f"-I{str(version_src.absolute())}"]
     for lib in libs:
         path = lib.absolute()
         Include_Flags.append(f"-I{str(path)}")
@@ -578,7 +605,7 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str], version: str) -> bo
         out = lib_out_dir / f"lib{name}.a"
         
         try:
-            result = build_lib(toolchain, cache, lib_build_dir, lib, out, force_rebuild=(not cache.is_version_up_to_date(version)))
+            result = build_lib(toolchain, cache, lib_build_dir, lib, out)
             if result:
                 toolchain.Library_Flags.append(f"-l{name}")
                 toolchain.Lib_Names.append(name)
@@ -589,6 +616,24 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str], version: str) -> bo
             logger.error(f"Building {lib} failed: {e}")
             return False
 
+    # Version
+    if True:
+        name = "version"
+
+        version_build_dir = build_dir / "version"
+        out = lib_out_dir / f"lib{name}.a"
+        
+        try:
+            result = build_version(toolchain, cache, version_build_dir, version_src, out, force_rebuild=(not cache.is_version_up_to_date(version)))
+            if result:
+                toolchain.Library_Flags.append(f"-l{name}")
+                toolchain.Lib_Names.append(name)
+                toolchain.Libs.append(out)
+
+        except Exception as e:
+            cache.save()
+            logger.error(f"Building {lib} failed: {e}")
+            return False
 
     # Tools
     for name in tools:
