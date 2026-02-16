@@ -79,6 +79,8 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                     def.value = trim(rest.substr(space_pos + 1));
                 }
 
+                if (def.value.empty()) def.value = "1";
+
                 definitions[def.name] = def;
                 continue;
             }
