@@ -4,7 +4,9 @@
 
 HCB
 
-#define VERSION "v0.1.0-alpha.5-feb2026.1-after"
+#ifndef VERSION
+#error "VERSION not defined"
+#endif
 
 void printVersion();
 

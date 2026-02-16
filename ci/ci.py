@@ -67,6 +67,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "-v", "--version",
+    dest="version",
+    metavar="NAME",
+    type=str,
+    help="Version string"
+)
+
+parser.add_argument(
     "--arch",
     dest="arch_name",
     metavar="NAME",
@@ -90,6 +98,31 @@ parser.add_argument(
 
 trash = Path("build/trash")
 
+def run_git(cmd):
+    try:
+        return subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode().strip()
+    except subprocess.CalledProcessError:
+        return None
+
+def get_version():
+    commit_hash = run_git(["git", "rev-parse", "--short", "HEAD"])
+    if not commit_hash:
+        commit_hash = "unknown"
+
+    last_tag = run_git(["git", "describe", "--tags", "--abbrev=0"])
+    
+    if last_tag:
+        commits_since_tag = run_git(["git", "rev-list", f"{last_tag}..HEAD", "--count"])
+        if commits_since_tag and commits_since_tag != "0":
+            version = f"{last_tag}-dev.{commits_since_tag}+{commit_hash}"
+        else:
+            version = f"{last_tag}+{commit_hash}"
+    else:
+        branch = run_git(["git", "rev-parse", "--abbrev-ref", "HEAD"]) or "unknown-branch"
+        version = f"{branch}+{commit_hash}"
+    
+    return version
+
 def main(args, os: OS, arch: ARCH) -> bool:
     if (os == OS.Windows and arch == ARCH.ARM64):
         print("Windows ARM isn't supported")
@@ -98,6 +131,11 @@ def main(args, os: OS, arch: ARCH) -> bool:
     # Always clear dist
     shutil.rmtree("dist", ignore_errors=True)
     shutil.rmtree("archives", ignore_errors=True)
+
+    if args.version:
+        version = args.version
+    else:
+        version = get_version()
 
     if (args.clean):
         build.clean(debug=args.debug, os=os, arch=arch)
@@ -113,7 +151,7 @@ def main(args, os: OS, arch: ARCH) -> bool:
     if not tools:
         tools = build.get_all_tools()
 
-    result: bool = build.build(debug=args.debug, os=os, arch=arch, tools=tools)
+    result: bool = build.build(debug=args.debug, os=os, arch=arch, tools=tools, version=version)
     if (not result):
         logger.error("Building failed")
         return False

@@ -55,12 +55,12 @@ jobs:
       - name: Build the project on Linux/macOS
         if: ${{ matrix.os_name != 'windows' }}
         run: |
-          python3 -m ci.ci --no-test --no-log -a -A lct-${{ matrix.os_name }}-${{ matrix.arch }} --os ${{ matrix.os_name }} --arch ${{ matrix.arch }}
+          python3 -m ci.ci --no-test --no-log -a -A lct-${{ matrix.os_name }}-${{ matrix.arch }} --os ${{ matrix.os_name }} --arch ${{ matrix.arch }} -v "${{ github.event.release.tag_name }}"
 
       - name: Build the project on Linux/macOS
         if: ${{ matrix.os_name == 'windows' }}
         run: |
-          python -m ci.ci --no-test --no-log -a -A lct-${{ matrix.os_name }}-${{ matrix.arch }} --os ${{ matrix.os_name }} --arch ${{ matrix.arch }}
+          python -m ci.ci --no-test --no-log -a -A lct-${{ matrix.os_name }}-${{ matrix.arch }} --os ${{ matrix.os_name }} --arch ${{ matrix.arch }} -v "${{ github.event.release.tag_name }}"
         shell: cmd
 
       - name: Upload archive as release asset
