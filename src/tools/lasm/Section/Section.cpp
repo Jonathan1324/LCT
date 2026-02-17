@@ -2,6 +2,7 @@
 
 void Section::setAlignments(std::vector<Encoder::Section>& sections, Architecture arch, BitMode bits)
 {
+    (void)bits;
     for (auto& section : sections)
     {
         if (section.align != 0)

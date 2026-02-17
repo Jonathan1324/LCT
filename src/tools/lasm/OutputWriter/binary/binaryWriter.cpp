@@ -178,10 +178,10 @@ void Binary::Writer::Write()
                     }
                     case Encoder::RelocationSize::Bit24:
                     {
-                        constexpr int32_t min24 = -(1 << 23);      // -8388608
-                        constexpr int32_t max24 =  (1 << 23) - 1;  //  8388607
-
                         // TODO
+                        //constexpr int32_t min24 = -(1 << 23);      // -8388608
+                        //constexpr int32_t max24 =  (1 << 23) - 1;  //  8388607
+                        //
                         //if (value < min24 || value > max24)
                         //    throw Exception::OverflowError("Relocation would overflow (24-bit)", -1, -1);
 
@@ -259,5 +259,6 @@ void Binary::Writer::Write()
     for (const Encoder::Section& section : uninitialized)
     {
         // TODO
+        (void)section;
     }
 }

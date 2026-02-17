@@ -151,7 +151,7 @@ namespace Parser
         virtual void Parse(const std::vector<Token::Token>& tokens) = 0;
         void Print() const;
 
-        const std::string& getOrg() const noexcept { return org.c_str(); }
+        const std::string& getOrg() const noexcept { return org; }
         const std::vector<Section>& getSections() const noexcept { return sections; }
 
     protected:

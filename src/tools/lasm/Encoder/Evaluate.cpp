@@ -2,7 +2,7 @@
 
 #include "ShuntingYard.hpp"
 
-Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, StringPool::String curSection, bool ripRelative, uint64_t ripExtra)
+Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediate, uint64_t bWritten, uint64_t secOffset, StringPool::String curSection, bool ripRelative, uint64_t ripExtra)
 {
     // TODO: ripRelative and ripExtra
 
@@ -10,13 +10,12 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
     // if both are equal:                               position doesn't matter
     // if both are equal when subtracting position:     can be written using offset + position (relocation)
     // else:                                            not even relocation is possible
-    ShuntingYard::PreparedTokens tokens = ShuntingYard::prepareTokens(immediate.operands, labels, constants, bytesWritten, sectionOffset, curSection);
+    ShuntingYard::PreparedTokens tokens = ShuntingYard::prepareTokens(immediate.operands, labels, constants, secOffset, curSection);
 
     if (tokens.relocationPossible)
     {
-        uint64_t off1;
-        if (tokens.isExtern) off1 = 348234582348;
-        else if (tokens.useSection)
+        uint64_t off1 = 348234582348;
+        if (tokens.useSection && !tokens.isExtern)
         {
             auto it = sectionStarts.find(tokens.usedSection.c_str());
             if (it == sectionStarts.end()) throw Exception::InternalError("Couldn't find start of used section", -1, -1);
@@ -33,8 +32,8 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
 
         if (ripRelative)
         {
-            uint64_t ripBase1 = bytesWritten + ripExtra;
-            uint64_t ripBase2 = bytesWritten + ripExtra + (off2 - off1);
+            uint64_t ripBase1 = bWritten + ripExtra;
+            uint64_t ripBase2 = bWritten + ripExtra + (off2 - off1);
             
             res1 = res1 - static_cast<Int128>(ripBase1);
             res2 = res2 - static_cast<Int128>(ripBase2);
@@ -52,7 +51,7 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
                 evaluation.useOffset = false;
                 evaluation.relocationPossible = true;
 
-                evaluation.result = res1 + ripBase1 - sectionOffset - ripExtra;
+                evaluation.result = res1 + ripBase1 - secOffset - ripExtra;
             }
             else // TODO: Check
             {
@@ -75,7 +74,7 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
             {
                 evaluation.useOffset = true;
                 evaluation.relocationPossible = true;
-                evaluation.offset = res1 - off1;
+                evaluation.offset = static_cast<int64_t>(res1 - off1);
             }
             else
             {
@@ -97,7 +96,7 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
     }
     else
     {
-        Int128 result = ShuntingYard::evaluate(tokens.tokens, bytesWritten - sectionOffset);
+        Int128 result = ShuntingYard::evaluate(tokens.tokens, bWritten - secOffset);
 
         Evaluation evaluation;
         evaluation.result = result;

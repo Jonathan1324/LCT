@@ -147,7 +147,7 @@ void ELF::Writer::Write()
                 header.SectionSize = static_cast<uint32_t>(section.reservedSize);
             header.LinkIndex = 0;                   // TODO
             header.Info = 0;                        // TODO
-            header.AddressAlignment = section.align;
+            header.AddressAlignment = static_cast<uint32_t>(section.align);
             header.EntrySize = 0;
             
             s.header = header;
@@ -159,7 +159,7 @@ void ELF::Writer::Write()
             entry.Size = 0;
             entry.Info = Symbol::SetInfo(Symbol::Bind::LOCAL, Symbol::Type::SECTION);
             entry.Other = 0;
-            entry.IndexInSectionHeaderTable = i + 1; // TODO: ugly
+            entry.IndexInSectionHeaderTable = (uint16_t)i + 1; // TODO: ugly
             
             sectionSymbolIndex[section.name.c_str()] = static_cast<uint64_t>(localSymbols.size());
             localSymbols.push_back(std::move(entry));
@@ -187,7 +187,7 @@ void ELF::Writer::Write()
             entry.OffsetInNameStringTable = 0;
             entry.Info = Symbol::SetInfo(Symbol::Bind::LOCAL, Symbol::Type::SECTION);
             entry.Other = 0;
-            entry.IndexInSectionHeaderTable = i + 1; // TODO: ugly
+            entry.IndexInSectionHeaderTable = (uint16_t)i + 1; // TODO: ugly
             entry.Value = 0;
             entry.Size = 0;
             
@@ -244,9 +244,9 @@ void ELF::Writer::Write()
                 entry.Size = 0;
                 entry.Info = Symbol::SetInfo((label->isGlobal || label->isExtern) ? Symbol::Bind::GLOBAL : Symbol::Bind::LOCAL, Symbol::Type::NONE);
                 entry.Other = 0;
-                auto it = sectionIndexes.find(label->section.c_str());
-                if (it == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
-                entry.IndexInSectionHeaderTable = it->second;
+                auto it2 = sectionIndexes.find(label->section.c_str());
+                if (it2 == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
+                entry.IndexInSectionHeaderTable = it2->second;
                 
                 if (label->isExtern)
                 {
@@ -264,9 +264,9 @@ void ELF::Writer::Write()
                 entry.OffsetInNameStringTable = nameOffset;
                 entry.Info = Symbol::SetInfo((label->isGlobal || label->isExtern) ? Symbol::Bind::GLOBAL : Symbol::Bind::LOCAL, Symbol::Type::NONE);
                 entry.Other = 0;
-                auto it = sectionIndexes.find(label->section.c_str());
-                if (it == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
-                entry.IndexInSectionHeaderTable = it->second;
+                auto it2 = sectionIndexes.find(label->section.c_str());
+                if (it2 == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
+                entry.IndexInSectionHeaderTable = it2->second;
                 entry.Value = label->offset;
                 entry.Size = 0;
                 
@@ -280,7 +280,7 @@ void ELF::Writer::Write()
                 else if (label->isGlobal) globalSymbols.push_back(std::move(entry));
                 else localSymbols.push_back(std::move(entry));
             }
-            else throw Exception::InternalError("Unknown bit mode", -1, -1);
+            else throw Exception::InternalError("Invalid bit mode", -1, -1);
         }
         else if (std::holds_alternative<Encoder::Constant*>(symbol))
         {
@@ -300,9 +300,9 @@ void ELF::Writer::Write()
                 entry.Other = 0;
                 if (constant->useOffset)
                 {
-                    auto it = sectionIndexes.find(constant->usedSection.c_str());
-                    if (it == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
-                    entry.IndexInSectionHeaderTable = it->second;
+                    auto it2 = sectionIndexes.find(constant->usedSection.c_str());
+                    if (it2 == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
+                    entry.IndexInSectionHeaderTable = it2->second;
                 }
                 else entry.IndexInSectionHeaderTable = Symbol::XINDEX;
                 
@@ -317,9 +317,9 @@ void ELF::Writer::Write()
                 entry.Other = 0;
                 if (constant->useOffset)
                 {
-                    auto it = sectionIndexes.find(constant->usedSection.c_str());
-                    if (it == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
-                    entry.IndexInSectionHeaderTable = it->second;
+                    auto it2 = sectionIndexes.find(constant->usedSection.c_str());
+                    if (it2 == sectionIndexes.end()) throw Exception::InternalError("Unknown section for label", -1, -1);
+                    entry.IndexInSectionHeaderTable = it2->second;
                 }
                 else entry.IndexInSectionHeaderTable = Symbol::XINDEX;
                 entry.Value = constant->useOffset ? constant->off : constant->value;
@@ -437,6 +437,7 @@ void ELF::Writer::Write()
 
         auto getType32 = [](Encoder::RelocationType type, Encoder::RelocationSize size, bool isSigned) -> uint8_t
         {
+            (void)isSigned; // TODO
             switch (type)
             {
                 case Encoder::RelocationType::Absolute:
@@ -956,7 +957,7 @@ void ELF::Writer::Write()
         if (std::holds_alternative<SectionHeader32>(section.header))
         {
             SectionHeader32 header = std::get<SectionHeader32>(section.header);
-            if (!section.nullSection) header.Offset = static_cast<uint64_t>(offset);
+            if (!section.nullSection) header.Offset = static_cast<uint32_t>(offset); // TODO
 
             file->write(reinterpret_cast<const char*>(&header), sizeof(header));
         }
@@ -979,12 +980,12 @@ void ELF::Writer::Write()
         if (section.writeBuffer) file->write(reinterpret_cast<const char*>(section.buffer->data()), section.buffer->size());
 
         // align to 0x10
-        std::streampos pos = file->tellp();
-        std::streamoff padSize = (alignTo - (pos % alignTo)) % alignTo;
-        if (padSize)
+        std::streampos fpos = file->tellp();
+        std::streamoff fpadSize = (alignTo - (fpos % alignTo)) % alignTo;
+        if (fpadSize)
         {
-            std::vector<char> padding(padSize, 0);
-            file->write(padding.data(), padSize);
+            std::vector<char> padding(fpadSize, 0);
+            file->write(padding.data(), fpadSize);
         }
     }
 }

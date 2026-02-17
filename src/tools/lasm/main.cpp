@@ -102,6 +102,9 @@ int main(int argc, const char *argv[])
         for (size_t i = 0; i < inputFiles.size(); i++)
         {
             std::istream* file = openIstream(inputFiles[i]);
+            if (!file || !(*file))
+                throw Exception::InternalError("Failed to open input file: " + inputFiles[i], -1, -1);
+
             context.filename = std::filesystem::path(inputFiles[i]).string();
             std::istream* input = file;
 
@@ -109,8 +112,9 @@ int main(int argc, const char *argv[])
             {
                 std::stringstream* preprocessed = new std::stringstream();
 
-                std::string in_buf((std::istreambuf_iterator<char>(*file)),
-                      std::istreambuf_iterator<char>());
+                std::stringstream ss;
+                ss << file->rdbuf();
+                std::string in_buf = ss.str();
 
                 char* out_buf = nullptr;
                 char* err_buf = nullptr;

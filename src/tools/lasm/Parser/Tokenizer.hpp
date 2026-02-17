@@ -46,11 +46,11 @@ namespace Token
     {
         Type type;
         StringPool::String value;
-        uint64_t line;
-        uint64_t column;
+        int64_t line;
+        int64_t column;
         StringPool::String file;
 
-        Token(Type t, const StringPool::String& v, uint64_t l, uint64_t c, const StringPool::String& f)
+        Token(Type t, const StringPool::String& v, int64_t l, int64_t c, const StringPool::String& f)
             : type(t), value(v), line(l), column(c), file(f) {}
 
         std::string what(const Context* context) const;

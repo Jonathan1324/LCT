@@ -253,6 +253,8 @@ void Token::Tokenizer::print()
 
 std::string Token::Token::what(const Context* context) const
 {
+    (void)context; // TODO
+
     std::string result = std::string("Token (Type=") + to_string(type) + ")";
 
     switch (type)

@@ -243,8 +243,8 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                     }
                 }
 
-                uint64_t destSize;
-                uint64_t srcSize;
+                uint64_t destSize = Parser::Instruction::Memory::NO_POINTER_SIZE;
+                uint64_t srcSize = Parser::Instruction::Memory::NO_POINTER_SIZE;
 
                 bool oneMem = false;
 
@@ -558,15 +558,15 @@ x86::Mov_Instruction::Mov_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                 }
                 else
                 {
-                    uint64_t destSize;
-                    uint64_t srcSize;
+                    uint64_t destSize = Parser::Instruction::Memory::NO_POINTER_SIZE;
+                    uint64_t srcSize = Parser::Instruction::Memory::NO_POINTER_SIZE;
 
                     bool hasDirectMem = false;
                     bool hasAccumulator = false;
                     bool accumulatorFirst = false;
 
-                    uint64_t accumulatorSize;
-                    uint64_t directMemorySize;
+                    uint64_t accumulatorSize = Parser::Instruction::Memory::NO_POINTER_SIZE;
+                    uint64_t directMemorySize = Parser::Instruction::Memory::NO_POINTER_SIZE;
                     Parser::Immediate directMemoryImmediate;
 
                     if (std::holds_alternative<Parser::Instruction::Register>(destinationOperand))

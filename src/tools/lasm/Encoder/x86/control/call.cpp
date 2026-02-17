@@ -40,7 +40,7 @@ x86::CALL_Instruction::CALL_Instruction(::Encoder::Encoder& e, const ::Parser::I
     {
         opcode = 0xFF;
 
-        uint64_t size;
+        uint64_t size = Parser::Instruction::Memory::NO_POINTER_SIZE;
         if (std::holds_alternative<Parser::Instruction::Register>(operand))
         {
             Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(operand);

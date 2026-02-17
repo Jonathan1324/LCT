@@ -78,6 +78,8 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
     {
         bool hasOpeningBracket = false;
         bool hasClosingBracket = false;
+        // TODO
+        (void)hasClosingBracket;
 
         if (it->type == Token::Type::Bracket && it->value == "[")
         {
@@ -295,16 +297,16 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
             }
             else if (lowerDir.compare("bits") == 0)
             {
-                StringPool::String bits = filteredTokens[i + 1].value;
+                StringPool::String bit_str = filteredTokens[i + 1].value;
 
-                if (bits == "16")
+                if (bit_str == "16")
                     currentBitMode = BitMode::Bits16;
-                else if (bits == "32")
+                else if (bit_str == "32")
                     currentBitMode = BitMode::Bits32;
-                else if (bits == "64")
+                else if (bit_str == "64")
                     currentBitMode = BitMode::Bits64;
                 else
-                    throw Exception::SyntaxError("Undefined bits", token.line, token.column);
+                    throw Exception::SyntaxError("Invalid bits", token.line, token.column);
             }
             else if (lowerDir.compare("org") == 0)
             {
@@ -632,7 +634,7 @@ void x86::Parser::Parse(const std::vector<Token::Token>& tokens)
                         break;
                     }
 
-                    // Fallthrough
+                    [[fallthrough]];
                 }
 
                 case Instructions::JE: case Instructions::JNE:

@@ -93,7 +93,7 @@ x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder& e, const ::Parser::Ins
                 break;
             }
 
-            // Same logic when immediate
+            [[fallthrough]];
         }
 
         case JE: case JNE:

@@ -25,8 +25,6 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
 
             if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
             {
-                Parser::Instruction::Register mainReg = std::get<Parser::Instruction::Register>(mainOperand);
-
                 if (std::holds_alternative<Parser::Instruction::Register>(otherOperand))
                 {
                     useRMFirst = true;
@@ -136,7 +134,7 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
                 }
                 else
                 {
-                    uint64_t mainSize;
+                    uint64_t mainSize = Parser::Instruction::Memory::NO_POINTER_SIZE;
                     if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
                     {
                         Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
@@ -222,8 +220,8 @@ x86::Two_Argument_ALU_Instruction::Two_Argument_ALU_Instruction(::Encoder::Encod
             }
             else
             {
-                uint64_t mainSize;
-                uint64_t otherSize;
+                uint64_t mainSize = Parser::Instruction::Memory::NO_POINTER_SIZE;
+                uint64_t otherSize = Parser::Instruction::Memory::NO_POINTER_SIZE;
 
                 if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
                 {
@@ -357,7 +355,7 @@ bool x86::Two_Argument_ALU_Instruction::optimizeS()
 
             if (accumulatorReg)
             {
-                uint64_t mainSize;
+                uint64_t mainSize = Parser::Instruction::Memory::NO_POINTER_SIZE;
                 if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
                 {
                     Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);
@@ -371,6 +369,8 @@ bool x86::Two_Argument_ALU_Instruction::optimizeS()
                     Parser::Instruction::Memory mem = std::get<Parser::Instruction::Memory>(mainOperand);
                     mainSize = parseMemory(mem, bits, true);
                 }
+
+                (void)mainSize; // TODO
             }
 
             return true;

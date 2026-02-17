@@ -2,7 +2,7 @@
 
 uint64_t x86::Instruction::parseMemory(
     const Parser::Instruction::Memory& mem,
-    BitMode bits,
+    BitMode bitmode,
     bool expectSize
 ) {
     // TODO: RIP-Relative
@@ -19,24 +19,24 @@ uint64_t x86::Instruction::parseMemory(
 
     if (mem.use_reg1 && mem.use_reg2)
     {
-        uint8_t base_reg_size = getRegSize(mem.reg1, bits);
-        uint8_t index_reg_size = getRegSize(mem.reg2, bits);
+        uint8_t base_reg_size = getRegSize(mem.reg1, bitmode);
+        uint8_t index_reg_size = getRegSize(mem.reg2, bitmode);
         if (base_reg_size != index_reg_size)
             throw Exception::SyntaxError("Base register and index register have different sizes", -1, -1);
         mem_reg_size = base_reg_size;
     }
     else if (mem.use_reg1 && !mem.use_reg2)
     {
-        mem_reg_size = getRegSize(mem.reg1, bits);
+        mem_reg_size = getRegSize(mem.reg1, bitmode);
     }
     else if (mem.use_reg2 && !mem.use_reg1)
     {
-        mem_reg_size = getRegSize(mem.reg2, bits);
+        mem_reg_size = getRegSize(mem.reg2, bitmode);
     }
     else
     {
-        if (bits == BitMode::Bits16)      mem_reg_size = 16;
-        else if (bits == BitMode::Bits32) mem_reg_size = 32;
+        if (bitmode == BitMode::Bits16)      mem_reg_size = 16;
+        else if (bitmode == BitMode::Bits32) mem_reg_size = 32;
         else                              mem_reg_size = 64;
     }
 
@@ -59,12 +59,12 @@ uint64_t x86::Instruction::parseMemory(
     }
 
     bool hasBase = false;
-    uint64_t baseReg;
+    uint64_t baseReg = 0;
 
     bool hasIndex = false;
-    uint64_t indexReg;
+    uint64_t indexReg = 0;
 
-    uint64_t scale;
+    uint64_t scale = 0;
 
     // FIXME: Fix
     if (mem.use_reg1 && mem.use_reg2)
@@ -161,7 +161,7 @@ uint64_t x86::Instruction::parseMemory(
 
         if (addressMode == AddressMode::Bits16)
         {
-            scale = result;
+            scale = static_cast<uint64_t>(result); // TODO
             
             if (usedReg == Registers::BX || usedReg == Registers::BP)
             {
@@ -268,9 +268,9 @@ uint64_t x86::Instruction::parseMemory(
 
     if (addressMode == AddressMode::Bits16)
     {
-        if (bits == BitMode::Bits64)
+        if (bitmode == BitMode::Bits64)
             throw Exception::SemanticError("Can't use 16 bit registers in 64 bit mode", -1, -1);
-        else if (bits == BitMode::Bits32)
+        else if (bitmode == BitMode::Bits32)
             use16BitAddressPrefix = true;
 
         if (hasBase && (baseReg != Registers::BX && baseReg != Registers::BP))
@@ -347,12 +347,12 @@ uint64_t x86::Instruction::parseMemory(
     }
     else // 32,64
     {
-        if (addressMode == AddressMode::Bits32 && bits != BitMode::Bits32)
+        if (addressMode == AddressMode::Bits32 && bitmode != BitMode::Bits32)
             use16BitAddressPrefix = true;
 
         if (addressMode == AddressMode::Bits64)
         {
-            if (bits != BitMode::Bits64)
+            if (bitmode != BitMode::Bits64)
                 throw Exception::SemanticError("64-bit registers only in 64-bit mode", -1, -1);
             displacement.is_signed = true;
         }
@@ -430,22 +430,22 @@ uint64_t x86::Instruction::parseMemory(
         }
     }
 
-    checkSize(memSize, bits);
+    checkSize(memSize, bitmode);
 
     return memSize;
 }
 
 uint64_t x86::Instruction::parseRegister(
     const Parser::Instruction::Register& reg,
-    BitMode bits,
+    BitMode bitmode,
     bool isReg
 ) {
-    checkReg(reg, bits);
+    checkReg(reg, bitmode);
 
     modrm.use = true;
 
     auto [regIndex, regUseREX, regSetREX] = getReg(reg.reg);
-    uint8_t regSize = getRegSize(reg.reg, bits);
+    uint8_t regSize = getRegSize(reg.reg, bitmode);
 
     if (regUseREX) rex.use = true;
     if (regSetREX)
@@ -457,7 +457,7 @@ uint64_t x86::Instruction::parseRegister(
     if (isReg) modrm.reg = regIndex;
     else       modrm.rm = regIndex;
 
-    checkSize(regSize, bits);
+    checkSize(regSize, bitmode);
 
     return regSize;
 }

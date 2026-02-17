@@ -458,9 +458,9 @@ bool x86::Instruction::optimize()
     return changed;
 }
 
-void x86::Instruction::checkReg(const Parser::Instruction::Register& reg, BitMode bits)
+void x86::Instruction::checkReg(const Parser::Instruction::Register& reg, BitMode bitmode)
 {
-    if (bits == BitMode::Bits64) return;
+    if (bitmode == BitMode::Bits64) return;
     switch (reg.reg)
     {
         case SPL: case BPL: case SIL: case DIL:
@@ -486,9 +486,9 @@ void x86::Instruction::checkReg(const Parser::Instruction::Register& reg, BitMod
     }
 }
 
-void x86::Instruction::checkSize(uint64_t size, BitMode bits)
+void x86::Instruction::checkSize(uint64_t size, BitMode bitmode)
 {
-    if (bits == BitMode::Bits64) return;
+    if (bitmode == BitMode::Bits64) return;
     if (size == 64)
         throw Exception::SyntaxError("64-bit size not supported in 16/32 bit mode", -1, -1);
 }

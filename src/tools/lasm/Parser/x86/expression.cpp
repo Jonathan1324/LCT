@@ -187,6 +187,8 @@ uint64_t ExpressionParser::getRegister(const std::string& s)
     auto regIt = ::x86::registers.find(s);
     if (regIt != ::x86::registers.end())
         return regIt->second;
+    
+    throw Exception::InternalError("Invalid register", -1, -1);
 }
 
 // TODO: Add

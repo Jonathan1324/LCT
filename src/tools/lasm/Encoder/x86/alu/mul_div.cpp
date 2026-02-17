@@ -167,7 +167,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, con
                 break;
             }
 
-            // Same logic when one operand
+            [[fallthrough]];
         }
 
         case Instructions::MUL: case Instructions::DIV: case Instructions::IDIV:
@@ -177,7 +177,7 @@ x86::Mul_Div_ALU_Instruction::Mul_Div_ALU_Instruction(::Encoder::Encoder& e, con
 
             const Parser::Instruction::Operand& mainOperand = instr.operands[0];
 
-            uint64_t size;
+            uint64_t size = Parser::Instruction::Memory::NO_POINTER_SIZE;
             if (std::holds_alternative<Parser::Instruction::Register>(mainOperand))
             {
                 Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(mainOperand);

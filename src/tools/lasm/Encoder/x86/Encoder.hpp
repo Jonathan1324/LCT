@@ -33,23 +33,24 @@ namespace x86
     protected:
         virtual void evaluateS() {}
         virtual bool optimizeS() { return false; }
-        virtual void encodeS(std::vector<uint8_t>& buffer) {};
+        virtual void encodeS(std::vector<uint8_t>& buffer) { (void)buffer; };
         virtual uint64_t sizeS() { return 0; };
 
-        void checkSize(uint64_t size, BitMode bits);
+        void checkReg(const Parser::Instruction::Register& reg, BitMode bitmode);
+        void checkSize(uint64_t size, BitMode bitmode);
 
         uint64_t getDisplacementOffset();
         uint64_t getImmediateOffset();
         
         uint64_t parseMemory(
             const Parser::Instruction::Memory& mem,
-            BitMode bits,
+            BitMode bitmode,
             bool expectSize
         );
 
         uint64_t parseRegister(
             const Parser::Instruction::Register& reg,
-            BitMode bits,
+            BitMode bitmode,
             bool isReg
         );
 
@@ -57,8 +58,6 @@ namespace x86
         {
             return std::get<0>(getReg(reg.reg));
         }
-
-        void checkReg(const Parser::Instruction::Register& reg, BitMode bits);
 
         Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr);
 

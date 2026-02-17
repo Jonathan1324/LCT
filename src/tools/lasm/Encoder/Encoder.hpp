@@ -172,7 +172,7 @@ namespace Encoder
 
         virtual std::vector<uint8_t> EncodePadding(size_t length) = 0;
 
-        Evaluation Evaluate(const Parser::Immediate& immediate, uint64_t bytesWritten, uint64_t sectionOffset, StringPool::String curSection, bool ripRelative, uint64_t ripExtra);
+        Evaluation Evaluate(const Parser::Immediate& immediate, uint64_t bWritten, uint64_t secOffset, StringPool::String curSection, bool ripRelative, uint64_t ripExtra);
 
         void resolveConstants(bool withPos);
         bool Resolvable(const Parser::Immediate& immediate);

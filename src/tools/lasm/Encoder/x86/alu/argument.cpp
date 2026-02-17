@@ -16,7 +16,7 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, c
 
             const Parser::Instruction::Operand& operand = instr.operands[0];
 
-            uint64_t size;
+            uint64_t size = Parser::Instruction::Memory::NO_POINTER_SIZE;
             if (std::holds_alternative<Parser::Instruction::Register>(operand))
             {
                 Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(operand);
