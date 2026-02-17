@@ -8,29 +8,29 @@
 
 #define CHUNK_SIZE 16384 /*512*/
 
-#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY144     0xF0 // 1.44 MB
-#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY120     0xF4 // 1.2 MB
-#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY720     0xF9 // 720 KB
-#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY400     0xFD // 400 KB
-#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY360_OLD 0xFF // 360 KB
-#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY360     0xF6 // 360 KB
-#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY320     0xF7 // 320 KB
-#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_DISK          0xF8
+#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY144     ((uint8_t)0xF0) // 1.44 MB
+#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY120     ((uint8_t)0xF4) // 1.2 MB
+#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY720     ((uint8_t)0xF9) // 720 KB
+#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY400     ((uint8_t)0xFD) // 400 KB
+#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY360_OLD ((uint8_t)0xFF) // 360 KB
+#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY360     ((uint8_t)0xF6) // 360 KB
+#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_FLOPPY320     ((uint8_t)0xF7) // 320 KB
+#define FAT_BOOTSECTOR_MEDIA_DESCRIPTOR_DISK          ((uint8_t)0xF8)
 
-#define FAT_BOOTSECTOR_NO_EXTENDED_BOOT_SIGNATURE     0x00
-#define FAT_BOOTSECTOR_EXTENDED_BOOT_SIGNATURE_OLD    0x28
-#define FAT_BOOTSECTOR_EXTENDED_BOOT_SIGNATURE        0x29
+#define FAT_BOOTSECTOR_NO_EXTENDED_BOOT_SIGNATURE     ((uint8_t)0x00)
+#define FAT_BOOTSECTOR_EXTENDED_BOOT_SIGNATURE_OLD    ((uint8_t)0x28)
+#define FAT_BOOTSECTOR_EXTENDED_BOOT_SIGNATURE        ((uint8_t)0x29)
 
 #define FAT_BUFFER_SIZE 1024
 
-#define FAT_ENTRY_DELETED 0xE5
+#define FAT_ENTRY_DELETED ((char)0xE5)
 
-#define FAT_ENTRY_READ_ONLY     0x01
-#define FAT_ENTRY_HIDDEN        0x02
-#define FAT_ENTRY_SYSTEM        0x04
-#define FAT_ENTRY_VOLUME_LABEL  0x08
-#define FAT_ENTRY_DIRECTORY     0x10
-#define FAT_ENTRY_ARCHIVE       0x20
+#define FAT_ENTRY_READ_ONLY     ((uint8_t)0x01)
+#define FAT_ENTRY_HIDDEN        ((uint8_t)0x02)
+#define FAT_ENTRY_SYSTEM        ((uint8_t)0x04)
+#define FAT_ENTRY_VOLUME_LABEL  ((uint8_t)0x08)
+#define FAT_ENTRY_DIRECTORY     ((uint8_t)0x10)
+#define FAT_ENTRY_ARCHIVE       ((uint8_t)0x20)
 
 typedef struct FAT12_FAT16_Bootsector_Header {
     char oem_name[8];
@@ -181,12 +181,12 @@ typedef struct FAT_Filesystem FAT_Filesystem;
 typedef struct FAT_File {
     FAT_Filesystem* fs;
 
-    uint32_t size;
+    uint64_t size;
 
     uint32_t first_cluster;
 
     uint64_t lfn_offset;
-    uint32_t directory_entry_offset; // absolute in bytes from file start
+    uint64_t directory_entry_offset; // absolute in bytes from file start
 
     int is_root_directory;
     int is_directory;
@@ -243,7 +243,7 @@ struct FAT_Filesystem {
 
 };
 
-static inline const uint32_t FAT_GetMaxClusters(FAT_Filesystem* fs)
+static inline uint32_t FAT_GetMaxClusters(FAT_Filesystem* fs)
 {
     switch (fs->version) {
         case FAT_VERSION_12: return 4084;
@@ -253,7 +253,7 @@ static inline const uint32_t FAT_GetMaxClusters(FAT_Filesystem* fs)
     }
 }
 
-static inline const uint32_t FAT_GetLastCluster(FAT_Filesystem* fs)
+static inline uint32_t FAT_GetLastCluster(FAT_Filesystem* fs)
 {
     switch (fs->version) {
         case FAT_VERSION_12: return 0xFEF;
@@ -263,7 +263,7 @@ static inline const uint32_t FAT_GetLastCluster(FAT_Filesystem* fs)
     }
 }
 
-static inline const uint32_t FAT_GetEOF(FAT_Filesystem* fs)
+static inline uint32_t FAT_GetEOF(FAT_Filesystem* fs)
 {
     switch (fs->version) {
         case FAT_VERSION_12: return 0xFF8;
@@ -330,15 +330,15 @@ static inline uint8_t FAT_CreateChecksum(FAT_DirectoryEntry* entry)
 void FAT_EncodeTime(int64_t epoch, uint16_t* fat_date, uint16_t* fat_time, uint8_t* tenths);
 
 int FAT_FlushFATBuffer(FAT_Filesystem* fs);
-int FAT_LoadFATBuffer(FAT_Filesystem* fs, uint32_t offset);
+int FAT_LoadFATBuffer(FAT_Filesystem* fs, uint64_t offset);
 
-uint32_t FAT_ReadFromFileRaw(FAT_File* f, uint32_t offset, void* buffer, uint32_t size);
-uint32_t FAT_WriteToFileRaw(FAT_File* f, uint32_t offset, void* buffer, uint32_t size);
-int FAT_ReserveSpace(FAT_File* f, uint32_t extra, int update_entry_size);
-int FAT_ReserveDirectorySpace(FAT_File* dir, uint32_t entry_count);
-uint32_t FAT_GetAbsoluteOffset(FAT_File* f, uint32_t relative_offset);
+uint64_t FAT_ReadFromFileRaw(FAT_File* f, uint64_t offset, void* buffer, uint64_t size);
+uint64_t FAT_WriteToFileRaw(FAT_File* f, uint64_t offset, void* buffer, uint64_t size);
+int FAT_ReserveSpace(FAT_File* f, uint64_t extra, int update_entry_size);
+int FAT_ReserveDirectorySpace(FAT_File* dir, uint64_t entry_count);
+uint64_t FAT_GetAbsoluteOffset(FAT_File* f, uint64_t relative_offset);
 
-uint32_t FAT_AddDirectoryEntry(FAT_File* directory, FAT_DirectoryEntry* entry, FAT_LFNEntry* lfn_entries, uint32_t lfn_count);
+uint64_t FAT_AddDirectoryEntry(FAT_File* directory, FAT_DirectoryEntry* entry, FAT_LFNEntry* lfn_entries, uint64_t lfn_count);
 int FAT_AddDotsToDirectory(FAT_File* directory, FAT_File* parent);
 
 int FAT_GetDirectoryEntry(FAT_File* f, FAT_DirectoryEntry* entry);
@@ -352,13 +352,13 @@ void FAT_CloseEntry(FAT_File* entry);
 
 FAT_File* FAT_FindEntry(FAT_File* parent, const char* name);
 
-static inline uint32_t FAT_ReadFromFile(FAT_File* f, uint32_t offset, void* buffer, uint32_t size)
+static inline uint64_t FAT_ReadFromFile(FAT_File* f, uint64_t offset, void* buffer, uint64_t size)
 {
     if (!f || f->is_directory) return 0;
     return FAT_ReadFromFileRaw(f, offset, buffer, size);
 }
 
-static inline uint32_t FAT_WriteToFile(FAT_File* f, uint32_t offset, void* buffer, uint32_t size)
+static inline uint64_t FAT_WriteToFile(FAT_File* f, uint64_t offset, void* buffer, uint64_t size)
 {
     if (!f || f->is_directory) return 0;
     return FAT_WriteToFileRaw(f, offset, buffer, size);
@@ -421,7 +421,7 @@ int FAT_WriteEmptyRootDir(FAT_Filesystem* fs);
 
 static inline uint32_t utf8_to_utf16(const char* input, uint16_t** out)
 {
-    uint32_t len = strlen(input);
+    uint32_t len = (uint32_t)strlen(input);
     uint16_t* buf = malloc(sizeof(uint16_t) * (len + 1) * 2);
     if (!buf) return 0;
     uint32_t outlen = 0;

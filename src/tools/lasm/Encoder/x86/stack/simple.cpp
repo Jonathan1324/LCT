@@ -1,9 +1,9 @@
 #include "stack.hpp"
 
-x86::Simple_Stack_Instruction::Simple_Stack_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic)
-    : ::x86::Instruction(e, bits)
+x86::Simple_Stack_Instruction::Simple_Stack_Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    switch (mnemonic)
+    switch (instr.mnemonic)
     {
         case Instructions::PUSHA:
             if (bits == BitMode::Bits64) throw Exception::SyntaxError("'pusha' not supported in 64-bit mode", -1, -1, nullptr);

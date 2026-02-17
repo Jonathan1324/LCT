@@ -12,8 +12,8 @@ void interpret(char* program, uint64_t* meta, uint64_t programSize)
         {
             case '>': Tape_Right(&tape, meta[i]); break;
             case '<': Tape_Left(&tape, meta[i]); break;
-            case '+': Tape_Increase(&tape, meta[i]); break;
-            case '-': Tape_Decrease(&tape, meta[i]); break;
+            case '+': Tape_Increase(&tape, (uint8_t)meta[i]); break;
+            case '-': Tape_Decrease(&tape, (uint8_t)meta[i]); break;
             case '.': fputc(Tape_Get(&tape), stdout); break;
             case ',': Tape_Set(&tape, (TAPE_WIDTH)getchar()); break;
 

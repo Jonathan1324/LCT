@@ -6,6 +6,9 @@ namespace x86
 {
     enum Instructions : uint64_t
     {
+        // ASCII
+        AAA, AAD, AAM, AAS,
+
         // CONTROL
         NOP,
         HLT,
@@ -18,7 +21,8 @@ namespace x86
         CALL, RET,
 
         // INTERRUPT
-        INT, IRET, IRETQ, IRETD,
+        INT, INT3, INTO, INT1,
+        IRET, IRETQ, IRETD,
         SYSCALL, SYSRET,
         SYSENTER, SYSEXIT,
 
@@ -43,9 +47,11 @@ namespace x86
         ADD, ADC, SUB, SBB, CMP, TEST, AND, OR, XOR,
         MUL, IMUL, DIV, IDIV,
 
+        ADCX, ADOX,
+
         SHL, SHR, SAL, SAR,
         ROL, ROR, RCL, RCR,
 
-        NOT, NEG, INC, DEC
+        NOT, NEG, INC, DEC,
     };
 }

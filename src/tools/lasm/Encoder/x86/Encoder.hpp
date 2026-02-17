@@ -33,23 +33,24 @@ namespace x86
     protected:
         virtual void evaluateS() {}
         virtual bool optimizeS() { return false; }
-        virtual void encodeS(std::vector<uint8_t>& buffer) {};
+        virtual void encodeS(std::vector<uint8_t>& buffer) { (void)buffer; };
         virtual uint64_t sizeS() { return 0; };
 
-        void evaluateDisplacement();
-        bool optimizeDisplacement();
+        void checkReg(const Parser::Instruction::Register& reg, BitMode bitmode);
+        void checkSize(uint64_t size, BitMode bitmode);
 
-        void checkSize(uint64_t size, BitMode bits);
+        uint64_t getDisplacementOffset();
+        uint64_t getImmediateOffset();
         
         uint64_t parseMemory(
             const Parser::Instruction::Memory& mem,
-            BitMode bits,
+            BitMode bitmode,
             bool expectSize
         );
 
         uint64_t parseRegister(
             const Parser::Instruction::Register& reg,
-            BitMode bits,
+            BitMode bitmode,
             bool isReg
         );
 
@@ -58,14 +59,18 @@ namespace x86
             return std::get<0>(getReg(reg.reg));
         }
 
-        void checkReg(const Parser::Instruction::Register& reg, BitMode bits);
+        Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr);
 
-        Instruction(::Encoder::Encoder& e, BitMode bits);
-
-        BitMode bitmode;
+        BitMode bits;
 
         bool use16BitPrefix = false;
+
         bool use16BitAddressPrefix = false;
+
+        bool useREPPrefix = false;
+
+        bool use66OpcodeOverride = false;
+        bool useF3OpcodeOverride = false;
 
         enum class AddressMode {
             Bits16,
@@ -82,7 +87,13 @@ namespace x86
             bool b = false;
         } rex;
 
-        bool useOpcodeEscape = false;
+        enum class OpcodeEscape {
+            NONE,
+            TWO_BYTE,
+            THREE_BYTE_38,
+            THREE_BYTE_3A
+        } opcodeEscape = OpcodeEscape::NONE;
+
         uint8_t opcode;
 
         struct ModRM {
@@ -115,5 +126,21 @@ namespace x86
             StringPool::String relocationUsedSection;
             bool relocationIsExtern;
         } displacement;
+
+        struct Immediate {
+            bool use = false;
+            bool is_signed = false;
+
+            uint16_t sizeInBits;
+
+            uint64_t value;
+            Parser::Immediate immediate;
+
+            bool needsRelocation = false;
+            StringPool::String relocationUsedSection;
+            bool relocationIsExtern;
+
+            bool ripRelative = false;
+        } immediate;
     };
 }

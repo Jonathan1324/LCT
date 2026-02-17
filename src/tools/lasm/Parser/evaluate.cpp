@@ -2,22 +2,7 @@
 
 #include <Exception.hpp>
 
-static int64_t sign_extend(uint64_t val, size_t size_bytes)
-{
-    size_t bits = size_bytes * 8;
-    uint64_t mask = 1ULL << (bits - 1);
-    if (val & mask)
-    {
-        uint64_t extend_mask = ~((1ULL << bits) - 1);
-        return static_cast<int64_t>(val | extend_mask);
-    }
-    else
-    {
-        return static_cast<int64_t>(val & ((1ULL << bits) - 1));
-    }
-}
-
-uint64_t evalInteger(StringPool::String str, size_t size, int lineNumber, int column)
+uint64_t evalInteger(StringPool::String str, size_t size, int64_t lineNumber, int64_t column)
 {
     std::string value = str.c_str();
 

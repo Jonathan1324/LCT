@@ -13,14 +13,14 @@ void FAT_EncodeTime(int64_t epoch, uint16_t* fat_date, uint16_t* fat_time, uint8
     const int64_t FAT_EPOCH = 315532800ULL;
     if (epoch < FAT_EPOCH) epoch = FAT_EPOCH;
 
-    uint64_t secs = epoch - FAT_EPOCH;
+    uint64_t secs = (uint64_t)(epoch - FAT_EPOCH);
 
-    uint32_t days = secs / SECS_PER_DAY;
-    uint32_t rem = secs % SECS_PER_DAY;
+    uint32_t days = (uint32_t)(secs / SECS_PER_DAY);
+    uint32_t rem = (uint32_t)(secs % SECS_PER_DAY);
 
-    uint16_t hour = rem / SECS_PER_HOUR; rem %= SECS_PER_HOUR;
-    uint16_t min  = rem / SECS_PER_MIN; rem %= SECS_PER_MIN;
-    uint16_t sec  = rem;
+    uint16_t hour = (uint16_t)(rem / SECS_PER_HOUR); rem %= SECS_PER_HOUR;
+    uint16_t min  = (uint16_t)(rem / SECS_PER_MIN); rem %= SECS_PER_MIN;
+    uint16_t sec  = (uint16_t)rem;
 
     *fat_time = (hour << 11) | (min << 5) | (sec / 2);
     *tenths   = (sec % 2) ? 50 : 0;
@@ -44,5 +44,5 @@ void FAT_EncodeTime(int64_t epoch, uint16_t* fat_date, uint16_t* fat_time, uint8
     }
     uint32_t d = days + 1;
 
-    *fat_date = ((y - 1980) << 9) | ((m + 1) << 5) | d;
+    *fat_date = (uint16_t)(((y - 1980) << 9) | ((m + 1) << 5) | d);
 }

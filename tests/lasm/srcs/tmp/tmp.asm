@@ -4,29 +4,20 @@
 
 [bits 64]
 
-section .data
-    msg db "Memory value: 0", 10, 0
-
-section .bss
-    num db 0
-
 section .text
     global _start
 
 _start:
-    mov byte [num], 42
+    jmp ld2
 
-    mov al, [num]
-    add al, '0'            ; This doesn't work yet
+    nop
+    nop
+    nop
+L2:
+    hlt
 
-    mov [msg+14], al       ; This doesn't work yet
+section .data
 
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, msg           ; This doesn't work yet
-    mov rdx, 16
-    syscall
+ld1 resq 51
 
-    mov rax, 60
-    xor rdi, rdi
-    syscall
+ld2 dq 8, 2

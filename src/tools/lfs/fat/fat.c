@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <inttypes.h>
 
 static int FAT_IsInvalidChar(char c) {
     return (c < 0x20) || c == '"' || c == '*' || c == '/' || c == ':' ||
@@ -25,7 +26,7 @@ int FAT_ParseName(const char* name, char fat_name[8], char fat_ext[3])
     if (nlen > 8) nlen = 8;
 
     for (size_t i = 0; i < nlen; i++) {
-        char c = toupper((unsigned char)name[i]);
+        char c = (char)toupper((int)(unsigned char)name[i]);
         if (FAT_IsInvalidChar(c)) c = '_';
         fat_name[i] = c;
     }
@@ -34,7 +35,7 @@ int FAT_ParseName(const char* name, char fat_name[8], char fat_ext[3])
         size_t elen = len - (size_t)(dot - name) - 1;
         if (elen > 3) elen = 3;
         for (size_t i = 0; i < elen; i++) {
-            char c = toupper((unsigned char)dot[i + 1]);
+            char c = (char)toupper((int)(unsigned char)dot[i + 1]);
             if (FAT_IsInvalidChar(c)) c = '_';
             fat_ext[i] = c;
         }
@@ -51,7 +52,7 @@ int FAT_FlushFATBuffer(FAT_Filesystem* fs)
     return 0;
 }
 
-int FAT_LoadFATBuffer(FAT_Filesystem* fs, uint32_t offset)
+int FAT_LoadFATBuffer(FAT_Filesystem* fs, uint64_t offset)
 {
     if (!fs) return 1;
     if (Partition_Read(fs->partition, (uint8_t*)fs->fat_buffer, fs->fat_offset + offset, FAT_BUFFER_SIZE) != FAT_BUFFER_SIZE) return 1;
@@ -119,7 +120,7 @@ FAT_Filesystem* FAT_CreateEmptyFilesystem(Partition* partition, Fat_Version vers
         free(fs);
         return NULL;
     }
-    for (int i = 1; i < number_of_fats; i++) {
+    for (uint8_t i = 1; i < number_of_fats; i++) {
         if (FAT_CopyFAT(fs, i, 0) != 0) {
             free(fs);
             return NULL;
@@ -135,9 +136,9 @@ FAT_Filesystem* FAT_CreateEmptyFilesystem(Partition* partition, Fat_Version vers
         // fill data area
         uint64_t offset = fs->data_offset;
         uint8_t zero_block[CHUNK_SIZE] = {0};
-        uint32_t written = 0;
+        uint64_t written = 0;
         while (written < fs->data_size) {
-            uint32_t chunk = (fs->data_size - written) < CHUNK_SIZE ? (fs->data_size - written) : CHUNK_SIZE;
+            uint64_t chunk = (fs->data_size - written) < CHUNK_SIZE ? (fs->data_size - written) : CHUNK_SIZE;
             if (Partition_Write(fs->partition, (uint8_t*)zero_block, offset, chunk) != chunk) {
                 free(fs);
                 return NULL;
@@ -294,7 +295,7 @@ void FAT_CloseFilesystem(FAT_Filesystem* fs)
         }
 
         uint8_t number_of_fats = fs->version == FAT_VERSION_32 ? fs->bootsector.fat32.header.number_of_fats : fs->bootsector.fat12_fat16.header.number_of_fats;
-        for (int i = 1; i < number_of_fats; i++) {
+        for (uint8_t i = 1; i < number_of_fats; i++) {
             if (FAT_CopyFAT(fs, i, 0) != 0) {
                 //TODO
             }
@@ -309,9 +310,9 @@ uint32_t FAT_ReadFATEntry(FAT_Filesystem* fs, uint32_t cluster)
 {
     if (!fs || cluster > FAT_GetLastCluster(fs)) return 0xFFFFFFFF;
 
-    uint32_t offset;
+    uint64_t offset;
     uint8_t* bytes;
-    uint32_t rel;
+    uint64_t rel;
 
     switch (fs->version)
     {
@@ -376,9 +377,9 @@ int FAT_WriteFATEntry(FAT_Filesystem* fs, uint32_t cluster, uint32_t value)
 {
     if (!fs || fs->read_only || cluster > FAT_GetLastCluster(fs)) return 1;
 
-    uint32_t offset;
+    uint64_t offset;
     uint8_t* entry_bytes;
-    uint32_t rel;
+    uint64_t rel;
 
     switch (fs->version)
     {
@@ -502,7 +503,7 @@ int FAT_FindFreeClusters(FAT_Filesystem* fs, uint32_t* cluster_array, uint32_t c
     return 0;
 }
 
-const int MAX_BOOTSECTOR_ITERATIONS = 10;
+const int MAX_BOOTSECTOR_ITERATIONS = 25;
 
 int FAT12_FAT16_WriteBootsector(FAT_Filesystem* fs, void* bootsector, int force_bootsector,
                              const char* oem_name, const char* volume_label, uint32_t volume_id,
@@ -527,21 +528,21 @@ int FAT12_FAT16_WriteBootsector(FAT_Filesystem* fs, void* bootsector, int force_
             fs->bootsector.fat12_fat16.header.oem_name[i] = oem_name[i];
         }
 
-        uint32_t total_sectors = total_size / bytes_per_sector;
-        uint32_t root_dir_sectors = (max_root_directory_entries * sizeof(FAT_DirectoryEntry) + bytes_per_sector - 1) / bytes_per_sector;
+        uint64_t total_sectors = total_size / bytes_per_sector;
+        uint64_t root_dir_sectors = (max_root_directory_entries * sizeof(FAT_DirectoryEntry) + bytes_per_sector - 1) / bytes_per_sector;
 
         uint32_t total_clusters = 0;
-        uint32_t fat_bytes = 0;
-        uint32_t fat_sectors = 1;
-        uint32_t data_sectors = total_size / bytes_per_sector - (reserved_sectors + number_of_fats * fat_sectors + root_dir_sectors);
+        uint64_t fat_bytes = 0;
+        uint64_t fat_sectors = 1;
+        uint64_t data_sectors = total_size / bytes_per_sector - (reserved_sectors + number_of_fats * fat_sectors + root_dir_sectors);
 
         int iteration = 0;
         while (1) {
             data_sectors = total_sectors - (reserved_sectors + number_of_fats * fat_sectors + root_dir_sectors);
-            total_clusters = data_sectors / sectors_per_cluster;
+            total_clusters = (uint32_t)(data_sectors / sectors_per_cluster);
             if (total_clusters > FAT_GetMaxClusters(fs)) {
-                fprintf(stderr, "Warning: Too many clusters for FAT1%c (%u). Reducing to max %u.\n",
-                        total_clusters, (fs->version == FAT_VERSION_12 ? '2' : '6'), FAT_GetMaxClusters(fs));
+                fprintf(stderr, "Warning: Too many clusters for FAT1%c (%" PRIu32 "). Reducing to max %" PRIu32 ".\n",
+                        (fs->version == FAT_VERSION_12 ? '2' : '6'), total_clusters, FAT_GetMaxClusters(fs));
                 total_clusters = FAT_GetMaxClusters(fs);
                 data_sectors = total_clusters * sectors_per_cluster;
             }
@@ -550,30 +551,30 @@ int FAT12_FAT16_WriteBootsector(FAT_Filesystem* fs, void* bootsector, int force_
                 case FAT_VERSION_12: fat_bytes = ((total_clusters + 2) * 3 + 1) / 2; break;
                 case FAT_VERSION_16: fat_bytes = (total_clusters + 2) * 2; break;
             }
-            uint32_t new_fat_sectors = (fat_bytes + bytes_per_sector - 1) / bytes_per_sector;
+            uint64_t new_fat_sectors = (fat_bytes + bytes_per_sector - 1) / bytes_per_sector;
             if (new_fat_sectors == fat_sectors) break;
             fat_sectors = new_fat_sectors;
 
             if (iteration++ > MAX_BOOTSECTOR_ITERATIONS) {
-                fprintf(stderr, "Max iterations reached for calculating fat_sectors. Using %u\n", fat_sectors);
+                fprintf(stderr, "Max iterations reached for calculating fat_sectors. Using %" PRIu64 "\n", fat_sectors);
                 break;
             }
         }
 
         int use_large_total_sectors = total_sectors > 65535;
         
-        fs->bootsector.fat12_fat16.header.bytes_per_sector = bytes_per_sector;
+        fs->bootsector.fat12_fat16.header.bytes_per_sector = (uint16_t)bytes_per_sector;
         fs->bootsector.fat12_fat16.header.sectors_per_cluster = sectors_per_cluster;
         fs->bootsector.fat12_fat16.header.reserved_sectors = reserved_sectors;
         fs->bootsector.fat12_fat16.header.number_of_fats = number_of_fats;
         fs->bootsector.fat12_fat16.header.max_root_directory_entries = max_root_directory_entries;
-        fs->bootsector.fat12_fat16.header.total_sectors = use_large_total_sectors ? 0 : (uint16_t)total_sectors;
+        fs->bootsector.fat12_fat16.header.total_sectors = (uint16_t)(use_large_total_sectors ? 0 : total_sectors);
         fs->bootsector.fat12_fat16.header.media_descriptor = media_descriptor;
-        fs->bootsector.fat12_fat16.header.fat_size = fat_sectors;
+        fs->bootsector.fat12_fat16.header.fat_size = (uint16_t)fat_sectors;
         fs->bootsector.fat12_fat16.header.sectors_per_track = sectors_per_track;
         fs->bootsector.fat12_fat16.header.number_of_heads = number_of_heads;
         fs->bootsector.fat12_fat16.header.hidden_sectors = hidden_sectors;
-        fs->bootsector.fat12_fat16.header.large_total_sectors = use_large_total_sectors ? total_sectors : 0;
+        fs->bootsector.fat12_fat16.header.large_total_sectors = (use_large_total_sectors ? (uint32_t)total_sectors : 0);
         fs->bootsector.fat12_fat16.header.drive_number = drive_number;
         fs->bootsector.fat12_fat16.header.reserved = 0;
         fs->bootsector.fat12_fat16.header.boot_signature = FAT_BOOTSECTOR_EXTENDED_BOOT_SIGNATURE;
@@ -625,7 +626,7 @@ int FAT12_FAT16_WriteBootsector(FAT_Filesystem* fs, void* bootsector, int force_
     uint64_t to_write = fs->bootsector.fat12_fat16.header.reserved_sectors * fs->bootsector.fat12_fat16.header.bytes_per_sector;
     uint8_t zero_block[CHUNK_SIZE] = {0};
     while (to_write > 0) {
-        uint32_t chunk = to_write < CHUNK_SIZE ? to_write : CHUNK_SIZE;
+        uint64_t chunk = to_write < CHUNK_SIZE ? to_write : CHUNK_SIZE;
         if (Partition_Write(fs->partition, (uint8_t*)zero_block, current_offset, chunk) != chunk) {
             // TODO
         }
@@ -661,53 +662,53 @@ int FAT32_WriteBootsector(FAT_Filesystem* fs, void* bootsector, int force_bootse
             fs->bootsector.fat12_fat16.header.oem_name[i] = oem_name[i];
         }
 
-        uint32_t total_sectors = total_size / bytes_per_sector;
+        uint64_t total_sectors = total_size / bytes_per_sector;
 
-        uint32_t fat_bytes = 0;
-        uint32_t fat_sectors = 1;
-        uint32_t data_sectors = total_size / bytes_per_sector - (reserved_sectors + number_of_fats * fat_sectors);
+        uint64_t fat_bytes = 0;
+        uint64_t fat_sectors = 1;
+        uint64_t data_sectors = total_size / bytes_per_sector - (reserved_sectors + number_of_fats * fat_sectors);
 
         int iteration = 0;
         while (1) {
             data_sectors = total_size / bytes_per_sector - (reserved_sectors + number_of_fats * fat_sectors);
-            total_clusters = data_sectors / sectors_per_cluster;
+            total_clusters = (uint32_t)(data_sectors / sectors_per_cluster);
             if (total_clusters > FAT_GetMaxClusters(fs)) {
-                fprintf(stderr, "Warning: Too many clusters for FAT%u (%u). Reducing to max %u.\n",
-                        total_clusters, 32, FAT_GetMaxClusters(fs));
+                fprintf(stderr, "Warning: Too many clusters for FAT32 (%" PRIu32 "). Reducing to max %" PRIu32 ".\n",
+                        total_clusters, FAT_GetMaxClusters(fs));
                 total_clusters = FAT_GetMaxClusters(fs);
                 data_sectors = total_clusters * sectors_per_cluster;
             }
 
             fat_bytes = (total_clusters + 2) * 4;
-            uint32_t new_fat_sectors = (fat_bytes + bytes_per_sector - 1) / bytes_per_sector;
+            uint64_t new_fat_sectors = (fat_bytes + bytes_per_sector - 1) / bytes_per_sector;
             if (new_fat_sectors == fat_sectors) break;
             fat_sectors = new_fat_sectors;
 
             if (iteration++ > MAX_BOOTSECTOR_ITERATIONS) {
-                fprintf(stderr, "Max iterations reached for calculating fat_sectors. Using %u\n", fat_sectors);
+                fprintf(stderr, "Max iterations reached for calculating fat_sectors. Using %" PRIu64 "\n", fat_sectors);
                 break;
             }
         }
 
-        int use_large_total_sectors = 1;
+        int use_large_total_sectors = 1; // TODO
 
-        fs->bootsector.fat32.header.bytes_per_sector = bytes_per_sector;
+        fs->bootsector.fat32.header.bytes_per_sector = (uint16_t)bytes_per_sector;
         fs->bootsector.fat32.header.sectors_per_cluster = sectors_per_cluster;
         fs->bootsector.fat32.header.reserved_sectors = reserved_sectors;
         fs->bootsector.fat32.header.number_of_fats = number_of_fats;
         fs->bootsector.fat32.header.max_root_directory_entries = max_root_directory_entries;
-        fs->bootsector.fat32.header.total_sectors_small = use_large_total_sectors ? 0 : (uint16_t)total_sectors;
+        fs->bootsector.fat32.header.total_sectors_small = (uint16_t)(use_large_total_sectors ? 0 : total_sectors);
         fs->bootsector.fat32.header.media_descriptor = media_descriptor;
         fs->bootsector.fat32.header.fat_size_small = 0; //FAT32
         fs->bootsector.fat32.header.sectors_per_track = sectors_per_track;
         fs->bootsector.fat32.header.number_of_heads = number_of_heads;
         fs->bootsector.fat32.header.hidden_sectors = hidden_sectors;
-        fs->bootsector.fat32.header.total_sectors_large = use_large_total_sectors ? total_sectors : 0;
+        fs->bootsector.fat32.header.total_sectors_large = (uint32_t)(use_large_total_sectors ? total_sectors : 0);
         fs->bootsector.fat32.header.drive_number = drive_number;
         fs->bootsector.fat32.header.reserved1 = 0;
         fs->bootsector.fat32.header.boot_signature = FAT_BOOTSECTOR_EXTENDED_BOOT_SIGNATURE;
 
-        fs->bootsector.fat32.header.fat_size_32 = fat_sectors;
+        fs->bootsector.fat32.header.fat_size_32 = (uint32_t)fat_sectors;
         fs->bootsector.fat32.header.ext_flags = 0; //TODO
         fs->bootsector.fat32.header.fs_version = 0; //TODO
 
@@ -733,10 +734,10 @@ int FAT32_WriteBootsector(FAT_Filesystem* fs, void* bootsector, int force_bootse
         fs->bootsector.fat32.header.fs_info_sector = 1;
         fs->bootsector.fat32.header.backup_boot_sector = 6;
     } else {
-        uint32_t total_sectors = (fs->bootsector.fat32.header.total_sectors_large != 0) ? fs->bootsector.fat32.header.total_sectors_large : fs->bootsector.fat32.header.total_sectors_small;
-        uint32_t fat_size = (fs->bootsector.fat32.header.fat_size_32 != 0) ? fs->bootsector.fat32.header.fat_size_32 : fs->bootsector.fat32.header.fat_size_small;
-        uint32_t data_sectors = total_sectors - (fs->bootsector.fat32.header.reserved_sectors + (fat_size * fs->bootsector.fat32.header.number_of_fats));
-        total_clusters = data_sectors / fs->bootsector.fat32.header.sectors_per_cluster;
+        uint64_t total_sectors = (fs->bootsector.fat32.header.total_sectors_large != 0) ? fs->bootsector.fat32.header.total_sectors_large : fs->bootsector.fat32.header.total_sectors_small;
+        uint64_t fat_size = (fs->bootsector.fat32.header.fat_size_32 != 0) ? fs->bootsector.fat32.header.fat_size_32 : fs->bootsector.fat32.header.fat_size_small;
+        uint64_t data_sectors = total_sectors - (fs->bootsector.fat32.header.reserved_sectors + (fat_size * fs->bootsector.fat32.header.number_of_fats));
+        total_clusters = (uint32_t)(data_sectors / fs->bootsector.fat32.header.sectors_per_cluster);
     }
 
     if (!bootsector) {
@@ -762,7 +763,7 @@ int FAT32_WriteBootsector(FAT_Filesystem* fs, void* bootsector, int force_bootse
     uint64_t to_write = fs->bootsector.fat32.header.reserved_sectors * fs->bootsector.fat32.header.bytes_per_sector;
     uint8_t zero_block[CHUNK_SIZE] = {0};
     while (to_write > 0) {
-        uint32_t chunk = to_write < CHUNK_SIZE ? to_write : CHUNK_SIZE;
+        uint64_t chunk = to_write < CHUNK_SIZE ? to_write : CHUNK_SIZE;
         if (Partition_Write(fs->partition, (uint8_t*)zero_block, current_offset, chunk) != chunk) {
             // TODO
         }
@@ -791,27 +792,27 @@ int FAT_WriteEmptyFAT(FAT_Filesystem* fs)
 
     uint64_t offset = fs->fat_offset;
 
-    uint32_t fat_size = fs->fat_size;
-    uint32_t written = 0;
+    uint64_t fat_size = fs->fat_size;
+    uint64_t written = 0;
 
     uint8_t media_descriptor = fs->version == FAT_VERSION_32 ? fs->bootsector.fat32.header.media_descriptor : fs->bootsector.fat12_fat16.header.media_descriptor;
     uint8_t header[8] = {media_descriptor, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
     switch (fs->version) {
         case FAT_VERSION_12:
-            if (Partition_Write(fs->partition, (uint8_t*)header, offset, 3) != 3) return 1;
+            if (Partition_Write(fs->partition, header, offset, 3) != 3) return 1;
             offset += 3;
             written += 3;
             break;
         case FAT_VERSION_16:
-            if (Partition_Write(fs->partition, (uint8_t*)header, offset, 4) != 4) return 1;
+            if (Partition_Write(fs->partition, header, offset, 4) != 4) return 1;
             offset += 4;
             written += 4;
             break;
         case FAT_VERSION_32:
             header[3] = 0x0F;
             header[7] = 0x0F;
-            if (Partition_Write(fs->partition, (uint8_t*)header, offset, 8) != 8) return 1;
+            if (Partition_Write(fs->partition, header, offset, 8) != 8) return 1;
             offset += 8;
             written += 8;
             break;
@@ -819,7 +820,7 @@ int FAT_WriteEmptyFAT(FAT_Filesystem* fs)
 
     uint8_t zero_block[CHUNK_SIZE] = {0};
     while (written < fat_size) {
-        uint32_t chunk = (fat_size - written) < CHUNK_SIZE ? (fat_size - written) : CHUNK_SIZE;
+        uint64_t chunk = (fat_size - written) < CHUNK_SIZE ? (fat_size - written) : CHUNK_SIZE;
         if (Partition_Write(fs->partition, (uint8_t*)zero_block, offset, chunk) != chunk) return 1;
         offset += chunk;
         written += chunk;
@@ -832,14 +833,14 @@ int FAT_CopyFAT(FAT_Filesystem* fs, uint8_t dst, uint8_t src)
 {
     if (!fs || fs->read_only) return 1;
 
-    uint32_t offset_dst = fs->fat_offset + fs->fat_size * dst;
-    uint32_t offset_src = fs->fat_offset + fs->fat_size * src;
+    uint64_t offset_dst = fs->fat_offset + fs->fat_size * dst;
+    uint64_t offset_src = fs->fat_offset + fs->fat_size * src;
 
     uint8_t buf[CHUNK_SIZE];
-    size_t remaining = fs->fat_size;
+    uint64_t remaining = fs->fat_size;
 
     while (remaining > 0) {
-        size_t to_copy = remaining < CHUNK_SIZE ? remaining : CHUNK_SIZE;
+        uint64_t to_copy = ((remaining < CHUNK_SIZE) ? remaining : CHUNK_SIZE);
 
         if (Partition_Read(fs->partition, (uint8_t*)buf, offset_src, to_copy) != to_copy) return 1;
         if (Partition_Write(fs->partition, (uint8_t*)buf, offset_dst, to_copy) != to_copy) return 1;
@@ -858,10 +859,10 @@ int FAT_WriteEmptyRootDir(FAT_Filesystem* fs)
 
     uint64_t offset = fs->root_offset;
     uint8_t zero_block[CHUNK_SIZE] = {0};
-    uint32_t written = 0;
+    uint64_t written = 0;
 
     while (written < fs->root_size) {
-        uint32_t chunk = (fs->root_size - written) < CHUNK_SIZE ? (fs->root_size - written) : CHUNK_SIZE;
+        uint64_t chunk = (fs->root_size - written) < CHUNK_SIZE ? (fs->root_size - written) : CHUNK_SIZE;
         if (Partition_Write(fs->partition, (uint8_t*)zero_block, offset, chunk) != chunk) return 1;
         offset += chunk;
         written += chunk;

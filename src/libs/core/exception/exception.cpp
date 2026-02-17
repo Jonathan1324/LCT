@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-Exception::Exception(Type _type, const std::string& _message, int _line, int _column, const char* _filename, size_t filenameLength)
+Exception::Exception(Type _type, const std::string& _message, int64_t _line, int64_t _column, const char* _filename, size_t filenameLength)
     : std::runtime_error(_message), type(_type), message(_message), line(_line), column(_column)
 {
     if (!filename || filenameLength == 0) return;
@@ -28,9 +28,9 @@ Exception::Type Exception::getType() const noexcept
 
 void Exception::print(std::ostream& os) const
 {
-    std::string type = typeToString();
-    if (!type.empty())
-        os << "[" << type << "] ";
+    std::string type_str = typeToString();
+    if (!type_str.empty())
+        os << "[" << type_str << "] ";
     if (line >= 0)
         os << "On line " << line;
     if (column >= 0)
@@ -57,7 +57,7 @@ std::string Exception::typeToString() const
     }
 }
 
-Exception Exception::ArgumentError(const std::string& message, int line, int column, const char* filename)
+Exception Exception::ArgumentError(const std::string& message, int64_t line, int64_t column, const char* filename)
 {
     size_t filenameLength;
     if (filename) {
@@ -68,7 +68,7 @@ Exception Exception::ArgumentError(const std::string& message, int line, int col
     return Exception(Type::ArgumentError, message, line, column, nullptr, filenameLength);
 }
 
-Exception Exception::IOError(const std::string& message, int line, int column, const char* filename)
+Exception Exception::IOError(const std::string& message, int64_t line, int64_t column, const char* filename)
 {
     size_t filenameLength;
     if (filename) {
@@ -79,7 +79,7 @@ Exception Exception::IOError(const std::string& message, int line, int column, c
     return Exception(Type::IOError, message, line, column, nullptr, filenameLength);
 }
 
-Exception Exception::ParseError(const std::string& message, int line, int column, const char* filename)
+Exception Exception::ParseError(const std::string& message, int64_t line, int64_t column, const char* filename)
 {
     size_t filenameLength;
     if (filename) {
@@ -90,7 +90,7 @@ Exception Exception::ParseError(const std::string& message, int line, int column
     return Exception(Type::ParseError, message, line, column, nullptr, filenameLength);
 }
 
-Exception Exception::SyntaxError(const std::string& message, int line, int column, const char* filename)
+Exception Exception::SyntaxError(const std::string& message, int64_t line, int64_t column, const char* filename)
 {
     size_t filenameLength;
     if (filename) {
@@ -101,7 +101,7 @@ Exception Exception::SyntaxError(const std::string& message, int line, int colum
     return Exception(Type::SyntaxError, message, line, column, nullptr, filenameLength);
 }
 
-Exception Exception::SemanticError(const std::string& message, int line, int column, const char* filename)
+Exception Exception::SemanticError(const std::string& message, int64_t line, int64_t column, const char* filename)
 {
     size_t filenameLength;
     if (filename) {
@@ -112,7 +112,7 @@ Exception Exception::SemanticError(const std::string& message, int line, int col
     return Exception(Type::SemanticError, message, line, column, nullptr, filenameLength);
 }
 
-Exception Exception::UndefinedSymbol(const std::string& message, int line, int column, const char* filename)
+Exception Exception::UndefinedSymbol(const std::string& message, int64_t line, int64_t column, const char* filename)
 {
     size_t filenameLength;
     if (filename) {
@@ -123,7 +123,7 @@ Exception Exception::UndefinedSymbol(const std::string& message, int line, int c
     return Exception(Type::UndefinedSymbol, message, line, column, nullptr, filenameLength);
 }
 
-Exception Exception::OverflowError(const std::string& message, int line, int column, const char* filename)
+Exception Exception::OverflowError(const std::string& message, int64_t line, int64_t column, const char* filename)
 {
     size_t filenameLength;
     if (filename) {
@@ -134,7 +134,7 @@ Exception Exception::OverflowError(const std::string& message, int line, int col
     return Exception(Type::OverflowError, message, line, column, nullptr, filenameLength);
 }
 
-Exception Exception::InternalError(const std::string& message, int line, int column, const char* filename)
+Exception Exception::InternalError(const std::string& message, int64_t line, int64_t column, const char* filename)
 {
     size_t filenameLength;
     if (filename) {

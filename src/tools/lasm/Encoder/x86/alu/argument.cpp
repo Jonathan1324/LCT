@@ -3,20 +3,20 @@
 #include <limits>
 #include <cstring>
 
-x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e, bits)
+x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, const Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    switch (mnemonic)
+    switch (instr.mnemonic)
     {
         case Instructions::NOT: case Instructions::NEG:
         case Instructions::INC: case Instructions::DEC:
         {
-            if (operands.size() != 1)
+            if (instr.operands.size() != 1)
                 throw Exception::InternalError("Wrong argument count for argument ALU instruction", -1, -1);
 
-            Parser::Instruction::Operand operand = operands[0];
+            const Parser::Instruction::Operand& operand = instr.operands[0];
 
-            uint64_t size;
+            uint64_t size = Parser::Instruction::Memory::NO_POINTER_SIZE;
             if (std::holds_alternative<Parser::Instruction::Register>(operand))
             {
                 Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(operand);
@@ -33,20 +33,20 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
 
             if (size == 8)
             {
-                if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
+                if (instr.mnemonic == Instructions::NOT || instr.mnemonic == Instructions::NEG)
                     opcode = 0xF6;
                 else // INC, DEC
                     opcode = 0xFE;
             }
             else
             {
-                if (mnemonic == Instructions::NOT || mnemonic == Instructions::NEG)
+                if (instr.mnemonic == Instructions::NOT || instr.mnemonic == Instructions::NEG)
                     opcode = 0xF7;
                 else // INC, DEC
                     opcode = 0xFF;
             }
 
-            switch (mnemonic)
+            switch (instr.mnemonic)
             {
                 case Instructions::NOT: modrm.reg = 2; break;
                 case Instructions::NEG: modrm.reg = 3; break;
@@ -84,11 +84,11 @@ x86::Argument_ALU_Instruction::Argument_ALU_Instruction(::Encoder::Encoder& e, B
                 Parser::Instruction::Register reg = std::get<Parser::Instruction::Register>(operand);
 
                 if (bits != BitMode::Bits64 && size != 8 &&
-                    (mnemonic == Instructions::INC || mnemonic == Instructions::DEC))
+                    (instr.mnemonic == Instructions::INC || instr.mnemonic == Instructions::DEC))
                 {
                     modrm.use = false;
 
-                    if (mnemonic == Instructions::INC)
+                    if (instr.mnemonic == Instructions::INC)
                         opcode = 0x40 + getRegIndex(reg);
                     else // DEC
                         opcode = 0x48 + getRegIndex(reg);

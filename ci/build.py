@@ -26,6 +26,7 @@ from ci.os import OS, ARCH, getOS, getArch
 logger = logging.getLogger("ci")
 
 source_dir = Path("src")
+version_src = source_dir / "version"
 libs_srcs = source_dir / "libs"
 tools_srcs = source_dir / "tools"
 
@@ -33,18 +34,26 @@ class BuildCache:
     def __init__(self, cache_file: Path):
         self.cache_file = cache_file
         self.hashes: Dict[str, str] = {}
+        self.stored_version: Optional[str] = None
         self.load()
 
     def load(self):
         if self.cache_file.exists():
             try:
-                self.hashes = json.loads(self.cache_file.read_text())
+                data = json.loads(self.cache_file.read_text())
+                self.hashes = data.get("hashes", {})
+                self.stored_version = data.get("version")
             except Exception:
                 print(f"Warning: Failed to load build cache from {self.cache_file}")
                 self.hashes = {}
+                self.stored_version = None
 
     def save(self):
-        self.cache_file.write_text(json.dumps(self.hashes, indent=4, ensure_ascii=False))
+        data = {
+            "hashes": self.hashes,
+            "version": self.stored_version
+        }
+        self.cache_file.write_text(json.dumps(data, indent=4, ensure_ascii=False))
 
     def get(self, target: Path) -> Optional[str]:
         return self.hashes.get(str(target))
@@ -56,6 +65,11 @@ class BuildCache:
         if not target.exists():
             return False
         return self.get(target) == hash_value
+    
+    def is_version_up_to_date(self, version: str) -> bool:
+        up_to_date = self.stored_version == version
+        self.stored_version = version
+        return up_to_date
 
 @dataclass
 class Toolchain:
@@ -109,7 +123,7 @@ def hash_files(files: list[Path]) -> str:
                 
     return hasher.hexdigest()
 
-def build_c_cpp_sources(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, source_dir: Path) -> list[Path]:
+def build_c_cpp_sources(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, source_dir: Path, force_rebuild: bool) -> list[Path]:
     patterns = ["*.c", "*.cpp"]
 
     files: list[Path] = []
@@ -151,7 +165,7 @@ def build_c_cpp_sources(toolchain: Toolchain, buildCache: BuildCache, build_dir:
             all_deps = [file, *map(Path, deps)]
             content_hash = hash_files(all_deps)
 
-            if not buildCache.is_up_to_date(target_path, content_hash):
+            if force_rebuild or not buildCache.is_up_to_date(target_path, content_hash):
                 print(f"Compiling {file} -> {target_path}")
                 subprocess.run([compiler, *flags, *dep_args, str(dep_path), "-c", str(file), "-o", str(target_path)], check=True)
 
@@ -165,6 +179,32 @@ def build_c_cpp_sources(toolchain: Toolchain, buildCache: BuildCache, build_dir:
             raise e
         
     return objects
+
+def build_version(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, source_dir: Path, out: Path, force_rebuild: bool) -> bool:
+    objects = build_c_cpp_sources(toolchain, buildCache, build_dir, source_dir, force_rebuild)
+
+    ar = toolchain.Ar
+    flags = toolchain.Ar_Flags
+
+    if ar is None:
+        raise RuntimeError("AR not specified in toolchain")
+    
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        content_hash = hash_files(objects)
+
+        if not buildCache.is_up_to_date(out, content_hash):
+            print(f"Creating static library {out}")
+            subprocess.run([ar, *flags, out, *map(str, objects)], check=True)
+
+            buildCache.update(out, content_hash)
+
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error: Creating static library failed for {out}")
+        raise e
+    
+    return True
 
 def build_lib(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, source_dir: Path, out: Path) -> bool:
     info_file = source_dir / "build.info"
@@ -207,7 +247,7 @@ def build_lib(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, sou
         return True
 
     elif info_content == "c,c++":
-        objects = build_c_cpp_sources(toolchain, buildCache, build_dir, source_dir)
+        objects = build_c_cpp_sources(toolchain, buildCache, build_dir, source_dir, False)
 
         ar = toolchain.Ar
         flags = toolchain.Ar_Flags
@@ -337,7 +377,7 @@ def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache
         if os == OS.Windows:
             out = out.with_suffix(".exe")
 
-        objects = build_c_cpp_sources(toolchain, buildCache, build_dir, source_dir)
+        objects = build_c_cpp_sources(toolchain, buildCache, build_dir, source_dir, False)
 
         linker = toolchain.Linker
         flags = toolchain.Linker_Flags
@@ -380,7 +420,7 @@ def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache
         logger.warning(f"Warning: invalid build.info content in {source_dir}")
         return None
 
-def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
+def build(debug: bool, os: OS, arch: ARCH, tools: list[str], version: str) -> bool:
     logger.info("Building the project")
 
     cache: BuildCache = BuildCache(Path(".buildcache.json"))
@@ -442,6 +482,10 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
     Static_Flags = ["-static", "-static-libgcc", "-static-libstdc++"]
 
     # FLAGS
+    if version:
+        toolchain.Compiler_C_Flags.append(f"-DVERSION=\"{version}\"")
+        toolchain.Compiler_CPP_Flags.append(f"-DVERSION=\"{version}\"")
+
     toolchain.Compiler_C_Flags.extend(Warning_Flags)
 
     toolchain.Compiler_CPP_Flags.append("-std=c++17")
@@ -510,7 +554,11 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
 
         toolchain.Compiler_CPP_Flags.extend(Debug_Flags)
 
-        toolchain.Rust_Flags.extend(["-C", "opt-level=0"])
+        toolchain.Rust_Flags.extend([
+            "-C", "opt-level=0",
+            "-C", "debuginfo=2",
+            "-C", "panic=unwind"
+        ])
 
     else:
         toolchain.Compiler_C_Flags.extend(Release_Flags)
@@ -518,7 +566,12 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
         toolchain.Compiler_CPP_Flags.extend(Release_Flags)
         toolchain.Compiler_CPP_Flags.extend(Security_Flags)
 
-        toolchain.Rust_Flags.extend(["-C", "opt-level=3"])
+        toolchain.Rust_Flags.extend([
+            "-C", "opt-level=3",
+            "-C", "debuginfo=0",
+            "-C", "panic=abort",
+            "-C", "codegen-units=1"
+        ])
 
         if os != OS.macOS:
             toolchain.Linker_Flags.extend(Static_Flags)
@@ -544,7 +597,7 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
     libs: list[Path] = [lib for lib in libs_srcs.iterdir() if lib.is_dir()]
 
     ## Include
-    Include_Flags: list[str] = []
+    Include_Flags: list[str] = [f"-I{str(version_src.absolute())}"]
     for lib in libs:
         path = lib.absolute()
         Include_Flags.append(f"-I{str(path)}")
@@ -572,6 +625,24 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str]) -> bool:
             logger.error(f"Building {lib} failed: {e}")
             return False
 
+    # Version
+    if True:
+        name = "version"
+
+        version_build_dir = build_dir / "version"
+        out = lib_out_dir / f"lib{name}.a"
+        
+        try:
+            result = build_version(toolchain, cache, version_build_dir, version_src, out, force_rebuild=(not cache.is_version_up_to_date(version)))
+            if result:
+                toolchain.Library_Flags.append(f"-l{name}")
+                toolchain.Lib_Names.append(name)
+                toolchain.Libs.append(out)
+
+        except Exception as e:
+            cache.save()
+            logger.error(f"Building {lib} failed: {e}")
+            return False
 
     # Tools
     for name in tools:

@@ -28,9 +28,9 @@ int main(int argc, char* argv[])
         }
     }
 
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
 
-    const unsigned int joke_index = rand() % joke_count;
+    const unsigned int joke_index = (unsigned int)rand() % joke_count;
     const char* joke = jokes[joke_index];
 
     puts(joke);

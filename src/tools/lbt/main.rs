@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::fs;
 use std::env;
-use std::task::Context;
 use serde_yaml;
 
 mod tools {
@@ -11,10 +10,6 @@ mod tools {
 
 mod cache {
     pub mod cache;
-}
-
-mod vscode {
-    pub mod vscode;
 }
 
 pub mod init;
@@ -47,15 +42,9 @@ fn main() {
         std::process::exit(0);
     }
 
-    let current_dir = env::current_dir().unwrap_or_else(|err | {
-        eprintln!("Error: Couldn't get current dir: {}", err);
-        std::process::exit(1);
-    });
-
     let mut user_flags = Vec::new();
     for arg in args {
         let s = arg.as_str();
-        let mut chars = s.chars();
 
         if s.starts_with('-') && !s.starts_with("--") {
             user_flags.push(arg.clone().split_off(1));

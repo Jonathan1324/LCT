@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <ostream>
+#include <cinttypes>
 
 class Exception : public std::runtime_error
 {
@@ -23,7 +24,7 @@ public:
         InternalError
     };
 
-    Exception(Type _type, const std::string& _message, int _line, int _column,  const char* _filename, size_t filenameLength);
+    Exception(Type _type, const std::string& _message, int64_t _line, int64_t _column,  const char* _filename, size_t filenameLength);
     ~Exception();
 
     const char* what() const noexcept override;
@@ -32,14 +33,14 @@ public:
     void print(std::ostream& os = std::cerr) const;
 
 
-    static Exception ArgumentError(const std::string& message, int line, int column, const char* filename);
-    static Exception IOError(const std::string& message, int line, int column, const char* filename = nullptr);
-    static Exception ParseError(const std::string& message, int line, int column, const char* filename = nullptr);
-    static Exception SyntaxError(const std::string& message, int line, int column, const char* filename = nullptr);
-    static Exception SemanticError(const std::string& message, int line, int column, const char* filename = nullptr);
-    static Exception UndefinedSymbol(const std::string& message, int line, int column, const char* filename = nullptr);
-    static Exception OverflowError(const std::string& message, int line, int column, const char* filename = nullptr);
-    static Exception InternalError(const std::string& message, int line, int column, const char* filename = nullptr);
+    static Exception ArgumentError(const std::string& message, int64_t line, int64_t column, const char* filename);
+    static Exception IOError(const std::string& message, int64_t line, int64_t column, const char* filename = nullptr);
+    static Exception ParseError(const std::string& message, int64_t line, int64_t column, const char* filename = nullptr);
+    static Exception SyntaxError(const std::string& message, int64_t line, int64_t column, const char* filename = nullptr);
+    static Exception SemanticError(const std::string& message, int64_t line, int64_t column, const char* filename = nullptr);
+    static Exception UndefinedSymbol(const std::string& message, int64_t line, int64_t column, const char* filename = nullptr);
+    static Exception OverflowError(const std::string& message, int64_t line, int64_t column, const char* filename = nullptr);
+    static Exception InternalError(const std::string& message, int64_t line, int64_t column, const char* filename = nullptr);
     /*
     static Exception ArgumentError(const std::string& message, int line = -1, int column = -1);
     static Exception IOError(const std::string& message, int line = -1, int column = -1);
@@ -54,8 +55,8 @@ public:
 private:
     Type type;
     std::string message;
-    int line;
-    int column;
+    int64_t line;
+    int64_t column;
     char* filename = nullptr;
 
     std::string typeToString() const;

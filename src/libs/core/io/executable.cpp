@@ -6,9 +6,9 @@
 
 #ifdef _WIN32
     #include <windows.h>
-#elif __APPLE__
+#elif defined(__APPLE__)
     #include <mach-o/dyld.h>
-#elif __linux__
+#elif defined(__linux__)
     #include <unistd.h>
     #include <limits.h>
 #else
@@ -24,7 +24,7 @@ std::string getExecutablePath()
         throw Exception::InternalError("Failed to get executable path (Windows)", -1, -1);
     return std::string(buffer);
 
-#elif __APPLE__
+#elif defined(__APPLE__)
     char buffer[PATH_MAX];
     uint32_t size = sizeof(buffer);
     if (_NSGetExecutablePath(buffer, &size) != 0)
@@ -34,7 +34,7 @@ std::string getExecutablePath()
         throw Exception::InternalError("Failed to resolve real path (macOS)", -1, -1);
     return std::string(realPath);
 
-#elif __linux__
+#elif defined(__linux__)
     char buffer[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
     if (len == -1)

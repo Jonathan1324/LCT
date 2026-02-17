@@ -1,10 +1,23 @@
 #include "interrupt.hpp"
 
-x86::Simple_Interrupt_Instruction::Simple_Interrupt_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic)
-    : ::x86::Instruction(e, bits)
+x86::Simple_Interrupt_Instruction::Simple_Interrupt_Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    switch (mnemonic)
+    switch (instr.mnemonic)
     {
+        case Instructions::INT3:
+            opcode = 0xCC;
+            break;
+
+        case Instructions::INTO:
+            if (bits == BitMode::Bits64) throw Exception::SyntaxError("INTO not supported in 64-bit mode", -1, -1, nullptr);
+            opcode = 0xCE;
+            break;
+
+        case Instructions::INT1:
+            opcode = 0xF1;
+            break;
+
         case Instructions::IRET:
             opcode = 0xCF;
 
@@ -31,28 +44,28 @@ x86::Simple_Interrupt_Instruction::Simple_Interrupt_Instruction(::Encoder::Encod
         case Instructions::SYSCALL:
             opcode = 0x05;
 
-            useOpcodeEscape = true;
+            opcodeEscape = OpcodeEscape::TWO_BYTE;
 
             break;
 
         case Instructions::SYSRET:
             opcode = 0x07;
 
-            useOpcodeEscape = true;
+            opcodeEscape = OpcodeEscape::TWO_BYTE;
 
             break;
 
         case Instructions::SYSENTER:
             opcode = 0x34;
 
-            useOpcodeEscape = true;
+            opcodeEscape = OpcodeEscape::TWO_BYTE;
 
             break;
 
         case Instructions::SYSEXIT:
             opcode = 0x35;
 
-            useOpcodeEscape = true;
+            opcodeEscape = OpcodeEscape::TWO_BYTE;
 
             break;
 

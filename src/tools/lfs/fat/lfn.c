@@ -32,7 +32,7 @@ FAT_LFNEntry* FAT_CreateLFNEntries(const char* name, uint32_t* out_count, uint8_
 
         uint32_t start = i * 13;
         for (int j = 0; j < 13; j++) {
-            uint16_t ch = (start + j < u16len) ? u16[start + j] : 0xFFFF;
+            uint16_t ch = (start + (uint32_t)j < u16len) ? u16[start + (uint32_t)j] : 0xFFFF;
 
             if (j < 5)
                 e->name1[j] = ch;
@@ -50,18 +50,23 @@ FAT_LFNEntry* FAT_CreateLFNEntries(const char* name, uint32_t* out_count, uint8_
     uint32_t lastPos = u16len % 13;
     FAT_LFNEntry* e = &arr[entries - 1];
 
-    uint16_t* slots[3] = { e->name1, e->name2, e->name3 };
-    int lens[3] = { 5, 6, 2 };
+    uint16_t tmp1[5], tmp2[6], tmp3[2];
+    memcpy(tmp1, e->name1, sizeof(tmp1));
+    memcpy(tmp2, e->name2, sizeof(tmp2));
+    memcpy(tmp3, e->name3, sizeof(tmp3));
+    uint16_t* slots[3] = { tmp1, tmp2, tmp3 };
+    
+    uint32_t lens[3] = { 5, 6, 2 };
 
     uint32_t index = (lastPos == 0 ? 13 : lastPos);
 
     if (index < 13) {
         uint32_t k = 0;
-        while (k < 3 && index > (uint32_t)lens[k]) {
+        while (k < 3 && index > lens[k]) {
             index -= lens[k];
             k++;
         }
-        if (k < 3 && index < (uint32_t)lens[k]) {
+        if (k < 3 && index < lens[k]) {
             slots[k][index] = 0x0000;
         } else if (k < 3 && index == lens[k]) {
             if (k + 1 < 3)
@@ -79,7 +84,7 @@ uint8_t FAT_GetChecksum(const char shortname[11])
 {
     uint8_t sum = 0;
     for (int i = 0; i < 11; i++) {
-        sum = ((sum & 1) ? 0x80 : 0) + (sum >> 1) + shortname[i];
+        sum = (uint8_t)(((sum & 1) ? 0x80 : 0) + (sum >> 1) + shortname[i]);
     }
     return sum;
 }

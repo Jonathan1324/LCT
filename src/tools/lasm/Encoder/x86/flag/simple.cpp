@@ -1,9 +1,9 @@
 #include "flag.hpp"
 
-x86::Simple_Flag_Instruction::Simple_Flag_Instruction(::Encoder::Encoder& e, BitMode bits, uint64_t mnemonic)
-    : ::x86::Instruction(e, bits)
+x86::Simple_Flag_Instruction::Simple_Flag_Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    switch (mnemonic)
+    switch (instr.mnemonic)
     {
         case Instructions::CLC:
             opcode = 0xF8;

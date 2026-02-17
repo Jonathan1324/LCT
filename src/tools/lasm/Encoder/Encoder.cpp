@@ -397,6 +397,7 @@ void Encoder::Encoder::Print() const
         switch (reloc.type)
         {
             case RelocationType::Absolute: std::cout << "Absolute"; break;
+            case RelocationType::PC_Relative: std::cout << "PC-Relative"; break;
         }
         std::cout << std::endl << "  Addend: " << reloc.addend << std::endl;
     }

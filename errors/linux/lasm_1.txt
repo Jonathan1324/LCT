@@ -1,0 +1,10 @@
+during GIMPLE pass: ivopts
+src/tools/lasm/Parser/Parser.cpp: In member function ‘void Parser::Parser::Print() const’:
+src/tools/lasm/Parser/Parser.cpp:12:6: internal compiler error: Segmentation fault
+   12 | void Parser::Parser::Print() const
+      |      ^~~~~~
+0x7f3d083ee32f ???
+        ./signal/../sysdeps/unix/sysv/linux/x86_64/libc_sigaction.c:0
+Please submit a full bug report, with preprocessed source (by using -freport-bug).
+Please include the complete backtrace with any bug report.
+See <file:///usr/share/doc/gcc-14/README.Bugs> for instructions.

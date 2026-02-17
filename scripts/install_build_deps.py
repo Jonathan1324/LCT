@@ -30,6 +30,9 @@ def install_rust():
 
     run("cargo install cargo-license")
 
+    #run("rustup target add x86_64-unknown-linux-musl")
+    #run("rustup target add aarch64-unknown-linux-musl")
+
 if __name__ == "__main__":
     import shutil
     system = platform.system().lower()

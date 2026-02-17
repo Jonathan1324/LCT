@@ -33,7 +33,6 @@ namespace ShuntingYard
         const std::vector<Parser::ImmediateOperand>& operands,
         std::unordered_map<std::string, Encoder::Label>& labels,
         const std::unordered_map<std::string, Encoder::Constant>& constants,
-        uint64_t bytesWritten,
         uint64_t sectionOffset,
         StringPool::String currentSection
     );

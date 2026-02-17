@@ -15,8 +15,8 @@ namespace ELF
 
     struct Section
     {
-        std::vector<uint8_t>* buffer;
-        StringPool::String name;
+        std::vector<uint8_t>* buffer = nullptr;
+        StringPool::String name = {};
 
         bool writeBuffer = true;
         

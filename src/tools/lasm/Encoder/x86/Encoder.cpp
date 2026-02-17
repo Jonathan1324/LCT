@@ -1,5 +1,6 @@
 #include "Encoder.hpp"
 
+#include "ascii/ascii.hpp"
 #include "alu/alu.hpp"
 #include "control/control.hpp"
 #include "data/data.hpp"
@@ -25,10 +26,15 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
 {
     switch (instruction.mnemonic)
     {
+        // ASCII
+        case Instructions::AAA: case Instructions::AAD:
+        case Instructions::AAM: case Instructions::AAS:
+            return new x86::ASCII_Instruction(*this, instruction);
+
         // CONTROL
         case Instructions::NOP:
         case Instructions::HLT:
-            return new x86::Simple_Control_Instruction(*this, instruction.bits, instruction.mnemonic);
+            return new x86::Simple_Control_Instruction(*this, instruction);
 
         case Instructions::JMP:
         case Instructions::JE: case Instructions::JNE:
@@ -40,30 +46,31 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
         case Instructions::JS: case Instructions::JNS:
         case Instructions::JP: case Instructions::JNP:
         case Instructions::JC: case Instructions::JNC:
-            return new x86::JMP_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            return new x86::JMP_Instruction(*this, instruction);
 
         case Instructions::CALL:
-            return new x86::CALL_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            return new x86::CALL_Instruction(*this, instruction);
 
         case Instructions::RET:
-            return new x86::RET_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            return new x86::RET_Instruction(*this, instruction);
 
         // INTERRUPT
         case Instructions::INT:
-            return new x86::Argument_Interrupt_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            return new x86::Argument_Interrupt_Instruction(*this, instruction);
 
+        case Instructions::INT3: case Instructions::INTO: case Instructions::INT1:
         case Instructions::IRET: case Instructions::IRETQ:
         case Instructions::IRETD: case Instructions::SYSCALL:
         case Instructions::SYSRET: case Instructions::SYSENTER:
         case Instructions::SYSEXIT:
-            return new x86::Simple_Interrupt_Instruction(*this, instruction.bits, instruction.mnemonic);
+            return new x86::Simple_Interrupt_Instruction(*this, instruction);
 
         // FLAGS
         case Instructions::CLC: case Instructions::STC: case Instructions::CMC:
         case Instructions::CLD: case Instructions::STD:
         case Instructions::CLI: case Instructions::STI:
         case Instructions::LAHF: case Instructions::SAHF:
-            return new x86::Simple_Flag_Instruction(*this, instruction.bits, instruction.mnemonic);
+            return new x86::Simple_Flag_Instruction(*this, instruction);
     
         // STACK
         case Instructions::PUSHA: case Instructions::POPA:
@@ -71,52 +78,136 @@ std::vector<uint8_t> x86::Encoder::EncodePadding(size_t length)
         case Instructions::PUSHF: case Instructions::POPF:
         case Instructions::PUSHFD: case Instructions::POPFD:
         case Instructions::PUSHFQ: case Instructions::POPFQ:
-            return new x86::Simple_Stack_Instruction(*this, instruction.bits, instruction.mnemonic);
+            return new x86::Simple_Stack_Instruction(*this, instruction);
 
         case Instructions::PUSH: case Instructions::POP:
-            return new x86::Normal_Stack_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            return new x86::Normal_Stack_Instruction(*this, instruction);
 
         // DATA
         case Instructions::MOV:
-            return new x86::Mov_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            return new x86::Mov_Instruction(*this, instruction);
 
         // ALU
         case Instructions::ADD: case Instructions::ADC: case Instructions::SUB:
         case Instructions::SBB: case Instructions::CMP: case Instructions::TEST:
         case Instructions::AND: case Instructions::OR: case Instructions::XOR:
-            return new x86::Two_Argument_ALU_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            return new x86::Two_Argument_ALU_Instruction(*this, instruction);
+
+        case Instructions::ADCX: case Instructions::ADOX:
+            return new x86::ADX_ALU_Instruction(*this, instruction);
 
         case Instructions::MUL: case Instructions::IMUL:
         case Instructions::DIV: case Instructions::IDIV:
-            return new x86::Mul_Div_ALU_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            return new x86::Mul_Div_ALU_Instruction(*this, instruction);
 
         case Instructions::SHL: case Instructions::SHR:
         case Instructions::SAL: case Instructions::SAR:
         case Instructions::ROL: case Instructions::ROR:
         case Instructions::RCL: case Instructions::RCR:
-            return new x86::Shift_Rotate_ALU_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            return new x86::Shift_Rotate_ALU_Instruction(*this, instruction);
 
         case Instructions::NOT: case Instructions::NEG:
         case Instructions::INC: case Instructions::DEC:
-            return new x86::Argument_ALU_Instruction(*this, instruction.bits, instruction.mnemonic, instruction.operands);
+            return new x86::Argument_ALU_Instruction(*this, instruction);
     }
 
     return nullptr;
 }
 
-x86::Instruction::Instruction(::Encoder::Encoder& e, BitMode bits) : ::Encoder::Encoder::Instruction(e)
+x86::Instruction::Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr) : ::Encoder::Encoder::Instruction(e)
 {
-    bitmode = bits;
+    bits = instr.bits;
+}
+
+uint64_t x86::Instruction::getDisplacementOffset()
+{
+    uint64_t displacementOffset = 1; // Opcode
+
+    if (use16BitPrefix) displacementOffset++;
+    if (use16BitAddressPrefix) displacementOffset++;
+    if (useREPPrefix) displacementOffset++;
+
+    if (use66OpcodeOverride) displacementOffset++;
+    if (useF3OpcodeOverride) displacementOffset++;
+
+    if (rex.use) displacementOffset++;
+
+    switch (opcodeEscape)
+    {
+        case OpcodeEscape::NONE: break;
+        case OpcodeEscape::TWO_BYTE: displacementOffset++; break;
+        case OpcodeEscape::THREE_BYTE_38: displacementOffset += 2; break;
+        case OpcodeEscape::THREE_BYTE_3A: displacementOffset += 2; break;
+    }
+
+    if (modrm.use) displacementOffset++;
+
+    if (sib.use) displacementOffset++;
+
+    return displacementOffset;
+}
+
+uint64_t x86::Instruction::getImmediateOffset()
+{
+    uint64_t displacementSize = 0;
+
+    if (displacement.use)
+    {
+        if (displacement.is_short) displacementSize = 1;
+        else
+        {
+            if (addressMode == AddressMode::Bits16) displacementSize = 2;
+            else                                    displacementSize = 4;
+        }
+    }
+    else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP8)
+    {
+        displacementSize = 1;
+    }
+    else if (modrm.use && modrm.mod == Mod::INDIRECT_DISP32)
+    {
+        if (addressMode == AddressMode::Bits16) displacementSize = 2;
+        else                                    displacementSize = 4;
+    }
+
+    return getDisplacementOffset() + displacementSize;
 }
 
 void x86::Instruction::encode(std::vector<uint8_t>& buffer)
 {
     if (use16BitPrefix) buffer.push_back(prefix16Bit);
     if (use16BitAddressPrefix) buffer.push_back(addressPrefix16Bit);
+    if (useREPPrefix) buffer.push_back(repPrefix);
+
+    // TODO: not happy
+    if (use66OpcodeOverride) buffer.push_back(0x66);
+    if (useF3OpcodeOverride) buffer.push_back(0xF3);
 
     if (rex.use) buffer.push_back(getRex(rex.w, rex.r, rex.x, rex.b));
 
-    if (useOpcodeEscape) buffer.push_back(opcodeEscape);
+    switch (opcodeEscape)
+    {
+        case OpcodeEscape::NONE:
+            break;
+
+        case OpcodeEscape::TWO_BYTE:
+            buffer.push_back(opcodeEscapeFirst);
+            break;
+
+        case OpcodeEscape::THREE_BYTE_38:
+            buffer.push_back(opcodeEscapeFirst);
+            buffer.push_back(opcodeEscape38);
+            break;
+
+        case OpcodeEscape::THREE_BYTE_3A:
+            buffer.push_back(opcodeEscapeFirst);
+            buffer.push_back(opcodeEscape3A);
+            break;
+
+        default:
+            throw Exception::InternalError("Invalid opcodeEscape", -1, -1);
+    }
+
     buffer.push_back(opcode);
 
     if (modrm.use)
@@ -143,7 +234,6 @@ void x86::Instruction::encode(std::vector<uint8_t>& buffer)
         else
         {
             uint32_t sizeInBytes;
-
             if (addressMode == AddressMode::Bits16)
             {
                 relocationSize = ::Encoder::RelocationSize::Bit16;
@@ -163,14 +253,7 @@ void x86::Instruction::encode(std::vector<uint8_t>& buffer)
 
         if (displacement.needsRelocation)
         {
-            uint64_t currentOffset = 0;
-            if (use16BitPrefix) currentOffset++;
-            if (use16BitAddressPrefix) currentOffset++;
-            if (rex.use) currentOffset++;
-            if (useOpcodeEscape) currentOffset++;
-            currentOffset++; // Opcode
-            if (modrm.use) currentOffset++;
-            if (sib.use) currentOffset++;
+            uint64_t currentOffset = getDisplacementOffset();
 
             AddRelocation(
                 currentOffset,
@@ -199,6 +282,51 @@ void x86::Instruction::encode(std::vector<uint8_t>& buffer)
         }
     }
 
+    if (immediate.use)
+    {
+        uint32_t sizeInBytes = immediate.sizeInBits / 8;
+
+        uint64_t oldSize = buffer.size();
+        buffer.resize(oldSize + sizeInBytes);
+
+        std::memcpy(buffer.data() + oldSize, &immediate.value, sizeInBytes);
+
+        if (immediate.needsRelocation)
+        {
+            uint64_t currentOffset = getImmediateOffset();
+
+            ::Encoder::RelocationSize relocationSize;
+            switch (immediate.sizeInBits)
+            {
+                case 8: relocationSize = ::Encoder::RelocationSize::Bit8; break;
+                case 16: relocationSize = ::Encoder::RelocationSize::Bit16; break;
+                case 24: relocationSize = ::Encoder::RelocationSize::Bit24; break;
+                case 32: relocationSize = ::Encoder::RelocationSize::Bit32; break;
+                case 64: relocationSize = ::Encoder::RelocationSize::Bit64; break;
+                default: throw Exception::InternalError("Unknown size in bits " + std::to_string(immediate.sizeInBits), -1, -1);
+            }
+
+            ::Encoder::RelocationType relocationType;
+            if (immediate.ripRelative) relocationType = ::Encoder::RelocationType::PC_Relative;
+            else                       relocationType = ::Encoder::RelocationType::Absolute;
+
+            uint64_t value = immediate.value;
+            if (immediate.ripRelative)
+                value -= immediate.sizeInBits / 8;
+
+            AddRelocation(
+                currentOffset,
+                value,
+                true,
+                immediate.relocationUsedSection,
+                relocationType,
+                relocationSize,
+                immediate.is_signed,
+                immediate.relocationIsExtern
+            );
+        }
+    }
+
     encodeS(buffer);
 }
 
@@ -208,10 +336,17 @@ uint64_t x86::Instruction::size()
 
     if (use16BitPrefix) s++;
     if (use16BitAddressPrefix) s++;
+    if (useREPPrefix) s++;
 
     if (rex.use) s++;
 
-    if (useOpcodeEscape) s++;
+    switch (opcodeEscape)
+    {
+        case OpcodeEscape::NONE: break;
+        case OpcodeEscape::TWO_BYTE: s++; break;
+        case OpcodeEscape::THREE_BYTE_38: s += 2; break;
+        case OpcodeEscape::THREE_BYTE_3A: s += 2; break;
+    }
     s++; // Opcode
 
     if (modrm.use) s++;
@@ -236,6 +371,9 @@ uint64_t x86::Instruction::size()
         else                                    s += 4;
     }
 
+    if (immediate.use)
+        s += immediate.sizeInBits / 8;
+
     s += sizeS();
 
     return s;
@@ -243,27 +381,7 @@ uint64_t x86::Instruction::size()
 
 void x86::Instruction::evaluate()
 {
-    evaluateDisplacement();
-    evaluateS();
-}
-
-bool x86::Instruction::optimize()
-{
-    bool changed = false;
-
-    if (optimizeDisplacement())
-        changed = true;
-
-    if (optimizeS())
-        changed = true;
-
-    return changed;
-}
-
-void x86::Instruction::evaluateDisplacement()
-{
     // TODO: RIP-Relative
-
     if (displacement.use)
     {
         ::Encoder::Evaluation evaluation = Evaluate(displacement.immediate, false, 0);
@@ -284,32 +402,65 @@ void x86::Instruction::evaluateDisplacement()
 
             // TODO: Check for overflow
 
-            displacement.value = static_cast<uint64_t>(result);
+            displacement.value = static_cast<int64_t>(static_cast<uint64_t>(result));
         }
     }
-}
 
-bool x86::Instruction::optimizeDisplacement()
-{
-    if (displacement.use && displacement.can_optimize && !displacement.is_short)
+    // TODO: RIP-Relative
+    if (immediate.use)
     {
-        if (displacement.value < -128 || displacement.value > 127)
-            return false;
+        uint64_t ripExtra = getImmediateOffset() + immediate.sizeInBits / 8;
 
-        displacement.is_short = true;
+        ::Encoder::Evaluation evaluation = Evaluate(immediate.immediate, immediate.ripRelative, ripExtra);
 
-        // TODO: Make better
-        modrm.mod = Mod::INDIRECT_DISP8;
+        if (evaluation.useOffset)
+        {
+            immediate.needsRelocation = true;
 
-        return true;
+            immediate.relocationUsedSection = evaluation.usedSection;
+            immediate.relocationIsExtern = evaluation.isExtern;
+
+            immediate.value = evaluation.offset;
+        }
+        else
+        {
+            Int128 result = evaluation.result;
+
+            // TODO: Check for overflow
+
+            immediate.value = static_cast<uint64_t>(result);
+        }
     }
 
-    return false;
+    evaluateS();
 }
 
-void x86::Instruction::checkReg(const Parser::Instruction::Register& reg, BitMode bits)
+bool x86::Instruction::optimize()
 {
-    if (bits == BitMode::Bits64) return;
+    bool changed = false;
+
+    if (displacement.use && displacement.can_optimize && !displacement.is_short)
+    {
+        if (displacement.value >= -128 && displacement.value <= 127)
+        {
+            displacement.is_short = true;
+
+            // TODO: Make better
+            modrm.mod = Mod::INDIRECT_DISP8;
+
+            changed = true;
+        }
+    }
+
+    if (optimizeS())
+        changed = true;
+
+    return changed;
+}
+
+void x86::Instruction::checkReg(const Parser::Instruction::Register& reg, BitMode bitmode)
+{
+    if (bitmode == BitMode::Bits64) return;
     switch (reg.reg)
     {
         case SPL: case BPL: case SIL: case DIL:
@@ -335,9 +486,9 @@ void x86::Instruction::checkReg(const Parser::Instruction::Register& reg, BitMod
     }
 }
 
-void x86::Instruction::checkSize(uint64_t size, BitMode bits)
+void x86::Instruction::checkSize(uint64_t size, BitMode bitmode)
 {
-    if (bits == BitMode::Bits64) return;
+    if (bitmode == BitMode::Bits64) return;
     if (size == 64)
         throw Exception::SyntaxError("64-bit size not supported in 16/32 bit mode", -1, -1);
 }

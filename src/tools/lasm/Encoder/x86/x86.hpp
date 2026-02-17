@@ -10,7 +10,11 @@ namespace x86 {
     constexpr uint8_t prefix16Bit = 0x66;
     constexpr uint8_t addressPrefix16Bit = 0x67;
 
-    constexpr uint8_t opcodeEscape = 0x0F;
+    constexpr uint8_t opcodeEscapeFirst = 0x0F;
+    constexpr uint8_t opcodeEscape38 = 0x38;
+    constexpr uint8_t opcodeEscape3A = 0x3A;
+
+    constexpr uint8_t repPrefix = 0xF3;
 
     inline uint8_t getRex(bool W, bool R, bool X, bool B)
     {

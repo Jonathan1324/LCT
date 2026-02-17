@@ -1,13 +1,12 @@
 {
     "configurations": [
         {
-            "name": "Mac",
+            "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/src/libs/core",
-                "${workspaceFolder}/src/libs/rust",
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/src/libs/**",
+                "${workspaceFolder}/src/version"
             ],
-            "defines": [],
+            "defines": ["VERSION=\"vscode\""],
             "compilerPath": "g++",
             "cStandard": "c17",
             "cppStandard": "c++17",

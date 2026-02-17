@@ -1,6 +1,6 @@
 #include "warning.hpp"
 
-Warning::Warning(Type _type, const std::string& _message, int _line, int _column)
+Warning::Warning(Type _type, const std::string& _message, int64_t _line, int64_t _column)
     : type(_type), message(_message), line(_line), column(_column)
 {
 
@@ -18,9 +18,9 @@ Warning::Type Warning::getType() const noexcept
 
 void Warning::print(std::ostream& os) const
 {
-    std::string type = typeToString();
-    if (!type.empty())
-        os << "(" << type << ") ";
+    std::string type_str = typeToString();
+    if (!type_str.empty())
+        os << "(" << type_str << ") ";
     if (line >= 0)
         os << "On line " << line;
     if (line >= 0)
@@ -38,12 +38,12 @@ std::string Warning::typeToString() const
     }
 }
 
-Warning Warning::GeneralWarning(const std::string& message, int line, int column)
+Warning Warning::GeneralWarning(const std::string& message, int64_t line, int64_t column)
 {
     return Warning(Type::None, message, line, column);
 }
 
-Warning Warning::ArgumentWarning(const std::string& message, int line, int column)
+Warning Warning::ArgumentWarning(const std::string& message, int64_t line, int64_t column)
 {
     return Warning(Type::Argument, message, line, column);
 }

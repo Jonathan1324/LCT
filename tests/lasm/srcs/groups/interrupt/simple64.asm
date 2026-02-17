@@ -8,6 +8,10 @@ section .text
     global _start
 
 _start:
+    int3
+    icebp
+    int1
+
     iret
     iretq
     iretd

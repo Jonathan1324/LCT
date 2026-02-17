@@ -117,7 +117,7 @@ char **Path_ListDir(const char *dir_path, uint64_t *out_count)
     closedir(dir);
 #endif
 
-    if (!list) list = (char**)malloc(1);
+    if (!list) list = (char**)malloc(8);
 
     *out_count = count;
     return list;
@@ -127,7 +127,6 @@ int Path_MakeDirsForPath(const char* path, int is_dir)
 {
     if (!path || !*path) return 1;
 
-    size_t len = strlen(path);
     char *current_path = malloc(1);
     if (!current_path) return 1;
     current_path[0] = '\0';

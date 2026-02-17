@@ -149,7 +149,7 @@ pub fn execute_target(
                     let rel = input.strip_prefix(&target_path).unwrap_or(input);
                     replacements.insert("input".to_string(), rel.to_string_lossy().to_string());
                     let rel_output_path = crate::execute::replace_placeholders(&target.out_path, &replacements)?;
-                    let mut output_path = build_dir.join(rel_output_path);
+                    let output_path = build_dir.join(rel_output_path);
 
                     let temp_inputs: Vec<&Path> = vec![input];
 

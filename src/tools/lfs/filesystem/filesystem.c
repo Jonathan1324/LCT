@@ -1,6 +1,7 @@
 #include "filesystem.h"
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 #include "../native/directory.h"
 
 char** SeparatePaths(const char* path, uint32_t* out_count)
@@ -22,7 +23,7 @@ char** SeparatePaths(const char* path, uint32_t* out_count)
     const char* start = path;
     for (p = path; *p; p++) {
         if (*p == '/') {
-            uint64_t len = p - start;
+            uint64_t len = (uint64_t)p - (uint64_t)start;
             if (len > 0) {
                 parts[i] = (char*)malloc(len + 1);
                 memcpy(parts[i], start, len);
@@ -262,14 +263,14 @@ int Filesystem_DirectoryReserve(Filesystem_File* dir, char** file_names, uint64_
 {
     if (!dir || !dir->fat_f->is_directory || !file_names) return 1;
 
-    uint32_t entry_count = 0;
+    uint64_t entry_count = 0;
     for (uint64_t i = 0; i < file_count; i++) {
         uint64_t name_len = strlen(file_names[i]);
         uint64_t lfn_count = (name_len + 12) / 13;
         entry_count += lfn_count + 1;
     }
 
-    return FAT_ReserveDirectorySpace(dir->fat_f, entry_count);
+    return FAT_ReserveDirectorySpace(dir->fat_f, (uint32_t)entry_count);
 }
 
 
@@ -297,13 +298,13 @@ int Filesystem_SyncPathsToFS(Filesystem_File* dir, const char* path, const char*
             return 1;
         }
 
-        char buffer[512];
+        uint8_t buffer[512];
         uint64_t offset = 0;
         uint64_t read = 1;
         while (read) {
             read = (uint64_t)fread(buffer, 1, 512, o_f);
             if (Filesystem_WriteToFile(fs_f, offset, buffer, read) != read) {
-                fprintf(stderr, "Couldn't write %llu bytes to %s\n", read, path);
+                fprintf(stderr, "Couldn't write %" PRIu64 " bytes to %s\n", read, path);
                 fclose(o_f);
                 Filesystem_CloseEntry(fs_f);
                 return 1;
@@ -340,7 +341,7 @@ int Filesystem_SyncPathsToFS(Filesystem_File* dir, const char* path, const char*
             uint64_t name_len = strlen(name);
             char* new_path = (char*)malloc(path_len + name_len + 1);
             if (!new_path) {
-                printf("Warning: Couldn't allocate memory to sync '%s' to '%s'\n", entry, new_path);
+                printf("Warning: Couldn't allocate memory to sync '%s' to '%s%s'\n", entry, path, name);
                 free(entry);
                 continue;
             }
@@ -392,13 +393,13 @@ int Filesystem_SyncPathsFromFS(Filesystem_File* dir, const char* path, const cha
             return 1;
         }
 
-        char buffer[512];
+        uint8_t buffer[512];
         uint64_t offset = 0;
         uint64_t read = 1;
         while (read) {
             read = Filesystem_ReadFromFile(fs_f, offset, buffer, 512);
             if (fwrite(buffer, 1, read, o_f) != read) {
-                fprintf(stderr, "Couldn't write %llu bytes to %s\n", read, o_path);
+                fprintf(stderr, "Couldn't write %" PRIu64 " bytes to %s\n", read, o_path);
                 fclose(o_f);
                 Filesystem_CloseEntry(fs_f);
                 return 1;
@@ -432,7 +433,7 @@ int Filesystem_SyncPathsFromFS(Filesystem_File* dir, const char* path, const cha
 
         for (uint64_t i = 0; i < sub_entry_count; i++) {
             char* entry_name = sub_entries[i];
-            if ((entry_name[0] == '.' && entry_name[1] == '\0') || entry_name[0] == '.' && entry_name[1] == '.' && entry_name[2] == '\0') {
+            if ((entry_name[0] == '.' && entry_name[1] == '\0') || (entry_name[0] == '.' && entry_name[1] == '.' && entry_name[2] == '\0')) {
                 free(entry_name);
                 continue;
             }
@@ -440,7 +441,7 @@ int Filesystem_SyncPathsFromFS(Filesystem_File* dir, const char* path, const cha
             uint64_t o_path_len = strlen(o_path);
             uint64_t name_len = strlen(entry_name);
             int add_slash = (o_path_len > 0 && o_path[o_path_len - 1] != '/') ? 1 : 0;
-            char* full_o_path = (char*)malloc(o_path_len + add_slash + name_len + 1);
+            char* full_o_path = (char*)malloc(o_path_len + (uint64_t)add_slash + name_len + 1);
             if (!full_o_path) {
                 printf("Warning: Couldn't sync '%s'\n", entry_name);
                 free(entry_name);
@@ -452,7 +453,7 @@ int Filesystem_SyncPathsFromFS(Filesystem_File* dir, const char* path, const cha
             full_o_path[o_path_len + name_len] = '\0';
 
             uint64_t path_len = strlen(path);
-            char* new_path = (char*)malloc(path_len + add_slash + name_len + 1);
+            char* new_path = (char*)malloc(path_len + (uint64_t)add_slash + name_len + 1);
             if (!new_path) {
                 printf("Warning: Couldn't sync '%s' to FS\n", entry_name);
                 free(full_o_path);
@@ -510,7 +511,7 @@ int Filesystem_PrintAll(Filesystem_File* start_dir, const char* name, int indent
 
         for (uint64_t i = 0; i < sub_entry_count; i++) {
             char* entry_name = sub_entries[i];
-            if ((entry_name[0] == '.' && entry_name[1] == '\0') || entry_name[0] == '.' && entry_name[1] == '.' && entry_name[2] == '\0') {
+            if ((entry_name[0] == '.' && entry_name[1] == '\0') || (entry_name[0] == '.' && entry_name[1] == '.' && entry_name[2] == '\0')) {
                 free(entry_name);
                 continue;
             }

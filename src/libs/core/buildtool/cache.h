@@ -46,7 +46,7 @@ typedef struct HashMapEntry
 {
     char* key;
     uint64_t key_len;
-    uint32_t index;
+    uint64_t index;
     struct HashMapEntry* next;
 } HashMapEntry;
 

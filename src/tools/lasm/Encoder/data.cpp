@@ -112,7 +112,7 @@ Encoder::Data::ReservedData_Instruction::ReservedData_Instruction(Encoder& e, co
     if (evaluation.useOffset)
         throw Exception::SemanticError("Can't use relocations for resX", -1, -1);
 
-    bufferSize = dataDefinition.size * evaluation.result;
+    bufferSize = static_cast<uint64_t>(dataDefinition.size * evaluation.result);
 
     for (uint64_t i = 0; i < bufferSize; i++)
     {

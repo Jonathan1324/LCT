@@ -35,10 +35,10 @@ uint64_t parse_size(const char* size_str)
         if (!isdigit(c)) break;
 
         if (!after_dot) {
-            whole = whole * 10 + (c - '0');
+            whole = whole * 10 + (uint64_t)(unsigned char)(c - '0');
         } else {
             if (frac_divisor < 1000000000000000000ULL) {
-                fraction = fraction * 10 + (c - '0');
+                fraction = fraction * 10 + (uint64_t)(unsigned char)(c - '0');
                 frac_divisor *= 10;
             }
         }

@@ -35,12 +35,12 @@ void Tape_Ensure(Tape* tape, uint64_t new_pos)
     }
 }
 
-void Tape_Increase(Tape* tape, uint64_t count)
+void Tape_Increase(Tape* tape, uint8_t count)
 {
     tape->tape[tape->pos] += count;
 }
 
-void Tape_Decrease(Tape* tape, uint64_t count)
+void Tape_Decrease(Tape* tape, uint8_t count)
 {
     tape->tape[tape->pos] -= count;
 }

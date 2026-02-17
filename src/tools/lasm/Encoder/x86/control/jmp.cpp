@@ -3,18 +3,18 @@
 #include <limits>
 #include <cstring>
 
-x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder &e, BitMode bits, uint64_t mnemonic, std::vector<Parser::Instruction::Operand> operands)
-    : ::x86::Instruction(e, bits)
+x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder& e, const ::Parser::Instruction::Instruction& instr)
+    : ::x86::Instruction(e, instr)
 {
-    mnemonicI = mnemonic;
-    switch (mnemonic)
+    mnemonicI = instr.mnemonic;
+    switch (instr.mnemonic)
     {
         case JMP:
         {
-            if (operands.size() != 1)
+            if (instr.operands.size() != 1)
                 throw Exception::InternalError("Wrong argument count for jmp instruction", -1, -1);
 
-            Parser::Instruction::Operand& operand = operands[0];
+            const Parser::Instruction::Operand& operand = instr.operands[0];
 
             if (std::holds_alternative<Parser::Instruction::Register>(operand))
             {
@@ -93,7 +93,7 @@ x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
                 break;
             }
 
-            // Same logic when immediate
+            [[fallthrough]];
         }
 
         case JE: case JNE:
@@ -102,103 +102,74 @@ x86::JMP_Instruction::JMP_Instruction(::Encoder::Encoder &e, BitMode bits, uint6
         case JO: case JNO: case JS: case JNS:
         case JP: case JNP: case JC: case JNC:
         {
-            if (operands.size() != 1)
+            if (instr.operands.size() != 1)
                 throw Exception::InternalError("Wrong argument count for jmp instruction", -1, -1);
 
-            Parser::Instruction::Operand& operand = operands[0];
+            const Parser::Instruction::Operand& operand = instr.operands[0];
 
             if (!std::holds_alternative<Parser::Immediate>(operand))
                 throw Exception::SyntaxError("Only immediates are allowed for conditional jumps", -1, -1);
 
-            useImmediate = true;
+            immediate.use = true;
+            immediate.immediate = std::get<Parser::Immediate>(operand);
+            immediate.ripRelative = true;
+
+            // TODO
+            immediate.is_signed = true;
+
             canOptimize = true;
 
             switch (bits)
             {
                 case BitMode::Bits16:
-                    max = std::numeric_limits<int16_t>::max();
-                    sizeInBits = 16;
-
-                    instrSize = 3; // opcode + off16
+                    immediate.sizeInBits = 16;
                     break;
 
                 case BitMode::Bits32: case BitMode::Bits64:
-                    max = std::numeric_limits<int32_t>::max();
-                    sizeInBits = 32;
-
-                    instrSize = 5; // opcode + off32
+                    immediate.sizeInBits = 32;
                     break;
             }
 
-            immediate = std::get<Parser::Immediate>(operand);
-
-            switch (mnemonic)
+            switch (instr.mnemonic)
             {
                 case JMP: opcode = 0xE9; break;
 
-                case JE: useOpcodeEscape = true; opcode = 0x84; break;
-                case JNE: useOpcodeEscape = true; opcode = 0x85; break;
+                case JE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x84; break;
+                case JNE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x85; break;
 
-                case JG: useOpcodeEscape = true; opcode = 0x8F; break;
-                case JGE: useOpcodeEscape = true; opcode = 0x8D; break;
-                case JL: useOpcodeEscape = true; opcode = 0x8C; break;
-                case JLE: useOpcodeEscape = true; opcode = 0x8E; break;
+                case JG: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8F; break;
+                case JGE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8D; break;
+                case JL: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8C; break;
+                case JLE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8E; break;
 
-                case JA: useOpcodeEscape = true; opcode = 0x87; break;
-                case JAE: useOpcodeEscape = true; opcode = 0x83; break;
-                case JB: useOpcodeEscape = true; opcode = 0x82; break;
-                case JBE: useOpcodeEscape = true; opcode = 0x86; break;
+                case JA: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x87; break;
+                case JAE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x83; break;
+                case JB: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x82; break;
+                case JBE: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x86; break;
 
-                case JO: useOpcodeEscape = true; opcode = 0x80; break;
-                case JNO: useOpcodeEscape = true; opcode = 0x81; break;
-                case JS: useOpcodeEscape = true; opcode = 0x88; break;
-                case JNS: useOpcodeEscape = true; opcode = 0x89; break;
+                case JO: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x80; break;
+                case JNO: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x81; break;
+                case JS: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x88; break;
+                case JNS: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x89; break;
 
-                case JP: useOpcodeEscape = true; opcode = 0x8A; break;
-                case JNP: useOpcodeEscape = true; opcode = 0x8B; break;
-                case JC: useOpcodeEscape = true; opcode = 0x82; break;
-                case JNC: useOpcodeEscape = true; opcode = 0x83; break;
+                case JP: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8A; break;
+                case JNP: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x8B; break;
+                case JC: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x82; break;
+                case JNC: opcodeEscape = OpcodeEscape::TWO_BYTE; opcode = 0x83; break;
             }
-
-            if (useOpcodeEscape) instrSize++;
-        }
-    }
-}
-
-void x86::JMP_Instruction::evaluateS()
-{
-    if (useImmediate)
-    {
-        ::Encoder::Evaluation evaluation = Evaluate(immediate, true, instrSize);
-
-        if (evaluation.useOffset)
-        {
-            usedReloc = true;
-            relocUsedSection = evaluation.usedSection;
-            relocIsExtern = evaluation.isExtern;
-            value = evaluation.offset;
-        }
-        else
-        {
-            Int128 result = evaluation.result;
-
-            // FIXME
-            //if (result > max) throw Exception::SemanticError("Operand too large for instruction", -1, -1);
-
-            value = static_cast<uint64_t>(result);
         }
     }
 }
 
 bool x86::JMP_Instruction::optimizeS()
 {
-    if (canOptimize && !usedReloc)
+    if (canOptimize && !immediate.needsRelocation)
     {
         int32_t offset;
-        if (sizeInBits == 16)
-            offset = static_cast<int32_t>(static_cast<int16_t>(static_cast<uint16_t>(value)));
+        if (immediate.sizeInBits == 16)
+            offset = static_cast<int32_t>(static_cast<int16_t>(static_cast<uint16_t>(immediate.value)));
         else
-            offset = static_cast<int32_t>(static_cast<uint32_t>(value));
+            offset = static_cast<int32_t>(static_cast<uint32_t>(immediate.value));
 
         if (
             offset <= static_cast<int64_t>(std::numeric_limits<int8_t>::max()) &&
@@ -207,7 +178,7 @@ bool x86::JMP_Instruction::optimizeS()
         {
             canOptimize = false;
 
-            useOpcodeEscape = false;
+            opcodeEscape = OpcodeEscape::NONE;
 
             switch (mnemonicI)
             {
@@ -237,65 +208,11 @@ bool x86::JMP_Instruction::optimizeS()
                 case JNC: opcode = 0x73; break;
             }
 
-            max = std::numeric_limits<int8_t>::max();
-            sizeInBits = 8;
-
-            instrSize = 2; // opcode + off8
+            immediate.sizeInBits = 8;
 
             return true;
         }
     }
 
     return false;
-}
-
-void x86::JMP_Instruction::encodeS(std::vector<uint8_t>& buffer)
-{
-    if (useImmediate)
-    {
-        uint32_t sizeInBytes = sizeInBits / 8;
-
-        uint64_t oldSize = buffer.size();
-        buffer.resize(oldSize + sizeInBytes);
-
-        std::memcpy(buffer.data() + oldSize, &value, sizeInBytes);
-
-        if (usedReloc)
-        {
-            uint64_t currentOffset = 1; // opcode
-            if (use16BitPrefix) currentOffset++;
-            if (rex.use) currentOffset++;
-            if (useOpcodeEscape) currentOffset++;
-            if (modrm.use) currentOffset++;
-
-            ::Encoder::RelocationSize relocSize;
-            switch (sizeInBits)
-            {
-                case 8: relocSize = ::Encoder::RelocationSize::Bit8; break;
-                case 16: relocSize = ::Encoder::RelocationSize::Bit16; break;
-                case 32: relocSize = ::Encoder::RelocationSize::Bit32; break;
-                case 64: relocSize = ::Encoder::RelocationSize::Bit64; break;
-                default: throw Exception::InternalError("Unknown size in bits " + std::to_string(sizeInBits), -1, -1);
-            }
-
-            AddRelocation(
-                currentOffset,
-                value - (instrSize - currentOffset),
-                true,
-                relocUsedSection,
-                ::Encoder::RelocationType::PC_Relative,
-                relocSize,
-                false, // TODO: Check if signed
-                relocIsExtern
-            );
-        }
-    }
-}
-
-uint64_t x86::JMP_Instruction::sizeS()
-{
-    if (useImmediate)
-        return sizeInBits / 8;
-    else
-        return 0;
 }
