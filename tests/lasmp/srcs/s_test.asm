@@ -1,6 +1,6 @@
 %define ENDL ABC
 
-%include "a.inc"
+%include "test_dir/a.inc"
 
 section .data
 

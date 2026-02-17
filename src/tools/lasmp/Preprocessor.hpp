@@ -16,7 +16,7 @@ public:
     PreProcessor(const Context& _context);
     ~PreProcessor() = default;
 
-    void Process(std::ostream* output, std::istream* input, const std::string& filename);
+    void Process(std::ostream* output, std::istream* input, const std::filesystem::path& file);
     void Print();
 
 private:
