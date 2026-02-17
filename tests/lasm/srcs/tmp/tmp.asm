@@ -8,4 +8,16 @@ section .text
     global _start
 
 _start:
-    jmp $
+    jmp ld2
+
+    nop
+    nop
+    nop
+L2:
+    hlt
+
+section .data
+
+ld1 resq 51
+
+ld2 dq 8, 2

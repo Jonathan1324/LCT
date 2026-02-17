@@ -53,6 +53,12 @@ Encoder::Evaluation Encoder::Encoder::Evaluate(const Parser::Immediate& immediat
 
                 evaluation.result = res1 + ripBase1 - secOffset - ripExtra;
             }
+            else if (!tokens.isExtern)
+            {
+                evaluation.useOffset = true;
+                evaluation.relocationPossible = true;
+                evaluation.offset = static_cast<int64_t>(res1 - off1) + ripExtra;
+            }
             else // TODO: Check
             {
                 evaluation.useOffset = true;
