@@ -122,7 +122,7 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                 }
 
                 std::string file_path = rest.substr(firstPos + 1, secondPos - firstPos - 1);
-                std::ifstream input;
+                std::ifstream newInput;
                 std::filesystem::path resolvedPath;
                 std::filesystem::path requested(file_path);
 
@@ -132,8 +132,8 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                     if (std::filesystem::exists(requested) &&
                         std::filesystem::is_regular_file(requested))
                     {
-                        input.open(requested);
-                        if (input)
+                        newInput.open(requested);
+                        if (newInput)
                         {
                             found = true;
                             resolvedPath = requested;
@@ -148,8 +148,8 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
 
                         if (std::filesystem::exists(candidate) && std::filesystem::is_regular_file(candidate))
                         {
-                            input.open(candidate);
-                            if (input.is_open())
+                            newInput.open(candidate);
+                            if (newInput.is_open())
                             {
                                 resolvedPath = candidate;
                                 found = true;
@@ -164,8 +164,8 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
 
                             if (std::filesystem::exists(candidate) && std::filesystem::is_regular_file(candidate))
                             {
-                                input.open(candidate);
-                                if (input.is_open())
+                                newInput.open(candidate);
+                                if (newInput.is_open())
                                 {
                                     resolvedPath = candidate;
                                     found = true;
@@ -183,7 +183,7 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                 }
 
                 std::ostringstream buffer;
-                if (!new_input.is_open())
+                if (!newInput.is_open())
                 {
                     throw Exception::IOError(
                         "Could not open include file: " + file_path,
@@ -192,7 +192,7 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                     );
                 }
 
-                Process(&buffer, &input, resolvedPath);
+                Process(&buffer, &newInput, resolvedPath);
 
                 (*output) << buffer.str();
 
