@@ -37,13 +37,13 @@ int FAT_RemoveDirectoryEntry(FAT_File* f)
     return 0;
 }
 
-uint32_t FAT_AddDirectoryEntry(FAT_File* directory, FAT_DirectoryEntry* entry, FAT_LFNEntry* lfn_entries, uint32_t lfn_count)
+uint64_t FAT_AddDirectoryEntry(FAT_File* directory, FAT_DirectoryEntry* entry, FAT_LFNEntry* lfn_entries, uint64_t lfn_count)
 {
     if (!directory || directory->fs->read_only || !directory->is_directory || !entry) return 0xFFFFFFFF; // TODO: error
 
-    uint32_t needed = lfn_count + 1;
-    uint32_t offset = 0;
-    uint32_t run = 0;
+    uint64_t needed = lfn_count + 1;
+    uint64_t offset = 0;
+    uint64_t run = 0;
 
     FAT_DirectoryEntry tmp;
 
@@ -61,15 +61,15 @@ uint32_t FAT_AddDirectoryEntry(FAT_File* directory, FAT_DirectoryEntry* entry, F
         offset += sizeof(FAT_DirectoryEntry);
     }
 
-    uint32_t base = (uint32_t)offset - (uint32_t)((found ? run-1 : run)*sizeof(FAT_DirectoryEntry));
+    uint64_t base = offset - ((found ? run-1 : run)*sizeof(FAT_DirectoryEntry));
 
-    for (uint32_t i = 0; i < lfn_count; i++) {
-        uint32_t off = (uint32_t)base + (uint32_t)(i * sizeof(FAT_DirectoryEntry));
+    for (uint64_t i = 0; i < lfn_count; i++) {
+        uint64_t off = base + (i * sizeof(FAT_DirectoryEntry));
         if (FAT_WriteToFileRaw(directory, off, (uint8_t*)&lfn_entries[lfn_count - 1 - i], sizeof(FAT_LFNEntry)) != sizeof(FAT_LFNEntry))
             return 0xFFFFFFFF; // critical
     }
 
-    uint32_t short_off = (uint32_t)base + (uint32_t)(lfn_count*sizeof(FAT_DirectoryEntry));
+    uint64_t short_off = base + (lfn_count*sizeof(FAT_DirectoryEntry));
     if (FAT_WriteToFileRaw(directory, short_off, (uint8_t*)entry, sizeof(FAT_DirectoryEntry)) != sizeof(FAT_DirectoryEntry))
         return 0xFFFFFFFF;
 
@@ -95,7 +95,7 @@ int FAT_AddDotsToDirectory(FAT_File* directory, FAT_File* parent)
     dot.attribute = FAT_ENTRY_DIRECTORY;
     dot.first_cluster = (uint16_t)directory->first_cluster;
     dot.first_cluster_high = (uint16_t)(directory->first_cluster >> 16);
-    uint32_t rel_offset_dot = FAT_AddDirectoryEntry(directory, &dot, NULL, 0);
+    uint64_t rel_offset_dot = FAT_AddDirectoryEntry(directory, &dot, NULL, 0);
     (void)rel_offset_dot;
 
     FAT_DirectoryEntry dotdot = {0};
@@ -113,7 +113,7 @@ int FAT_AddDotsToDirectory(FAT_File* directory, FAT_File* parent)
     dotdot.attribute = FAT_ENTRY_DIRECTORY;
     dotdot.first_cluster = (uint16_t)parent->first_cluster;
     dot.first_cluster_high = (uint16_t)(parent->first_cluster >> 16);
-    uint32_t rel_offset_dotdot = FAT_AddDirectoryEntry(directory, &dotdot, NULL, 0);
+    uint64_t rel_offset_dotdot = FAT_AddDirectoryEntry(directory, &dotdot, NULL, 0);
     (void)rel_offset_dotdot;
 
     return 0;
@@ -123,7 +123,7 @@ char** FAT_ListDir(FAT_File* dir, uint64_t* out_count)
 {
     if (!dir || !dir->is_directory) return NULL;
 
-    uint32_t offset = 0;
+    uint64_t offset = 0;
     FAT_DirectoryEntry entry;
 
     FAT_LFNEntry* lfn_entries = NULL;
@@ -133,7 +133,7 @@ char** FAT_ListDir(FAT_File* dir, uint64_t* out_count)
     uint64_t count = 0;
 
     while (1) {
-        uint32_t r = FAT_ReadFromFileRaw(dir, offset, (uint8_t*)&entry, sizeof(FAT_DirectoryEntry));
+        uint64_t r = FAT_ReadFromFileRaw(dir, offset, (uint8_t*)&entry, sizeof(FAT_DirectoryEntry));
         if (r != sizeof(FAT_DirectoryEntry)) break;
 
         if (entry.name[0] == 0x00) break; // End of directory

@@ -181,12 +181,12 @@ typedef struct FAT_Filesystem FAT_Filesystem;
 typedef struct FAT_File {
     FAT_Filesystem* fs;
 
-    uint32_t size;
+    uint64_t size;
 
     uint32_t first_cluster;
 
     uint64_t lfn_offset;
-    uint32_t directory_entry_offset; // absolute in bytes from file start
+    uint64_t directory_entry_offset; // absolute in bytes from file start
 
     int is_root_directory;
     int is_directory;
@@ -330,15 +330,15 @@ static inline uint8_t FAT_CreateChecksum(FAT_DirectoryEntry* entry)
 void FAT_EncodeTime(int64_t epoch, uint16_t* fat_date, uint16_t* fat_time, uint8_t* tenths);
 
 int FAT_FlushFATBuffer(FAT_Filesystem* fs);
-int FAT_LoadFATBuffer(FAT_Filesystem* fs, uint32_t offset);
+int FAT_LoadFATBuffer(FAT_Filesystem* fs, uint64_t offset);
 
-uint32_t FAT_ReadFromFileRaw(FAT_File* f, uint32_t offset, void* buffer, uint32_t size);
-uint32_t FAT_WriteToFileRaw(FAT_File* f, uint32_t offset, void* buffer, uint32_t size);
-int FAT_ReserveSpace(FAT_File* f, uint32_t extra, int update_entry_size);
-int FAT_ReserveDirectorySpace(FAT_File* dir, uint32_t entry_count);
-uint32_t FAT_GetAbsoluteOffset(FAT_File* f, uint32_t relative_offset);
+uint64_t FAT_ReadFromFileRaw(FAT_File* f, uint64_t offset, void* buffer, uint64_t size);
+uint64_t FAT_WriteToFileRaw(FAT_File* f, uint64_t offset, void* buffer, uint64_t size);
+int FAT_ReserveSpace(FAT_File* f, uint64_t extra, int update_entry_size);
+int FAT_ReserveDirectorySpace(FAT_File* dir, uint64_t entry_count);
+uint64_t FAT_GetAbsoluteOffset(FAT_File* f, uint64_t relative_offset);
 
-uint32_t FAT_AddDirectoryEntry(FAT_File* directory, FAT_DirectoryEntry* entry, FAT_LFNEntry* lfn_entries, uint32_t lfn_count);
+uint64_t FAT_AddDirectoryEntry(FAT_File* directory, FAT_DirectoryEntry* entry, FAT_LFNEntry* lfn_entries, uint64_t lfn_count);
 int FAT_AddDotsToDirectory(FAT_File* directory, FAT_File* parent);
 
 int FAT_GetDirectoryEntry(FAT_File* f, FAT_DirectoryEntry* entry);
@@ -352,13 +352,13 @@ void FAT_CloseEntry(FAT_File* entry);
 
 FAT_File* FAT_FindEntry(FAT_File* parent, const char* name);
 
-static inline uint32_t FAT_ReadFromFile(FAT_File* f, uint32_t offset, void* buffer, uint32_t size)
+static inline uint64_t FAT_ReadFromFile(FAT_File* f, uint64_t offset, void* buffer, uint64_t size)
 {
     if (!f || f->is_directory) return 0;
     return FAT_ReadFromFileRaw(f, offset, buffer, size);
 }
 
-static inline uint32_t FAT_WriteToFile(FAT_File* f, uint32_t offset, void* buffer, uint32_t size)
+static inline uint64_t FAT_WriteToFile(FAT_File* f, uint64_t offset, void* buffer, uint64_t size)
 {
     if (!f || f->is_directory) return 0;
     return FAT_WriteToFileRaw(f, offset, buffer, size);

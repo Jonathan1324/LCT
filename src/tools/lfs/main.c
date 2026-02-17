@@ -198,7 +198,7 @@ int main(int argc, const char* argv[])
     { // Set size
         uint8_t b = 0;
         (void)fseek(image_file, (long)image_size - 1, SEEK_SET);
-        (void)fread(&b, 1, 1, image_file);
+        size_t __attribute__((unused)) _ = fread(&b, 1, 1, image_file);
         (void)fseek(image_file, (long)image_size - 1, SEEK_SET);
         (void)fwrite(&b, 1, 1, image_file);
         (void)fseek(image_file, 0, SEEK_SET);
@@ -445,7 +445,7 @@ int main(int argc, const char* argv[])
             return 1;
         }
 
-        Filesystem_Type fs_type;
+        Filesystem_Type fs_type = FILESYSTEM_FAT12; // TODO
         if (command != COMMAND_CREATE && command != COMMAND_FORMAT) {
             FAT_Bootsector bootsector;
             if (Partition_Read(partition, &bootsector, 0, sizeof(FAT_Bootsector)) != sizeof(FAT_Bootsector)) {

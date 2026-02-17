@@ -28,7 +28,7 @@ void FAT_DumpInfo(FAT_Filesystem* fs, FILE* s, int count_fat)
         fprintf(s, " Number of FATs: %" PRIu8 "\n", header->number_of_fats);
         // No max root directory entries as it's FAT32
         
-        uint32_t total_sectors = (uint32_t)(header->total_sectors_large ? header->total_sectors_large : header->total_sectors_small);
+        uint64_t total_sectors = (uint64_t)(header->total_sectors_large ? header->total_sectors_large : header->total_sectors_small);
         uint64_t total_bytes = (uint64_t)total_sectors*header->bytes_per_sector;
 
         char size_suffix = 0;
@@ -59,7 +59,7 @@ void FAT_DumpInfo(FAT_Filesystem* fs, FILE* s, int count_fat)
             break;
         }
 
-        fprintf(s, " Total sectors: %" PRIu32 " (%" PRIu64 " bytes", total_sectors, total_bytes);
+        fprintf(s, " Total sectors: %" PRIu64 " (%" PRIu64 " bytes", total_sectors, total_bytes);
         if (size_suffix) fprintf(s, " ~ %" PRIu64 ".%" PRIu64 "%c", main, decimals, size_suffix);
         fputs(")\n", s);
 
@@ -80,7 +80,7 @@ void FAT_DumpInfo(FAT_Filesystem* fs, FILE* s, int count_fat)
         if (media_descriptor_name) fprintf(s, " (%s)", media_descriptor_name);
         fputc('\n', s);
 
-        uint32_t fat_sectors = (header->fat_size_32 ? header->fat_size_32 : header->fat_size_small);
+        uint64_t fat_sectors = (header->fat_size_32 ? header->fat_size_32 : header->fat_size_small);
         total_bytes = (uint64_t)fat_sectors*header->bytes_per_sector;
 
         size_suffix = 0;
@@ -111,7 +111,7 @@ void FAT_DumpInfo(FAT_Filesystem* fs, FILE* s, int count_fat)
             break;
         }
 
-        fprintf(s, " Fat size: %" PRIu32 " Sectors (%" PRIu64 " bytes", fat_sectors, total_bytes);
+        fprintf(s, " Fat size: %" PRIu64 " Sectors (%" PRIu64 " bytes", fat_sectors, total_bytes);
         if (size_suffix) fprintf(s, " ~ %" PRIu64 ".%" PRIu64 "%c", main, decimals, size_suffix);
         fputs(")\n", s);
 
@@ -137,7 +137,7 @@ void FAT_DumpInfo(FAT_Filesystem* fs, FILE* s, int count_fat)
         fprintf(s, " Number of FATs: %" PRIu8 "\n", header->number_of_fats);
         fprintf(s, " Max root directory entries: %" PRIu16 "\n", header->max_root_directory_entries);
 
-        uint32_t total_sectors = (uint32_t)(header->large_total_sectors ? header->large_total_sectors : header->total_sectors);
+        uint64_t total_sectors = (uint64_t)(header->large_total_sectors ? header->large_total_sectors : header->total_sectors);
         uint64_t total_bytes = (uint64_t)total_sectors*header->bytes_per_sector;
 
         char size_suffix = 0;
@@ -168,7 +168,7 @@ void FAT_DumpInfo(FAT_Filesystem* fs, FILE* s, int count_fat)
             break;
         }
 
-        fprintf(s, " Total sectors: %" PRIu32 " (%" PRIu64 " bytes", total_sectors, total_bytes);
+        fprintf(s, " Total sectors: %" PRIu64 " (%" PRIu64 " bytes", total_sectors, total_bytes);
         if (size_suffix) fprintf(s, " ~ %" PRIu64 ".%" PRIu64 "%c", main, decimals, size_suffix);
         fputs(")\n", s);
 
@@ -189,7 +189,7 @@ void FAT_DumpInfo(FAT_Filesystem* fs, FILE* s, int count_fat)
         if (media_descriptor_name) fprintf(s, " (%s)", media_descriptor_name);
         fputc('\n', s);
 
-        uint32_t fat_sectors = (uint32_t)header->fat_size;
+        uint64_t fat_sectors = (uint64_t)header->fat_size;
         total_bytes = (uint64_t)fat_sectors*header->bytes_per_sector;
 
         size_suffix = 0;
@@ -220,7 +220,7 @@ void FAT_DumpInfo(FAT_Filesystem* fs, FILE* s, int count_fat)
             break;
         }
 
-        fprintf(s, " Fat size: %" PRIu32 " Sectors (%" PRIu64 " bytes", fat_sectors, total_bytes);
+        fprintf(s, " Fat size: %" PRIu64 " Sectors (%" PRIu64 " bytes", fat_sectors, total_bytes);
         if (size_suffix) fprintf(s, " ~ %" PRIu64 ".%" PRIu64 "%c", main, decimals, size_suffix);
         fputs(")\n", s);
 
