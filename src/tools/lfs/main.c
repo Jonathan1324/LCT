@@ -25,8 +25,8 @@ void print_help(const char* name, FILE* s)
     fprintf(s, "> %s info <fs/disk> [flags]\n", name);
     fprintf(s, "> %s list <fs> <image path> [flags]\n", name);
     fprintf(s, "> %s list <disk> [flags]\n", name);
-    fprintf(s, "> %s write <partition/disk> <host path> [--size B/K/M/G/T] [flags]\n", name);
-    fprintf(s, "> %s read <partition/disk> <host path> [--size B/K/M/G/T] [flags]\n", name);
+    fprintf(s, "> %s write <partition/disk> <host path> [--size B/K/M/G/T] [--start B/K/M/G/T] [flags].\n", name);
+    fprintf(s, "> %s read <partition/disk> <host path> [--size B/K/M/G/T] [--start B/K/M/G/T] [flags].\n", name);
     fputc('\n', s);
     fputs("Commands:\n", s);
     fputs("> create                   Create a new image, format it, optionally set boot sector and root\n", s);
@@ -38,8 +38,8 @@ void print_help(const char* name, FILE* s)
     fputs("> info/list <disk>         List partitions of the image\n", s);
     fputs("> info <fs>                Print information about the FS of the image\n", s);
     fputs("> list <fs>                List files at a specific path in the image\n", s);
-    fputs("> write <disk/partition>   Write a file raw to the image or partition\n", s);
-    fputs("> read <disk/partition>    Read a file raw to the image or partition\n", s);
+    fputs("> write <disk/partition>   Write a file raw to the image or partition.\n", s);
+    fputs("> read <disk/partition>    Read a file raw to the image or partition.\n", s);
     fputc('\n', s);
     fputs("Flags:\n", s);
     fputs("> --no-lfn                   Disable long file names for FAT\n", s);
@@ -358,7 +358,7 @@ int main(int argc, const char* argv[])
 
                 // TODO
                 uint8_t buffer[4096];
-                uint64_t offset = 0;
+                uint64_t offset = args.start;
 
                 while (offset < size)
                 {
@@ -406,7 +406,7 @@ int main(int argc, const char* argv[])
 
                 // TODO
                 uint8_t buffer[4096];
-                uint64_t offset = 0;
+                uint64_t offset = args.start;
 
                 while (offset < size)
                 {
