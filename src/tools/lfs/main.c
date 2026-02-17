@@ -216,6 +216,8 @@ int main(int argc, const char* argv[])
     }
 
     int is_fs_image = 0;
+    int is_none = 0;
+
     if (command != COMMAND_CREATE && command != COMMAND_FORMAT) {
         uint8_t bootsector[512];
         uint64_t read = Disk_Read(disk, bootsector, 0, sizeof(bootsector));
@@ -260,6 +262,9 @@ int main(int argc, const char* argv[])
         
         else if (strcmp(name, "mbr") == 0)
             is_fs_image = 0;
+
+        else if (strcmp(name, "none") == 0)
+            is_none = 1;
 
         else {
             fprintf(stderr, "Unknown FS: %s\n", name_o);
@@ -335,7 +340,7 @@ int main(int argc, const char* argv[])
 
         PartitionTable_Close(pt);
         
-        is_fs_image = 1;
+        if (!is_none) is_fs_image = 1;
     } else {
         partition = Partition_Create(disk, 0, disk->size, args.flag_read_only);
     }
@@ -450,7 +455,30 @@ int main(int argc, const char* argv[])
         return result;
     }
 
-    if (is_fs_image) {
+    if (is_none) {
+        if (!partition) {
+            fputs("Couldn't open partition\n", stderr);
+            Disk_Close(disk);
+            return 1;
+        }
+
+        uint8_t zero_block[CHUNK_SIZE] = {0};
+        uint64_t offset = 0;
+
+        while (offset < partition->size && !args.flag_fast) {
+            uint64_t chunk = (partition->size - offset) < CHUNK_SIZE ? (partition->size - offset) : CHUNK_SIZE;
+            if (Partition_Write(partition, (uint8_t*)zero_block, offset, chunk) != chunk) {
+                fputs("Error while writing to partition", stderr);
+                Partition_Close(partition);
+                Disk_Close(disk);
+                return 1;
+            }
+            offset += chunk;
+        }
+
+        
+    }
+    else if (is_fs_image) {
         if (!partition) {
             fputs("Couldn't open partition\n", stderr);
             Disk_Close(disk);
@@ -792,4 +820,9 @@ int main(int argc, const char* argv[])
         Disk_Close(disk);
         return 0;
     }
+
+    // Should never happen
+    Partition_Close(partition);
+    Disk_Close(disk);
+    return 1;
 }
