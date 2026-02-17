@@ -359,6 +359,7 @@ int main(int argc, const char* argv[])
                 // TODO
                 uint8_t buffer[4096];
                 uint64_t offset = args.start;
+                size += args.start;
 
                 while (offset < size)
                 {
@@ -407,6 +408,7 @@ int main(int argc, const char* argv[])
                 // TODO
                 uint8_t buffer[4096];
                 uint64_t offset = args.start;
+                size += args.start;
 
                 while (offset < size)
                 {
