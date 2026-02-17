@@ -184,7 +184,10 @@ int main(int argc, const char* argv[])
     }
 
     uint64_t image_size = 0;
-    if (mode_str[0] == 'w') image_size = args.size;
+    if (mode_str[0] == 'w')
+    {
+        image_size = args.size;
+    }
     else image_size = Path_GetSize(image_str);
 
     FILE* image_file = fopen(image_str, mode_str);
@@ -299,6 +302,13 @@ int main(int argc, const char* argv[])
                 uint64_t free_start = PartitionTable_GetEndOfUsedRegion(pt, start_of_search);
                 uint64_t free_end = disk->size;
                 args.size = free_end - free_start;
+            }
+
+            if (args.size % disk->sectorSize != 0)
+            {
+                uint64_t remainder = args.size % disk->sectorSize;
+                args.size += disk->sectorSize - remainder;
+                fprintf(stderr, "Warning: Size not multiple of sector size, rounding up to %" PRIu64 "\n", args.size);
             }
 
             uint64_t start = PartitionTable_GetNextFreeRegion(pt, start_of_search, args.size);
