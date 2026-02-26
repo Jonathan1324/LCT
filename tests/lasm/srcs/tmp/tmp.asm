@@ -8,7 +8,7 @@ section .text
     global _start
 
 _start:
-    mul dword [bp]
+    mul word [bp]
 ;
 ;    div dl
 ;    div cx
