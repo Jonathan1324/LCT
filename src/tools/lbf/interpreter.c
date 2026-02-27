@@ -6,6 +6,7 @@ void interpret(char* program, uint64_t* meta, uint64_t programSize)
 {
     Tape tape = Tape_Create(INITIAL_SIZE_MIN);
 
+    // TODO: Overflow
     for (uint64_t i = 0; i < programSize; i++)
     {
         switch (program[i])
@@ -19,6 +20,8 @@ void interpret(char* program, uint64_t* meta, uint64_t programSize)
 
             case '[': if (Tape_Get(&tape) == 0) i = meta[i]; break;
             case ']': if (Tape_Get(&tape) != 0) i = meta[i]; break;
+
+            case '=': Tape_SetValue(&tape, (uint8_t)meta[i]); break;
         }
     }
 

@@ -17,6 +17,7 @@ void Tape_Destroy(Tape* tape);
 void Tape_Ensure(Tape* tape, uint64_t new_pos);
 void Tape_Increase(Tape* tape, uint8_t count);
 void Tape_Decrease(Tape* tape, uint8_t count);
+void Tape_SetValue(Tape* tape, uint8_t value);
 void Tape_Right(Tape* tape, uint64_t count);
 void Tape_Left(Tape* tape, uint64_t count);
 TAPE_WIDTH Tape_Get(Tape* tape);

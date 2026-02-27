@@ -45,6 +45,11 @@ void Tape_Decrease(Tape* tape, uint8_t count)
     tape->tape[tape->pos] -= count;
 }
 
+void Tape_SetValue(Tape* tape, uint8_t value)
+{
+    tape->tape[tape->pos] = value;
+}
+
 void Tape_Right(Tape* tape, uint64_t count)
 {
     tape->pos += count;

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <version.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "tape.h"
 #include "interpreter.h"
 #include "compiler.h"
@@ -90,24 +91,29 @@ int main(int argc, const char *argv[])
             continue;
         }
 
+        if (rawProgramSize >= capacity)
+        {
+            capacity *= 2;
+            char *tmp = realloc(rawProgram, capacity);
+            if (!tmp)
+            {
+                perror("realloc");
+                free(rawProgram);
+                fclose(f);
+                return 1;
+            }
+            rawProgram = tmp;
+        }
+
         switch (c)
         {
             case '>': case '<': case '+': case '-':
             case '.': case ',': case '[': case ']':
-                if (rawProgramSize >= capacity)
-                {
-                    capacity *= 2;
-                    char *tmp = realloc(rawProgram, capacity);
-                    if (!tmp)
-                    {
-                        perror("realloc");
-                        free(rawProgram);
-                        fclose(f);
-                        return 1;
-                    }
-                    rawProgram = tmp;
-                }
-                rawProgram[rawProgramSize++] = (char)c;
+            case '=': case '0': case '1': case '2':
+            case '3': case '4': case '5': case '6':
+            case '7': case '8': case '9':
+                rawProgram[rawProgramSize] = (char)c;
+                rawProgramSize++;
                 break;
 
             case ' ':
@@ -141,6 +147,19 @@ int main(int argc, const char *argv[])
         {
             programSize++;
             while (i + 1 < rawProgramSize && rawProgram[i + 1] == c)
+                i++;
+        }
+        else if (c == '=')
+        {
+            programSize++;
+            if (i + 1 > rawProgramSize)
+            {
+                fprintf(stderr, "Error: No digit after '=' at line %zu\n", line);
+                free(rawProgram);
+                fclose(f);
+                return 1;
+            }
+            while (i + 1 < rawProgramSize && isdigit(rawProgram[i + 1]))
                 i++;
         }
     }
@@ -180,7 +199,7 @@ int main(int argc, const char *argv[])
         {
             program[index] = c;
         }
-        else /* '<', '>', '+', '-' */
+        else if (c == '<' || c == '>' || c == '+' || c == '-')
         {
             uint64_t count = 1;
             while (i + 1 < rawProgramSize && rawProgram[i + 1] == c)
@@ -190,6 +209,22 @@ int main(int argc, const char *argv[])
             }
             program[index] = c;
             meta[index] = count;
+        }
+        else if (c == '=')
+        {
+            uint64_t value = 0;
+            while (i + 1 < rawProgramSize && isdigit(rawProgram[i + 1]))
+            {
+                value *= 10;
+                value += (unsigned char)rawProgram[i + 1] - (unsigned char)'0';
+                i++;
+            }
+            program[index] = c;
+            meta[index] = value;
+        }
+        else
+        {
+            // TODO
         }
         index++;
     }
@@ -203,7 +238,7 @@ int main(int argc, const char *argv[])
         return 1;
     }
 
-    if (transpile != 0)
+    if (transpile)
     {
         FILE* out = fopen(outputFile, "w");
         if (!out)
@@ -214,7 +249,7 @@ int main(int argc, const char *argv[])
             return 1;
         }
         
-        compile(program, meta, programSize, out);
+        compile(program, meta, programSize, out, 0);
 
         fclose(out);
     }

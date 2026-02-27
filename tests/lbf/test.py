@@ -9,13 +9,17 @@ def test(dir: Path, log_dir: Path):
     lbf = Path("dist/bin/lbf")
     src_dir = dir / "srcs"
 
-    for file in src_dir.rglob("*.bf"):
+    for file in src_dir.rglob("*.xbf"):
         file_parts = file.parts
         name = Path(*file_parts[3:])
+
         log_path = Path(f"{log_dir}/{name}.txt")
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
-        cmd = [str(lbf), str(file)]
+        out = dir / "build" / name.with_suffix(".bf")
+        out.parent.mkdir(parents=True, exist_ok=True)
+
+        cmd = [str(lbf), "-c", str(file), "-o", str(out)]
         with open(log_path, "w") as f:
             subprocess.run(cmd, stdout=f, stderr=f)
 
