@@ -175,8 +175,8 @@ uint64_t x86::Instruction::getImmediateOffset()
 
 void x86::Instruction::encode(std::vector<uint8_t>& buffer)
 {
-    if (use16BitPrefix) buffer.push_back(prefix16Bit);
     if (use16BitAddressPrefix) buffer.push_back(addressPrefix16Bit);
+    if (use16BitPrefix) buffer.push_back(prefix16Bit);
     if (useREPPrefix) buffer.push_back(repPrefix);
 
     // TODO: not happy

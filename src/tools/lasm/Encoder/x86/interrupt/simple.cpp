@@ -21,7 +21,8 @@ x86::Simple_Interrupt_Instruction::Simple_Interrupt_Instruction(::Encoder::Encod
         case Instructions::IRET:
             opcode = 0xCF;
 
-            break;
+            if (bits != BitMode::Bits64) break;
+            [[fallthrough]]; // Handle IRET in 64-bit as IRETQ
 
         case Instructions::IRETQ:
             if (bits == BitMode::Bits16) throw Exception::SyntaxError("'iretq' not supported in 16-bit mode", -1, -1, nullptr);
