@@ -107,7 +107,7 @@ namespace x86
         struct SIB {
             bool use = false;
 
-            uint8_t index;
+            uint8_t index = 0;
             Scale scale = Scale::x1;
         } sib;
 

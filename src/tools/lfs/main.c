@@ -476,7 +476,7 @@ int main(int argc, const char* argv[])
             offset += chunk;
         }
 
-        
+        return 0;
     }
     else if (is_fs_image) {
         if (!partition) {

@@ -20,8 +20,8 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
     if (!output || !(*output))
         throw Exception::InternalError("Output stream isn't open or is in a bad state", -1, -1);
     
-    int64_t inputLine = 0;
-    int64_t outputLine = std::numeric_limits<int64_t>::min();
+    uint64_t inputLine = 0;
+    uint64_t outputLine = std::numeric_limits<int64_t>::min();
 
     std::string filename = file.string();
 
@@ -30,7 +30,6 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
     {
         inputLine++;
         std::string trimmed = trim(line);
-        
 
         if (outputLine != inputLine && trimmed[0] != '%')
         {
