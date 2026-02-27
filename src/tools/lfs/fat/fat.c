@@ -612,7 +612,13 @@ int FAT12_FAT16_WriteBootsector(FAT_Filesystem* fs, void* bootsector, int force_
                         0x56, 0xB4, 0x0E, 0xBB, 0x07, 0x00, 0xCD, 0x10, 0x5E, 0xEB,
                         0xF0, 0x32, 0xE4, 0xCD, 0x16, 0xCD, 0x19, 0xEB, 0xFE};
 
-        char data[100] = "This is not a bootable disk.  Please insert a bootable floppy and\r\npress any key to try again ... \r\n";
+        char data[100] = {
+            'T','h','i','s',' ','i','s',' ','n','o','t',' ','a',' ','b','o','o','t','a','b','l','e',' ',
+            'd','i','s','k','.',' ',' ','P','l','e','a','s','e',' ','i','n','s','e','r','t',' ','a',' ',
+            'b','o','o','t','a','b','l','e',' ','f','l','o','p','p','y',' ','a','n','d','\r','\n',
+            'p','r','e','s','s',' ','a','n','y',' ','k','e','y',' ','t','o',' ','t','r','y',' ','a','g',
+            'a','i','n',' ','.', '.', '.',' ','\r','\n'
+        };
 
         memset(fs->bootsector.fat12_fat16.bootcode, 0, sizeof(fs->bootsector.fat12_fat16.bootcode));
         memcpy(fs->bootsector.fat12_fat16.bootcode, code, sizeof(code));
@@ -749,7 +755,13 @@ int FAT32_WriteBootsector(FAT_Filesystem* fs, void* bootsector, int force_bootse
                         0x56, 0xB4, 0x0E, 0xBB, 0x07, 0x00, 0xCD, 0x10, 0x5E, 0xEB,
                         0xF0, 0x32, 0xE4, 0xCD, 0x16, 0xCD, 0x19, 0xEB, 0xFE};
 
-        char data[100] = "This is not a bootable disk.  Please insert a bootable floppy and\r\npress any key to try again ... \r\n";
+        char data[100] = {
+            'T','h','i','s',' ','i','s',' ','n','o','t',' ','a',' ','b','o','o','t','a','b','l','e',' ',
+            'd','i','s','k','.',' ',' ','P','l','e','a','s','e',' ','i','n','s','e','r','t',' ','a',' ',
+            'b','o','o','t','a','b','l','e',' ','f','l','o','p','p','y',' ','a','n','d','\r','\n',
+            'p','r','e','s','s',' ','a','n','y',' ','k','e','y',' ','t','o',' ','t','r','y',' ','a','g',
+            'a','i','n',' ','.', '.', '.',' ','\r','\n'
+        };
 
         memset(fs->bootsector.fat32.bootcode, 0, sizeof(fs->bootsector.fat32.bootcode));
         memcpy(fs->bootsector.fat32.bootcode, code, sizeof(code));
