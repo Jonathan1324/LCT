@@ -1,6 +1,7 @@
 import ci.build as build
 import ci.artifacts as artifacts
 import ci.archive as archive
+import ci.logger
 from ci.os import OS, ARCH, getOS, getArch
 
 import tests.tests as tests
@@ -125,7 +126,7 @@ def get_version():
 
 def main(args, os: OS, arch: ARCH) -> bool:
     if (os == OS.Windows and arch == ARCH.ARM64):
-        print("Windows ARM isn't supported")
+        logger.error("Windows ARM isn't supported")
         exit(1)
 
     # Always clear dist
@@ -192,7 +193,7 @@ if __name__ == "__main__":
         logger.addHandler(file_handler)
 
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
+        console_handler.setLevel(ci.logger.BUILD_LEVEL)
         console_formatter = logging.Formatter("[%(levelname)s] %(message)s")
         console_handler.setFormatter(console_formatter)
         logger.addHandler(console_handler)

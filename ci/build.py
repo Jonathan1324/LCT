@@ -44,7 +44,7 @@ class BuildCache:
                 self.hashes = data.get("hashes", {})
                 self.stored_version = data.get("version")
             except Exception:
-                print(f"Warning: Failed to load build cache from {self.cache_file}")
+                logger.warning(f"Failed to load build cache from {self.cache_file}")
                 self.hashes = {}
                 self.stored_version = None
 
@@ -166,7 +166,7 @@ def build_c_cpp_sources(toolchain: Toolchain, buildCache: BuildCache, build_dir:
             content_hash = hash_files(all_deps)
 
             if force_rebuild or not buildCache.is_up_to_date(target_path, content_hash):
-                print(f"Compiling {file} -> {target_path}")
+                logger.build(f"Compiling {file} -> {target_path}")
                 subprocess.run([compiler, *flags, *dep_args, str(dep_path), "-c", str(file), "-o", str(target_path)], check=True)
 
                 new_deps = parse_gcc_dep_file(dep_path)
@@ -175,7 +175,7 @@ def build_c_cpp_sources(toolchain: Toolchain, buildCache: BuildCache, build_dir:
                 buildCache.update(target_path, new_content_hash)
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error: Compilation failed for {file}")
+            logger.error(f"Compilation failed for {file}")
             raise e
         
     return objects
@@ -195,13 +195,13 @@ def build_version(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path,
         content_hash = hash_files(objects)
 
         if not buildCache.is_up_to_date(out, content_hash):
-            print(f"Creating static library {out}")
+            logger.build(f"Creating static library {out}")
             subprocess.run([ar, *flags, out, *map(str, objects)], check=True)
 
             buildCache.update(out, content_hash)
 
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error: Creating static library failed for {out}")
+        logger.error(f"Creating static library failed for {out}")
         raise e
     
     return True
@@ -209,7 +209,7 @@ def build_version(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path,
 def build_lib(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, source_dir: Path, out: Path) -> bool:
     info_file = source_dir / "build.info"
     if not info_file.exists():
-        logger.warning(f"Warning: build.info missing in {source_dir}")
+        logger.warning(f"build.info missing in {source_dir}")
         return False
     
     info_content = info_file.read_text(encoding="utf-8").strip()
@@ -235,13 +235,13 @@ def build_lib(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, sou
             content_hash = hash_files(files)
 
             if not buildCache.is_up_to_date(out, content_hash):
-                print(f"Creating static rust library {out}")
+                logger.build(f"Creating static rust library {out}")
                 subprocess.run([rustc, *flags, f"--target={toolchain.Rust_Target}", str(file), "-o", str(out)], check=True)
 
                 buildCache.update(out, content_hash)
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error: Creating static library failed for {out}")
+            logger.error(f"Creating static library failed for {out}")
             raise e
 
         return True
@@ -261,25 +261,25 @@ def build_lib(toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, sou
             content_hash = hash_files(objects)
 
             if not buildCache.is_up_to_date(out, content_hash):
-                print(f"Creating static library {out}")
+                logger.build(f"Creating static library {out}")
                 subprocess.run([ar, *flags, out, *map(str, objects)], check=True)
 
                 buildCache.update(out, content_hash)
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error: Creating static library failed for {out}")
+            logger.error(f"Creating static library failed for {out}")
             raise e
     
         return True
 
     else:
-        logger.warning(f"Warning: invalid build.info content in {source_dir}")
+        logger.warning(f"invalid build.info content in {source_dir}")
         return False
 
 def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache, build_dir: Path, source_dir: Path, name: str, lib_dir: Path, tpl_dir: Path) -> Optional[str]:
     info_file = source_dir / "build.info"
     if not info_file.exists():
-        logger.warning(f"Warning: build.info missing in {source_dir}")
+        logger.warning(f"build.info missing in {source_dir}")
         return None
     
     info_content = info_file.read_text(encoding="utf-8").strip()
@@ -323,13 +323,13 @@ def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache
             content_hash = hash_files([*files, *toolchain.Libs])
 
             if not buildCache.is_up_to_date(out, content_hash):
-                print(f"Building cargo executable {out}")
+                logger.build(f"Building cargo executable {out}")
                 subprocess.run(cmd, env=env, check=True)
 
                 buildCache.update(out, content_hash)
         
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error: Building cargo executable failed for {out}")
+            logger.error(f"Building cargo executable failed for {out}")
             raise e
 
         if not out.exists():
@@ -392,13 +392,13 @@ def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache
             content_hash = hash_files([*objects, *toolchain.Libs])
 
             if not buildCache.is_up_to_date(out, content_hash):
-                print(f"Linking {out}")
+                logger.build(f"Linking {out}")
                 subprocess.run([linker, *map(str, objects), *lib_flags, *flags, "-o", str(out)], check=True)
 
                 buildCache.update(out, content_hash)
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error: Linking failed for {out}")
+            logger.error(f"Linking failed for {out}")
             raise e
         
         if not debug:
@@ -411,13 +411,13 @@ def build_tool(debug: bool, os: OS, toolchain: Toolchain, buildCache: BuildCache
             try:
                 subprocess.run([strip, *flags, str(out)], check=True)
             except subprocess.CalledProcessError as e:
-                logger.error(f"Error: Stripping failed for {out}")
+                logger.error(f"Stripping failed for {out}")
                 raise e
 
         return str(out)
     
     else:
-        logger.warning(f"Warning: invalid build.info content in {source_dir}")
+        logger.warning(f"invalid build.info content in {source_dir}")
         return None
 
 def build(debug: bool, os: OS, arch: ARCH, tools: list[str], version: str) -> bool:
