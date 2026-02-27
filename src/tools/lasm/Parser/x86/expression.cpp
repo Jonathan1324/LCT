@@ -125,7 +125,7 @@ std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parsePrimary()
     if (!peek())
         throw Exception::SyntaxError("Unexpected end of expression", -1, -1);
 
-    if (peek()->type == Token::Type::Bracket && peek()->value == "(")
+    if (peek() && peek()->type == Token::Type::Bracket && peek()->value == "(")
     {
         advance();
         std::shared_ptr<ExprNode> expr = parseExpression();
@@ -135,7 +135,7 @@ std::shared_ptr<ExpressionParser::ExprNode> ExpressionParser::parsePrimary()
         return expr;
     }
 
-    if (peek()->type == Token::Type::Token)
+    if (peek() && peek()->type == Token::Type::Token)
     {
         StringPool::String val = advance()->value;
 
