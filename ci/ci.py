@@ -166,7 +166,10 @@ def main(args, os: OS, arch: ARCH) -> bool:
         logger.debug("Stopping before testing")
         return True
 
+    test_logs = Path("logs/tests.log")
+
     logger.info("Starting tests")
+    logger.debug(f"Test logs: {test_logs}")
     ret = tests.test(tools=tools)
     if not ret:
         logger.error("Tests failed")
