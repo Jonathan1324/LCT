@@ -455,7 +455,8 @@ def build(debug: bool, os: OS, arch: ARCH, tools: list[str], version: str) -> bo
     Debug_Flags = [
         "-ggdb3", "-O0", "-fno-omit-frame-pointer",
         "-fno-inline", "-march=native", "-ftrapv",
-        "-fstack-check", "-fno-strict-aliasing",
+        "-fno-strict-aliasing",
+        #"-fstack-check", 
 
         "-DDEBUG_BUILD"
     ]
