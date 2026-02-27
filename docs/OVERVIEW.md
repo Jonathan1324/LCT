@@ -36,6 +36,4 @@ Docs are planned
 
 ## [LJOKE](LJOKE.md)
 
-## LHOHO
-
-Docs are planned
+## [LHOHO](LHOHO.md)
