@@ -62,6 +62,7 @@ def run_lasm(src: Path, dst: Path, logs: Path, debug: bool,
 
     out = Path(f"{dst}-{arch_str}-{bits_str}-{format_str}.{ext}")
     cmd.extend(["-o", str(out)])
+
     log_path = Path(f"{logs}/{Path(src).name}-{arch_str}-{bits_str}-{format_str}.txt")
 
     with open(log_path.resolve(), "w") as f:

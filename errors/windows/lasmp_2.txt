@@ -1,0 +1,7 @@
+during RTL pass: expand
+src\tools\lasmp\Preprocessor.cpp: In member function 'void PreProcessor::Process(std::ostream*, std::istream*, const std::filesystem::__cxx11::path&)':
+src\tools\lasmp\Preprocessor.cpp:214:1: internal compiler error: in try_forward_edges, at cfgcleanup.cc:580
+  214 | }
+      | ^
+Please submit a full bug report, with preprocessed source (by using -freport-bug).
+See <https://github.com/msys2/MINGW-packages/issues> for instructions.

@@ -1,0 +1,7 @@
+during RTL pass: cprop
+src\tools\lasmp\cli\Arguments.cpp: In function 'bool parseArguments(int, const char**, std::string&, std::string&, bool&, std::optional<std::__cxx11::basic_string<char> >&, const Context&)':
+src\tools\lasmp\cli\Arguments.cpp:77:1: internal compiler error: in try_forward_edges, at cfgcleanup.cc:580
+   77 | }
+      | ^
+Please submit a full bug report, with preprocessed source (by using -freport-bug).
+See <https://github.com/msys2/MINGW-packages/issues> for instructions.

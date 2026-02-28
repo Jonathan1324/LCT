@@ -6,6 +6,7 @@
 #include <limits>
 #include <io/file.hpp>
 #include <unordered_set>
+#include <algorithm>
 
 PreProcessor::PreProcessor(const Context& _context)
     : context(_context)
@@ -13,7 +14,7 @@ PreProcessor::PreProcessor(const Context& _context)
 
 }
 
-void PreProcessor::Process(std::ostream* output, std::istream* input, const std::filesystem::path& file)
+void PreProcessor::Process(std::ostream* output, std::istream* input, const std::filesystem::path& file, DepType type, uint64_t indent)
 {
     if (!input || !(*input))
         throw Exception::InternalError("Input stream isn't open or is in a bad state", -1, -1);
@@ -24,6 +25,16 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
     uint64_t outputLine = std::numeric_limits<int64_t>::min();
 
     std::string filename = file.string();
+
+    if (dependencies.find(filename) == dependencies.end() || type == DepType::MSVC)
+    {
+        dependencies.insert(filename);
+
+        Dependency dep;
+        dep.file = filename;
+        dep.indent = indent;
+        dependencyFiles.push_back(std::move(dep));
+    }
 
     std::string line;
     while (std::getline(*input, line))
@@ -191,7 +202,7 @@ void PreProcessor::Process(std::ostream* output, std::istream* input, const std:
                     );
                 }
 
-                Process(&buffer, &newInput, resolvedPath);
+                Process(&buffer, &newInput, resolvedPath, type, indent + 1);
 
                 (*output) << buffer.str();
 
@@ -279,6 +290,71 @@ std::string PreProcessor::ProcessLine(const std::string& line)
             return expanded;
 
         current = expanded;
+    }
+}
+
+void PreProcessor::DumpDependencies(std::ostream* output, const std::string& outFile, DepType type)
+{
+    uint64_t currentLineLength = 0;
+
+    std::string cleanOutFile = outFile;
+    std::replace(cleanOutFile.begin(), cleanOutFile.end(), '\\', '/');
+    switch (type)
+    {
+        case DepType::Makefile:
+            *output << cleanOutFile << ": ";
+            currentLineLength += cleanOutFile.size();
+            break;
+
+        default:
+            break;
+    }
+
+    for (const Dependency& dependency : dependencyFiles)
+    {
+        std::string cleanDependency = dependency.file;
+        std::replace(cleanDependency.begin(), cleanDependency.end(), '\\', '/');
+
+        std::string cleanDependencyWindows = dependency.file;
+        std::replace(cleanDependencyWindows.begin(), cleanDependencyWindows.end(), '/', '\\');
+
+        switch (type)
+        {
+            case DepType::Normal:
+                *output << cleanDependency << std::endl;
+                break;
+
+            case DepType::Makefile:
+                currentLineLength += cleanDependency.size();
+                if (currentLineLength > 100)
+                {
+                    *output << '\\' << std::endl << " ";
+                    currentLineLength = 1 + cleanDependency.size();
+                }
+
+                *output << cleanDependency << " ";
+                break;
+
+            case DepType::MSVC:
+                if (dependency.indent == 0) break;
+                *output << "Note: including file: ";
+                for (uint64_t i = 0; i < dependency.indent - 1; i++) *output << ' ';
+                *output << cleanDependencyWindows << std::endl;
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    switch (type)
+    {
+        case DepType::Makefile:
+            *output << std::endl;
+            break;
+
+        default:
+            break;
     }
 }
 

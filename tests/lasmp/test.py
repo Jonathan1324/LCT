@@ -6,9 +6,9 @@ from typing import List
 
 logger = logging.getLogger("tests")
 
-def run_lasmp(src: Path, dst: Path, logs: Path) -> bool:
+def run_lasmp(src: Path, dst: Path, dep_file: Path, logs: Path) -> bool:
     lasmp = Path("dist/bin/lasmp")
-    cmd = [str(lasmp), str(src), "-o", dst]
+    cmd = [str(lasmp), str(src), "--depfile", dep_file, "--deptype", "normal", "-o", dst]
 
     log_path = Path(f"{logs}/{Path(src).name}.txt")
 
@@ -25,6 +25,8 @@ def test(dir: Path, log_dir: Path):
 
         dst_path = Path(build_dir, *asmfile_parent[3:], asmfile.name)
         dst_path.parent.mkdir(parents=True, exist_ok=True)
+
+        dep_path = dst_path.with_suffix(".d")
         
         log_path = Path(log_dir, *asmfile_parent[3:])
         log_path.mkdir(parents=True, exist_ok=True)
@@ -34,6 +36,7 @@ def test(dir: Path, log_dir: Path):
         result = run_lasmp(
             src=asmfile,
             dst=dst_path,
+            dep_file=dep_path,
             logs=log_path
         )
         if result:

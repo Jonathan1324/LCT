@@ -16,7 +16,7 @@ void Token::Tokenizer::clear() {
 
 void Token::Tokenizer::tokenize(std::istream* input)
 {
-    StringPool::String file;
+    StringPool::String file = context->stringPool->GetString("-"); // TODO
     std::string line;
     size_t lineNumber = 0;
     size_t lineIncrease = 1;

@@ -14,14 +14,14 @@ void printHelp(const char* name, std::ostream& s)
     s << "> --format <format>         Set output format" << std::endl;
     s << "> --bits <16/32/64>         Set bit mode" << std::endl;
     s << "> --debug                   Print debug information" << std::endl;
-    s << "> --no-preprocess           Don't execute the preprocessor" << std::endl;
     
 }
 
 bool parseArguments(int argc, const char *argv[],
                     std::vector<std::string>& inputs, std::string& output,
                     BitMode& bits, Architecture& arch, Format& format,
-                    bool& debug, bool& preprocess, Context& context)
+                    bool& debug, bool& preprocess, Context& context,
+                    std::optional<std::string>& depFile, std::optional<std::string>& depType)
 {
 #ifdef __x86_64__
     bits = BitMode::Bits64;
@@ -73,6 +73,9 @@ bool parseArguments(int argc, const char *argv[],
     
     debug = false;
     preprocess = true;
+
+    depFile = std::nullopt;
+    depType = std::nullopt;
 
     for (int i = 1; i < argc; ++i)
     {
@@ -161,10 +164,6 @@ bool parseArguments(int argc, const char *argv[],
         else if (std::strcmp(argv[i], "--debug") == 0 || std::strcmp(argv[i], "-d") == 0)
         {
             debug = true;
-        }
-        else if (std::strcmp(argv[i], "--no-preprocess") == 0)
-        {
-            preprocess = false;
         }
 
         else if (argv[i][0] == '-' && argv[i][1] != '\0')

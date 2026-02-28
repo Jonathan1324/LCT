@@ -26,9 +26,13 @@ int main(int argc, const char *argv[])
     std::string outputFile;
     bool debug;
 
+    PreProcessor::DepType depType;
+    std::optional<std::string> depfile;
+    std::optional<std::string> depOut;
+
     try
     {
-        bool stop = parseArguments(argc, argv, inputFile, outputFile, debug, context);
+        bool stop = parseArguments(argc, argv, inputFile, outputFile, debug, depfile, depOut, depType, context);
         if (stop)
             return 0;
 
@@ -45,7 +49,7 @@ int main(int argc, const char *argv[])
         context.include_paths.clear();
 
         PreProcessor preprocessor(context);
-        preprocessor.Process(output, input, context.filename);
+        preprocessor.Process(output, input, context.filename, depType);
 
         if (debug)
             preprocessor.Print();
@@ -54,6 +58,12 @@ int main(int argc, const char *argv[])
             delete input;
         if (outputFile != "-")
             delete output;
+
+        if (depfile.has_value())
+        {
+            std::ostream* dependencyFile = openOstream(depfile.value(), std::ios::out | std::ios::trunc);
+            preprocessor.DumpDependencies(dependencyFile, depOut.has_value() ? depOut.value() : outputFile, depType);
+        }
     }
     catch(const Exception& e)
     {
