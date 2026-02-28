@@ -10,30 +10,32 @@ These dependencies are automatically handled by LCT-Manager.
 LCT-Manager is a central tool for installing, updating, and managing the LCT tools.
 [LCT-Manager on Github](https://github.com/Jonathan1324/LCT-Manager)
 
-## LASM
+## Tools
+
+### LASM
 
 Docs are planned
 
-## LASMP
+### LASMP
 
 Docs are planned
 
-## LNK
+### LNK
 
 Docs are planned
 
-## LBT
+### LBT
 
 Docs are planned
 
-## LFS
+### LFS
 
 Docs are planned
 
-## LBF
+### LBF
 
 Docs are planned
 
-## [LJOKE](LJOKE.md)
+### [LJOKE](LJOKE.md)
 
-## [LHOHO](LHOHO.md)
+### [LHOHO](LHOHO.md)
