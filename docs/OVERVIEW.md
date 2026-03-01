@@ -12,6 +12,10 @@ LCT-Manager is a central tool for installing, updating, and managing the LCT too
 
 ## Tools
 
+### LCTC
+
+Docs are planned
+
 ### LASM
 
 Docs are planned

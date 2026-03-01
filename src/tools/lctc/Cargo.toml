@@ -1,0 +1,9 @@
+[package]
+name = "lctc"
+version = "0.0.0"
+edition = "2024"
+build = "build.rs"
+
+[[bin]]
+name = "lctc"
+path = "main.rs"

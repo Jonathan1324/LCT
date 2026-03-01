@@ -1,7 +1,8 @@
 [workspace]
 resolver = "3"
 members = [
-    "src/tools/lbt"
+    "src/tools/lbt",
+    "src/tools/lctc"
 ]
 
 [profile.release]
